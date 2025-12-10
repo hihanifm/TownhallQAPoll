@@ -2,10 +2,17 @@
 
 # Script to start both backend and frontend servers in the background
 # LINUX/macOS ONLY - For Windows, use the batch scripts or PowerShell scripts
+# Usage: ./start-background.sh [--prod|-p]  (use --prod for production mode)
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
 LOG_DIR="$SCRIPT_DIR/logs"
+
+# Check for production mode
+PROD_MODE=false
+if [[ "$1" == "--prod" ]] || [[ "$1" == "-p" ]]; then
+    PROD_MODE=true
+fi
 
 # Create logs directory if it doesn't exist
 mkdir -p "$LOG_DIR"
@@ -70,7 +77,11 @@ if check_port 3000; then
     echo "Warning: Port 3000 (frontend) is already in use!"
 fi
 
-echo "Starting Townhall Q&A Poll servers in background..."
+if [ "$PROD_MODE" = true ]; then
+    echo "Starting Townhall Q&A Poll servers in PRODUCTION mode..."
+else
+    echo "Starting Townhall Q&A Poll servers in DEVELOPMENT mode..."
+fi
 echo ""
 
 # Start backend server
@@ -88,7 +99,21 @@ sleep 2
 # Start frontend server
 echo "Starting frontend server..."
 cd "$SCRIPT_DIR/frontend"
-nohup npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
+
+if [ "$PROD_MODE" = true ]; then
+    echo "Building frontend for production..."
+    npm run build > "$LOG_DIR/frontend-build.log" 2>&1
+    if [ $? -ne 0 ]; then
+        echo "Error: Frontend build failed! Check $LOG_DIR/frontend-build.log"
+        exit 1
+    fi
+    echo "Starting frontend production server..."
+    nohup npm run preview > "$LOG_DIR/frontend.log" 2>&1 &
+else
+    echo "Starting frontend development server..."
+    nohup npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
+fi
+
 FRONTEND_PID=$!
 # Disown the process to fully detach it from the shell
 disown $FRONTEND_PID 2>/dev/null || true
@@ -103,6 +128,11 @@ LOCAL_IP=$(get_local_ip)
 
 echo ""
 echo "✓ Servers started in background!"
+if [ "$PROD_MODE" = true ]; then
+    echo "  Mode: PRODUCTION (optimized build)"
+else
+    echo "  Mode: DEVELOPMENT (hot reload enabled)"
+fi
 echo ""
 echo "Access URLs:"
 echo "  Backend:"
@@ -119,10 +149,17 @@ echo ""
 echo "Logs are available in: $LOG_DIR/"
 echo "  - Backend:  $LOG_DIR/backend.log"
 echo "  - Frontend: $LOG_DIR/frontend.log"
+if [ "$PROD_MODE" = true ]; then
+    echo "  - Build:    $LOG_DIR/frontend-build.log"
+fi
 echo ""
 echo "To stop the servers, run: ./stop-background.sh"
 echo "To check status, run: ./status-background.sh"
 echo ""
+if [ "$PROD_MODE" = false ]; then
+    echo "To start in production mode, run: ./start-background.sh --prod"
+    echo ""
+fi
 echo "Note: Processes are running in the background and will continue"
 echo "      even if you close this terminal window."
 echo ""

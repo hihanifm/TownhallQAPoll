@@ -35,6 +35,26 @@ echo "Townhall Q&A Poll Server Status"
 echo "================================"
 echo ""
 
+# Detect overall mode by checking frontend process on port 3000
+MODE="UNKNOWN"
+if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    # Get the first PID listening on port 3000
+    FRONTEND_PORT_PID=$(lsof -ti:3000 | head -1)
+    if [ -n "$FRONTEND_PORT_PID" ]; then
+        FRONTEND_CMD=$(ps -p $FRONTEND_PORT_PID -o command= 2>/dev/null | tr -d '\n')
+        if echo "$FRONTEND_CMD" | grep -q "vite preview"; then
+            MODE="PRODUCTION"
+        elif echo "$FRONTEND_CMD" | grep -q "vite"; then
+            MODE="DEVELOPMENT"
+        fi
+    fi
+fi
+
+if [ "$MODE" != "UNKNOWN" ]; then
+    echo "Mode: $MODE"
+    echo ""
+fi
+
 # Check PID file
 if [ ! -f "$PID_FILE" ]; then
     echo "No PID file found. Servers may not be running via start-background.sh"
@@ -60,7 +80,20 @@ else
     if [ ${#PIDS[@]} -ge 2 ]; then
         FRONTEND_PID=${PIDS[1]}
         if ps -p $FRONTEND_PID > /dev/null 2>&1; then
-            echo "  Frontend (PID $FRONTEND_PID): ✓ Running"
+            # Check if running in production mode by examining the process command
+            FRONTEND_CMD=$(ps -p $FRONTEND_PID -o command= 2>/dev/null | tr -d '\n')
+            if echo "$FRONTEND_CMD" | grep -q "vite preview"; then
+                FRONTEND_MODE="PRODUCTION"
+            elif echo "$FRONTEND_CMD" | grep -q "vite"; then
+                FRONTEND_MODE="DEVELOPMENT"
+            else
+                FRONTEND_MODE=""
+            fi
+            if [ -n "$FRONTEND_MODE" ]; then
+                echo "  Frontend (PID $FRONTEND_PID): ✓ Running ($FRONTEND_MODE)"
+            else
+                echo "  Frontend (PID $FRONTEND_PID): ✓ Running"
+            fi
         else
             echo "  Frontend (PID $FRONTEND_PID): ✗ Not running"
         fi
@@ -118,10 +151,17 @@ if [ -d "$LOG_DIR" ]; then
         FRONTEND_SIZE=$(du -h "$LOG_DIR/frontend.log" | cut -f1)
         echo "  Frontend log: $LOG_DIR/frontend.log ($FRONTEND_SIZE)"
     fi
+    if [ -f "$LOG_DIR/frontend-build.log" ]; then
+        BUILD_SIZE=$(du -h "$LOG_DIR/frontend-build.log" | cut -f1)
+        echo "  Build log:    $LOG_DIR/frontend-build.log ($BUILD_SIZE)"
+    fi
     echo ""
     echo "To view logs:"
     echo "  tail -f $LOG_DIR/backend.log"
     echo "  tail -f $LOG_DIR/frontend.log"
+    if [ -f "$LOG_DIR/frontend-build.log" ]; then
+        echo "  tail -f $LOG_DIR/frontend-build.log  # (production build log)"
+    fi
 fi
 
 echo ""
