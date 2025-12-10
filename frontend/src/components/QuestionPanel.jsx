@@ -2,18 +2,31 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import QuestionCard from './QuestionCard';
 import CreateQuestionForm from './CreateQuestionForm';
+import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import './QuestionPanel.css';
 
 function QuestionPanel({ campaignId }) {
   const [questions, setQuestions] = useState([]);
+  const [previousQuestions, setPreviousQuestions] = useState([]);
+  const [campaign, setCampaign] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (campaignId) {
+      loadCampaign();
       loadQuestions();
     }
   }, [campaignId]);
+
+  const loadCampaign = async () => {
+    try {
+      const data = await api.getCampaign(campaignId);
+      setCampaign(data);
+    } catch (err) {
+      console.error('Error loading campaign:', err);
+    }
+  };
 
   const loadQuestions = async () => {
     setIsLoading(true);
@@ -22,6 +35,9 @@ function QuestionPanel({ campaignId }) {
       const data = await api.getQuestions(campaignId);
       // Sort by vote count (descending)
       const sortedQuestions = data.sort((a, b) => b.vote_count - a.vote_count);
+      
+      // Store previous questions for animation comparison
+      setPreviousQuestions([...questions]);
       setQuestions(sortedQuestions);
     } catch (err) {
       setError(err.message);
@@ -69,7 +85,12 @@ function QuestionPanel({ campaignId }) {
   return (
     <div className="question-panel">
       <div className="panel-header">
-        <h2>Questions & Answers</h2>
+        <div className="panel-header-left">
+          {campaign && (
+            <h2 className="campaign-title">{campaign.title}</h2>
+          )}
+          <h3 className="panel-subtitle">Questions & Answers</h3>
+        </div>
         <div className="question-stats">
           Total: {questions.length} questions
         </div>
@@ -77,16 +98,23 @@ function QuestionPanel({ campaignId }) {
 
       {questions.length > 0 && (
         <div className="questions-section">
-          {questions.map((question, index) => (
-            <QuestionCard
-              key={question.id}
-              question={question}
-              campaignId={campaignId}
-              onVoteUpdate={handleVoteUpdate}
-              onQuestionDeleted={handleQuestionDeleted}
-              number={index + 1}
-            />
-          ))}
+          {questions.map((question, index) => {
+            // Find previous position for animation
+            const previousQuestion = previousQuestions.find(q => q.id === question.id);
+            const previousIndex = previousQuestion ? previousQuestions.findIndex(q => q.id === question.id) : index;
+            
+            return (
+              <QuestionCard
+                key={question.id}
+                question={question}
+                campaignId={campaignId}
+                onVoteUpdate={handleVoteUpdate}
+                onQuestionDeleted={handleQuestionDeleted}
+                number={index + 1}
+                previousNumber={previousIndex >= 0 ? previousIndex + 1 : undefined}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -100,6 +128,17 @@ function QuestionPanel({ campaignId }) {
         campaignId={campaignId} 
         onQuestionCreated={handleQuestionCreated}
       />
+
+      {campaign && (
+        <div className="campaign-timestamps-footer">
+          <span className="campaign-timestamp" title={formatDateTime(campaign.created_at)}>
+            Created {formatRelativeTime(campaign.created_at)}
+          </span>
+          <span className="campaign-timestamp" title={formatDateTime(campaign.last_updated || campaign.created_at)}>
+            • Updated {formatRelativeTime(campaign.last_updated || campaign.created_at)}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,12 +3,16 @@ import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
 import './QuestionCard.css';
 
-function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, number }) {
+function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, number, previousNumber }) {
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(question.vote_count || 0);
   const [isVoting, setIsVoting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const [voteUpdated, setVoteUpdated] = useState(false);
   const justToggledRef = useRef(false);
+  const previousVoteCountRef = useRef(question.vote_count || 0);
+  const previousNumberRef = useRef(number);
 
   const checkVoteStatus = useCallback(async () => {
     // Skip checking if we just toggled (to avoid race condition)
@@ -26,18 +30,37 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
   }, [question.id]);
 
   useEffect(() => {
-    setVoteCount(question.vote_count || 0);
+    const newVoteCount = question.vote_count || 0;
+    const oldVoteCount = previousVoteCountRef.current;
+    
+    // Update vote count
+    setVoteCount(newVoteCount);
+    
+    // Check if position changed (moved up in list) - only if we have previous number
+    if (previousNumber !== undefined && previousNumber > 0 && number < previousNumber) {
+      setIsMoving(true);
+      setTimeout(() => setIsMoving(false), 1000);
+    }
+    
+    // Update refs
+    previousVoteCountRef.current = newVoteCount;
+    previousNumberRef.current = number;
+    
     // Check vote status when question ID changes or on initial load
     if (question.id) {
       checkVoteStatus();
     }
-  }, [question.id, checkVoteStatus]);
+  }, [question.id, question.vote_count, number, previousNumber, checkVoteStatus]);
 
   const handleUpvote = async () => {
     if (isVoting) return;
 
     setIsVoting(true);
     justToggledRef.current = true; // Mark that we just toggled
+    
+    // Trigger vote animation immediately
+    setVoteUpdated(true);
+    setTimeout(() => setVoteUpdated(false), 1200);
     
     try {
       const userId = getUserId();
@@ -47,6 +70,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
       // Update state immediately from API response
       setHasVoted(result.hasVoted);
       setVoteCount(result.vote_count);
+      previousVoteCountRef.current = result.vote_count;
       
       // Call onVoteUpdate to refresh the list
       if (onVoteUpdate) {
@@ -88,7 +112,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
   };
 
   return (
-    <div className={`question-card ${hasVoted ? 'voted' : ''}`}>
+    <div className={`question-card ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''}`}>
       <span className="question-number">{number}</span>
       <div className="question-content">
         <span className="question-text">{question.question_text}</span>
@@ -104,7 +128,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
         <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
         <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
       </button>
-      <span className="vote-count">{voteCount}</span>
+      <span className={`vote-count ${voteUpdated ? 'updating' : ''}`}>{voteCount}</span>
       <button
         className="delete-question-btn"
         onClick={handleDelete}

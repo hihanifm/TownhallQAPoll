@@ -14,7 +14,42 @@ router.get('/', async (req, res, next) => {
        ORDER BY c.created_at DESC`
     );
     
-    res.json(campaigns);
+    // Calculate last_updated for each campaign (latest question or vote activity)
+    const campaignsWithTimestamps = await Promise.all(campaigns.map(async (campaign) => {
+      // Get latest question creation time
+      const latestQuestion = await getQuery(
+        'SELECT MAX(created_at) as max_time FROM questions WHERE campaign_id = ?',
+        [campaign.id]
+      );
+      
+      // Get latest vote time for questions in this campaign
+      const latestVote = await getQuery(
+        `SELECT MAX(v.created_at) as max_time 
+         FROM votes v
+         INNER JOIN questions q ON v.question_id = q.id
+         WHERE q.campaign_id = ?`,
+        [campaign.id]
+      );
+      
+      // Determine the most recent activity
+      const questionTime = latestQuestion?.max_time || null;
+      const voteTime = latestVote?.max_time || null;
+      
+      let lastUpdated = campaign.created_at;
+      if (questionTime && (!lastUpdated || new Date(questionTime) > new Date(lastUpdated))) {
+        lastUpdated = questionTime;
+      }
+      if (voteTime && (!lastUpdated || new Date(voteTime) > new Date(lastUpdated))) {
+        lastUpdated = voteTime;
+      }
+      
+      return {
+        ...campaign,
+        last_updated: lastUpdated
+      };
+    }));
+    
+    res.json(campaignsWithTimestamps);
   } catch (error) {
     next(error);
   }
@@ -32,7 +67,35 @@ router.get('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Campaign not found' });
     }
     
-    res.json(campaign);
+    // Calculate last_updated (latest question or vote activity)
+    const latestQuestion = await getQuery(
+      'SELECT MAX(created_at) as max_time FROM questions WHERE campaign_id = ?',
+      [campaign.id]
+    );
+    
+    const latestVote = await getQuery(
+      `SELECT MAX(v.created_at) as max_time 
+       FROM votes v
+       INNER JOIN questions q ON v.question_id = q.id
+       WHERE q.campaign_id = ?`,
+      [campaign.id]
+    );
+    
+    const questionTime = latestQuestion?.max_time || null;
+    const voteTime = latestVote?.max_time || null;
+    
+    let lastUpdated = campaign.created_at;
+    if (questionTime && (!lastUpdated || new Date(questionTime) > new Date(lastUpdated))) {
+      lastUpdated = questionTime;
+    }
+    if (voteTime && (!lastUpdated || new Date(voteTime) > new Date(lastUpdated))) {
+      lastUpdated = voteTime;
+    }
+    
+    res.json({
+      ...campaign,
+      last_updated: lastUpdated
+    });
   } catch (error) {
     next(error);
   }

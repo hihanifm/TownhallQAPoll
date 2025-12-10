@@ -16,21 +16,39 @@
 .panel-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 24px;
+  gap: 16px;
 }
 
-.panel-header h2 {
-  margin: 0;
+.panel-header-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-header h2.campaign-title {
+  margin: 0 0 8px 0;
   color: #2563eb;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
+  line-height: 1.2;
+  word-wrap: break-word;
+}
+
+.panel-header h3.panel-subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 16px;
+  font-weight: 500;
+  font-style: italic;
 }
 
 .question-stats {
   color: #3b82f6;
   font-size: 14px;
   font-weight: 600;
+  flex-shrink: 0;
+  padding-top: 4px;
 }
 
 .questions-section {
@@ -41,6 +59,15 @@
   border: 2px solid rgba(59, 130, 246, 0.3);
   backdrop-filter: blur(10px);
   margin-bottom: 24px;
+  position: relative;
+  /* Enable smooth transitions for child elements */
+  overflow: visible;
+}
+
+/* Smooth transitions for question cards when they reorder */
+.questions-section > * {
+  transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .loading,
@@ -62,5 +89,25 @@
 
 .empty-state p {
   font-size: 16px;
+}
+
+.campaign-timestamps-footer {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(59, 130, 246, 0.2);
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #94a3b8;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: nowrap;
+  text-align: right;
+}
+
+.campaign-timestamp {
+  font-weight: 500;
+  white-space: nowrap;
+  display: inline;
 }
 
