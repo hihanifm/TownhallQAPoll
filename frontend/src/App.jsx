@@ -110,7 +110,19 @@ function App() {
           onCampaignSelect={handleCampaignSelect}
           onCampaignCreated={handleCampaignCreated}
         />
-        <QuestionPanel campaignId={selectedCampaignId} />
+        <QuestionPanel 
+          campaignId={selectedCampaignId}
+          onCampaignClosed={(campaignId) => {
+            if (selectedCampaignId === campaignId) {
+              setSelectedCampaignId(null);
+            }
+          }}
+          onCampaignDeleted={(campaignId) => {
+            if (selectedCampaignId === campaignId) {
+              setSelectedCampaignId(null);
+            }
+          }}
+        />
       </div>
     </div>
   );

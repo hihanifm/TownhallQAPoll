@@ -6,7 +6,7 @@ import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import { getUserId } from '../utils/userId';
 import './QuestionPanel.css';
 
-function QuestionPanel({ campaignId }) {
+function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
   const [questions, setQuestions] = useState([]);
   const [previousQuestions, setPreviousQuestions] = useState([]);
   const [campaign, setCampaign] = useState(null);
@@ -114,6 +114,39 @@ function QuestionPanel({ campaignId }) {
     loadQuestions(); // Reload to remove deleted question from list
   };
 
+  const handleCloseCampaign = async () => {
+    if (!window.confirm('Are you sure you want to close this campaign?')) {
+      return;
+    }
+
+    try {
+      const userId = getUserId();
+      const updatedCampaign = await api.closeCampaign(campaignId, userId);
+      setCampaign(updatedCampaign);
+      if (onCampaignClosed) {
+        onCampaignClosed(campaignId);
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleDeleteCampaign = async () => {
+    if (!window.confirm('Are you sure you want to delete this campaign? This will delete all questions and votes. This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const userId = getUserId();
+      await api.deleteCampaign(campaignId, userId);
+      if (onCampaignDeleted) {
+        onCampaignDeleted(campaignId);
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   if (!campaignId) {
     return (
       <div className="question-panel empty">
@@ -189,13 +222,35 @@ function QuestionPanel({ campaignId }) {
       />
 
       {campaign && (
-        <div className="campaign-timestamps-footer">
-          <span className="campaign-timestamp" title={formatDateTime(campaign.created_at)}>
-            Created {formatRelativeTime(campaign.created_at)}
-          </span>
-          <span className="campaign-timestamp" title={formatDateTime(campaign.last_updated || campaign.created_at)}>
-            • Updated {formatRelativeTime(campaign.last_updated || campaign.created_at)}
-          </span>
+        <div className="campaign-footer">
+          <div className="campaign-timestamps-footer">
+            <span className="campaign-timestamp" title={formatDateTime(campaign.created_at)}>
+              Created {formatRelativeTime(campaign.created_at)}
+            </span>
+            <span className="campaign-timestamp" title={formatDateTime(campaign.last_updated || campaign.created_at)}>
+              • Updated {formatRelativeTime(campaign.last_updated || campaign.created_at)}
+            </span>
+          </div>
+          {campaign.creator_id && campaign.creator_id === getUserId() && (
+            <div className="campaign-actions-footer">
+              {campaign.status === 'active' && (
+                <button
+                  className="close-campaign-btn"
+                  onClick={handleCloseCampaign}
+                  title="Close campaign"
+                >
+                  Close Campaign
+                </button>
+              )}
+              <button
+                className="delete-campaign-btn"
+                onClick={handleDeleteCampaign}
+                title="Delete campaign"
+              >
+                Delete Campaign
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
