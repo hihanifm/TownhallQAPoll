@@ -115,8 +115,8 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     <div className={`question-card ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''}`}>
       <span className="question-number">{number}</span>
       <div className="question-content">
-        <span className="question-text">{question.question_text}</span>
-        {question.is_moderator_created && (
+        <span className="question-text">{question.question_text?.trim()}</span>
+        {Boolean(question.is_moderator_created) && (
           <span className="moderator-badge">Moderator</span>
         )}
       </div>
@@ -127,8 +127,8 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
       >
         <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
         <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
+        {voteCount > 0 && <span className="vote-count-inline">{voteCount}</span>}
       </button>
-      <span className={`vote-count ${voteUpdated ? 'updating' : ''}`}>{voteCount}</span>
       <button
         className="delete-question-btn"
         onClick={handleDelete}
