@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { getUserId } from '../utils/userId';
 import './CampaignList.css';
 
 function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated }) {
@@ -81,9 +82,11 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
 
     setIsSubmitting(true);
     try {
+      const userId = getUserId();
       const campaignData = {
         title: formData.title.trim(),
-        description: formData.description.trim() || null
+        description: formData.description.trim() || null,
+        creator_id: userId
       };
       
       const newCampaign = await api.createCampaign(campaignData);
@@ -112,7 +115,8 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
     }
 
     try {
-      const updatedCampaign = await api.closeCampaign(campaignId);
+      const userId = getUserId();
+      const updatedCampaign = await api.closeCampaign(campaignId, userId);
       setCampaigns(campaigns.map(c => c.id === campaignId ? updatedCampaign : c));
       // If the closed campaign was selected, deselect it
       if (selectedCampaignId === campaignId && onCampaignSelect) {
@@ -131,7 +135,8 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
     }
 
     try {
-      await api.deleteCampaign(campaignId);
+      const userId = getUserId();
+      await api.deleteCampaign(campaignId, userId);
       setCampaigns(campaigns.filter(c => c.id !== campaignId));
       // If the deleted campaign was selected, deselect it
       if (selectedCampaignId === campaignId && onCampaignSelect) {
@@ -207,15 +212,15 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
               key={campaign.id}
               className={`campaign-item ${selectedCampaignId === campaign.id ? 'selected' : ''}`}
             >
+              <span className={`campaign-status ${campaign.status === 'closed' ? 'status-closed' : 'status-active'}`}>
+                {campaign.status}
+              </span>
               <div 
                 className="campaign-content"
                 onClick={() => onCampaignSelect && onCampaignSelect(campaign.id)}
               >
                 <div className="campaign-title">{campaign.title}</div>
                 <div className="campaign-meta">
-                  <span className={`campaign-status ${campaign.status === 'closed' ? 'status-closed' : 'status-active'}`}>
-                    {campaign.status}
-                  </span>
                   <span className="campaign-questions">
                     {campaign.question_count || 0} questions
                   </span>
@@ -224,24 +229,26 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
                   <div className="campaign-description">{campaign.description}</div>
                 )}
               </div>
-              <div className="campaign-actions">
-                {campaign.status === 'active' && (
+              {campaign.creator_id && campaign.creator_id === getUserId() && (
+                <div className="campaign-actions">
+                  {campaign.status === 'active' && (
+                    <button
+                      className="close-campaign-btn"
+                      onClick={(e) => handleCloseCampaign(e, campaign.id)}
+                      title="Close campaign"
+                    >
+                      Close
+                    </button>
+                  )}
                   <button
-                    className="close-campaign-btn"
-                    onClick={(e) => handleCloseCampaign(e, campaign.id)}
-                    title="Close campaign"
+                    className="delete-campaign-btn"
+                    onClick={(e) => handleDeleteCampaign(e, campaign.id)}
+                    title="Delete campaign"
                   >
-                    Close
+                    Delete
                   </button>
-                )}
-                <button
-                  className="delete-campaign-btn"
-                  onClick={(e) => handleDeleteCampaign(e, campaign.id)}
-                  title="Delete campaign"
-                >
-                  Delete
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           ))
         )}

@@ -112,6 +112,11 @@ router.get('/questions/:id/votes', async (req, res, next) => {
 router.delete('/questions/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
+    const { creator_id } = req.body;
+    
+    if (!creator_id) {
+      return res.status(400).json({ error: 'creator_id is required' });
+    }
     
     const question = await getQuery(
       'SELECT * FROM questions WHERE id = ?',
@@ -120,6 +125,24 @@ router.delete('/questions/:id', async (req, res, next) => {
     
     if (!question) {
       return res.status(404).json({ error: 'Question not found' });
+    }
+    
+    // Get the campaign to check if user is the creator
+    const campaign = await getQuery(
+      'SELECT * FROM campaigns WHERE id = ?',
+      [question.campaign_id]
+    );
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    // Check if user is the campaign creator
+    if (!campaign.creator_id) {
+      return res.status(403).json({ error: 'This campaign has no creator. Only campaigns with a creator can have questions deleted.' });
+    }
+    if (campaign.creator_id !== creator_id) {
+      return res.status(403).json({ error: 'Only the campaign creator can delete questions' });
     }
     
     // Delete all votes for this question

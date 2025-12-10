@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import QuestionCard from './QuestionCard';
 import CreateQuestionForm from './CreateQuestionForm';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
+import { getUserId } from '../utils/userId';
 import './QuestionPanel.css';
 
 function QuestionPanel({ campaignId }) {
@@ -158,6 +159,8 @@ function QuestionPanel({ campaignId }) {
             const previousQuestion = previousQuestions.find(q => q.id === question.id);
             const previousIndex = previousQuestion ? previousQuestions.findIndex(q => q.id === question.id) : index;
             
+            const isCreator = campaign && campaign.creator_id && campaign.creator_id === getUserId();
+            
             return (
               <QuestionCard
                 key={question.id}
@@ -167,6 +170,7 @@ function QuestionPanel({ campaignId }) {
                 onQuestionDeleted={handleQuestionDeleted}
                 number={index + 1}
                 previousNumber={previousIndex >= 0 ? previousIndex + 1 : undefined}
+                isCampaignCreator={isCreator || false}
               />
             );
           })}

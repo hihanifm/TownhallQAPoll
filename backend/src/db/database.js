@@ -32,6 +32,15 @@ function initDatabase() {
         return;
       }
       console.log('Database schema initialized');
+      
+      // Add creator_id column to existing campaigns table if it doesn't exist
+      db.run('ALTER TABLE campaigns ADD COLUMN creator_id TEXT', (alterErr) => {
+        // Ignore error if column already exists
+        if (alterErr && !alterErr.message.includes('duplicate column')) {
+          console.warn('Note: creator_id column may already exist:', alterErr.message);
+        }
+      });
+      
       resolve(db);
     });
   });

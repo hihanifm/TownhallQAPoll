@@ -29,12 +29,13 @@ export const api = {
     return response.json();
   },
 
-  closeCampaign: async (campaignId) => {
+  closeCampaign: async (campaignId, creatorId) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/close`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ creator_id: creatorId }),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -43,9 +44,13 @@ export const api = {
     return response.json();
   },
 
-  deleteCampaign: async (campaignId) => {
+  deleteCampaign: async (campaignId, creatorId) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`, {
       method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ creator_id: creatorId }),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -82,9 +87,13 @@ export const api = {
     return response.json();
   },
 
-  deleteQuestion: async (questionId) => {
+  deleteQuestion: async (questionId, creatorId) => {
     const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
       method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ creator_id: creatorId }),
     });
     if (!response.ok) {
       const error = await response.json();

@@ -3,7 +3,8 @@ CREATE TABLE IF NOT EXISTS campaigns (
     title TEXT NOT NULL,
     description TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    status TEXT DEFAULT 'active'
+    status TEXT DEFAULT 'active',
+    creator_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS questions (

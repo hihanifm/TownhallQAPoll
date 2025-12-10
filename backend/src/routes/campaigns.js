@@ -105,15 +105,19 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/campaigns - Create new campaign
 router.post('/', async (req, res, next) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, creator_id } = req.body;
     
     if (!title) {
       return res.status(400).json({ error: 'Title is required' });
     }
     
+    if (!creator_id) {
+      return res.status(400).json({ error: 'creator_id is required' });
+    }
+    
     const result = await runQuery(
-      'INSERT INTO campaigns (title, description, status) VALUES (?, ?, ?)',
-      [title, description || null, 'active']
+      'INSERT INTO campaigns (title, description, status, creator_id) VALUES (?, ?, ?, ?)',
+      [title, description || null, 'active', creator_id]
     );
     
     const campaignId = result.lastID;
@@ -139,6 +143,11 @@ router.post('/', async (req, res, next) => {
 router.patch('/:id/close', async (req, res, next) => {
   try {
     const { id } = req.params;
+    const { creator_id } = req.body;
+    
+    if (!creator_id) {
+      return res.status(400).json({ error: 'creator_id is required' });
+    }
     
     const campaign = await getQuery(
       'SELECT * FROM campaigns WHERE id = ?',
@@ -147,6 +156,14 @@ router.patch('/:id/close', async (req, res, next) => {
     
     if (!campaign) {
       return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    // Check if user is the creator
+    if (!campaign.creator_id) {
+      return res.status(403).json({ error: 'This campaign has no creator. Only campaigns with a creator can be closed.' });
+    }
+    if (campaign.creator_id !== creator_id) {
+      return res.status(403).json({ error: 'Only the campaign creator can close this campaign' });
     }
     
     await runQuery(
@@ -175,6 +192,11 @@ router.patch('/:id/close', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
+    const { creator_id } = req.body;
+    
+    if (!creator_id) {
+      return res.status(400).json({ error: 'creator_id is required' });
+    }
     
     const campaign = await getQuery(
       'SELECT * FROM campaigns WHERE id = ?',
@@ -183,6 +205,14 @@ router.delete('/:id', async (req, res, next) => {
     
     if (!campaign) {
       return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    // Check if user is the creator
+    if (!campaign.creator_id) {
+      return res.status(403).json({ error: 'This campaign has no creator. Only campaigns with a creator can be deleted.' });
+    }
+    if (campaign.creator_id !== creator_id) {
+      return res.status(403).json({ error: 'Only the campaign creator can delete this campaign' });
     }
     
     // Delete all votes for questions in this campaign

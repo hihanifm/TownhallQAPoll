@@ -115,6 +115,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  position: relative;
 }
 
 .campaign-item:hover {
@@ -131,6 +132,7 @@
   flex: 1;
   cursor: pointer;
   min-width: 0;
+  padding-right: 60px; /* Make room for status badge */
 }
 
 .campaign-title {
@@ -154,12 +156,17 @@
   border-radius: 4px;
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  font-size: 10px;
 }
 
 .campaign-status.status-active {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
-  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3);
 }
 
 .campaign-status.status-closed {
