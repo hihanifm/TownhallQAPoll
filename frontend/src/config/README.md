@@ -98,16 +98,19 @@ export const browserConfig = {
 
 When `allowOverride` is set to `true`, users will see a "Continue Anyway" button on the browser restriction screen. When clicked:
 
-- The user's preference is saved in `localStorage` (key: `browser_restriction_override`)
-- The application will load normally for that user in future sessions
-- The override persists across page refreshes and browser sessions
-- Users can clear their browser data to reset the override
+- The override is applied for the current session only (stored in component state)
+- The application will load normally for that session
+- **The override does NOT persist** - users will be asked again on page refresh or when using a different browser
+- This ensures users are reminded each time they access the application from a non-allowed browser
 
-**Note:** The override is stored per browser, so if a user overrides in Chrome, they still need to override again in Firefox (if they switch browsers).
+**Note:** The override is session-only, so users must click "Continue Anyway" each time they:
+- Refresh the page
+- Open the application in a new tab/window
+- Switch to a different browser
 
 ## Notes
 
 - Changes to the configuration require rebuilding the frontend (`npm run build`)
 - Browser detection is based on the user agent string
 - The restriction check happens immediately when the app loads
-- User override preference is stored in `localStorage` and persists across sessions
+- User override is session-only and does not persist across page refreshes or browser sessions

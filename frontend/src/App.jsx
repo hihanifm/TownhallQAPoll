@@ -1,23 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import CampaignList from './components/CampaignList';
 import QuestionPanel from './components/QuestionPanel';
 import { getBrowserName } from './utils/browserDetection';
 import { browserConfig } from './config/browserConfig';
 import './App.css';
 
-const OVERRIDE_STORAGE_KEY = 'browser_restriction_override';
-
 function App() {
   const [selectedCampaignId, setSelectedCampaignId] = useState(null);
   const [overrideRestriction, setOverrideRestriction] = useState(false);
-
-  // Check localStorage for override preference on mount
-  useEffect(() => {
-    const storedOverride = localStorage.getItem(OVERRIDE_STORAGE_KEY);
-    if (storedOverride === 'true') {
-      setOverrideRestriction(true);
-    }
-  }, []);
 
   const handleCampaignSelect = (campaignId) => {
     setSelectedCampaignId(campaignId);
@@ -28,7 +18,6 @@ function App() {
   };
 
   const handleOverride = () => {
-    localStorage.setItem(OVERRIDE_STORAGE_KEY, 'true');
     setOverrideRestriction(true);
   };
 
@@ -38,8 +27,8 @@ function App() {
       return true; // Restrictions disabled, allow all browsers
     }
     
-    // Check if user has overridden the restriction
-    if (overrideRestriction || localStorage.getItem(OVERRIDE_STORAGE_KEY) === 'true') {
+    // Check if user has overridden the restriction for this session only
+    if (overrideRestriction) {
       return true;
     }
     
@@ -98,6 +87,8 @@ function App() {
                 </button>
                 <p className="browser-override-note">
                   You can proceed, but please note that using unsupported browsers may affect your experience.
+                  <br />
+                  <strong>Note:</strong> You will be asked again if you refresh the page or use a different browser.
                 </p>
               </div>
             )}
