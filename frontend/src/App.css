@@ -59,3 +59,132 @@ body {
   overflow: hidden;
 }
 
+/* Browser Restriction Message Styles */
+.browser-restriction-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 25%, #93c5fd 50%, #dbeafe 75%, #e0f2fe 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+.browser-restriction-content {
+  max-width: 600px;
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.browser-restriction-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.browser-restriction-content h1 {
+  color: #1e40af;
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+
+.browser-restriction-content > p {
+  color: #4b5563;
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.browser-detected {
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 20px 0;
+  color: #92400e;
+}
+
+.browser-restriction-instructions {
+  text-align: left;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 24px 0;
+}
+
+.browser-restriction-instructions p {
+  font-weight: 600;
+  color: #1e40af;
+  margin-bottom: 12px;
+}
+
+.browser-restriction-instructions ol {
+  margin-left: 20px;
+  color: #4b5563;
+}
+
+.browser-restriction-instructions li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.browser-restriction-instructions a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.browser-restriction-instructions a:hover {
+  text-decoration: underline;
+}
+
+.browser-restriction-reason {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.browser-override-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.browser-override-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+  margin-bottom: 12px;
+}
+
+.browser-override-button:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(37, 99, 235, 0.4);
+}
+
+.browser-override-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+}
+
+.browser-override-note {
+  color: #6b7280;
+  font-size: 13px;
+  font-style: italic;
+  margin-top: 8px;
+}
+
