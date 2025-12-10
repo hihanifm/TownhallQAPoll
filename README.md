@@ -75,6 +75,72 @@ The frontend will run on `http://localhost:3000`
 
 3. Open your browser and navigate to `http://localhost:3000`
 
+## Remote Access
+
+The application is configured to accept connections from remote clients. Here are several ways to make it accessible:
+
+### Option 1: Quick Development Access (ngrok)
+
+For quick testing and sharing during development:
+
+1. Install ngrok: `npm install -g ngrok` or download from [ngrok.com](https://ngrok.com)
+2. Start your backend and frontend servers as usual
+3. In a new terminal, run:
+   ```bash
+   ngrok http 3000
+   ```
+4. Share the ngrok URL (e.g., `https://abc123.ngrok.io`) with others
+
+**Note:** The frontend proxy needs to know the backend URL. Set environment variable:
+```bash
+VITE_API_URL=http://your-ngrok-backend-url:3001 npm run dev:frontend
+```
+
+### Option 2: Local Network Access
+
+To allow access from other devices on your local network:
+
+1. Find your local IP address:
+   - **macOS/Linux**: `ifconfig | grep "inet "` or `ip addr show`
+   - **Windows**: `ipconfig`
+2. Start the servers (they now listen on `0.0.0.0` by default)
+3. Access from other devices using: `http://YOUR_IP_ADDRESS:3000`
+   - Example: `http://192.168.1.100:3000`
+
+**Security Note:** Make sure your firewall allows connections on ports 3000 and 3001.
+
+### Option 3: Production Deployment
+
+For production use, consider deploying to:
+
+- **Railway** - Easy Node.js deployment with database support
+- **Render** - Free tier available, supports both frontend and backend
+- **Heroku** - Traditional PaaS option
+- **DigitalOcean App Platform** - Simple deployment
+- **Vercel** (frontend) + **Railway/Render** (backend) - Separate deployments
+
+#### Environment Variables for Production
+
+Create a `.env` file in the backend directory:
+```env
+PORT=3001
+HOST=0.0.0.0
+NODE_ENV=production
+```
+
+For the frontend, set:
+```env
+VITE_API_URL=https://your-backend-url.com
+```
+
+### Option 4: Self-Hosted with Port Forwarding
+
+1. Configure your router to forward ports 3000 (frontend) and 3001 (backend) to your machine
+2. Use a dynamic DNS service (like DuckDNS) if you don't have a static IP
+3. Access via your public IP or domain name
+
+**⚠️ Security Warning:** Exposing your application directly to the internet without proper security measures (HTTPS, authentication, rate limiting) is not recommended for production use.
+
 ## Usage
 
 ### For Moderators
