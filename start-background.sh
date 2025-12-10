@@ -52,29 +52,47 @@ get_local_ip() {
 }
 
 # Check if servers are already running
+PORTS_IN_USE=false
 if [ -f "$PID_FILE" ]; then
     echo "Checking for existing servers..."
     while IFS= read -r pid; do
         if ps -p $pid > /dev/null 2>&1; then
-            echo "Warning: Server with PID $pid is already running!"
-            echo "Use ./stop-background.sh to stop them first."
-            read -p "Continue anyway? (y/n) " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                exit 1
-            fi
-            break
+            echo "⚠️  Warning: Server with PID $pid is already running!"
+            PORTS_IN_USE=true
         fi
     done < "$PID_FILE"
 fi
 
-# Check if ports are in use
+# Check if ports are in use (more reliable check)
+BACKEND_PORT_IN_USE=false
+FRONTEND_PORT_IN_USE=false
+
 if check_port 3001; then
-    echo "Warning: Port 3001 (backend) is already in use!"
+    BACKEND_PORT_IN_USE=true
+    PORTS_IN_USE=true
+    echo "⚠️  Error: Port 3001 (backend) is already in use!"
 fi
 
 if check_port 3000; then
-    echo "Warning: Port 3000 (frontend) is already in use!"
+    FRONTEND_PORT_IN_USE=true
+    PORTS_IN_USE=true
+    echo "⚠️  Error: Port 3000 (frontend) is already in use!"
+fi
+
+# If ports are in use, exit unless user explicitly overrides
+if [ "$PORTS_IN_USE" = true ]; then
+    echo ""
+    echo "❌ Cannot start servers - ports are already in use or servers are running!"
+    echo "   Run ./stop-background.sh to stop existing servers first."
+    echo "   Or check status with: ./status-background.sh"
+    echo ""
+    read -p "Force start anyway? (not recommended) (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Exiting. Please stop existing servers first."
+        exit 1
+    fi
+    echo "⚠️  Warning: Forcing start - this may cause conflicts!"
 fi
 
 if [ "$PROD_MODE" = true ]; then
@@ -91,10 +109,26 @@ nohup npm start > "$LOG_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 # Disown the process to fully detach it from the shell
 disown $BACKEND_PID 2>/dev/null || true
-echo "Backend started with PID: $BACKEND_PID"
 
-# Wait a moment for backend to initialize
-sleep 2
+# Wait a moment and verify backend started successfully
+sleep 3
+if ! ps -p $BACKEND_PID > /dev/null 2>&1; then
+    echo "❌ Error: Backend server failed to start! Check $LOG_DIR/backend.log"
+    # Check if it's a port conflict
+    if grep -q "EADDRINUSE" "$LOG_DIR/backend.log" 2>/dev/null; then
+        echo "   Port 3001 is already in use. Please stop the existing server first."
+    fi
+    exit 1
+fi
+
+if ! check_port 3001; then
+    echo "❌ Error: Backend server process started but port 3001 is not listening!"
+    echo "   Check $LOG_DIR/backend.log for errors"
+    kill $BACKEND_PID 2>/dev/null || true
+    exit 1
+fi
+
+echo "✓ Backend started successfully with PID: $BACKEND_PID"
 
 # Start frontend server
 echo "Starting frontend server..."
@@ -104,7 +138,9 @@ if [ "$PROD_MODE" = true ]; then
     echo "Building frontend for production..."
     npm run build > "$LOG_DIR/frontend-build.log" 2>&1
     if [ $? -ne 0 ]; then
-        echo "Error: Frontend build failed! Check $LOG_DIR/frontend-build.log"
+        echo "❌ Error: Frontend build failed! Check $LOG_DIR/frontend-build.log"
+        # Clean up: kill backend if it was started
+        kill $BACKEND_PID 2>/dev/null || true
         exit 1
     fi
     echo "Starting frontend production server..."
@@ -117,7 +153,29 @@ fi
 FRONTEND_PID=$!
 # Disown the process to fully detach it from the shell
 disown $FRONTEND_PID 2>/dev/null || true
-echo "Frontend started with PID: $FRONTEND_PID"
+
+# Wait a moment and verify frontend started successfully
+sleep 3
+if ! ps -p $FRONTEND_PID > /dev/null 2>&1; then
+    echo "❌ Error: Frontend server failed to start! Check $LOG_DIR/frontend.log"
+    # Clean up: kill backend if frontend failed
+    kill $BACKEND_PID 2>/dev/null || true
+    # Check if it's a port conflict
+    if grep -q "EADDRINUSE" "$LOG_DIR/frontend.log" 2>/dev/null; then
+        echo "   Port 3000 is already in use. Please stop the existing server first."
+    fi
+    exit 1
+fi
+
+if ! check_port 3000; then
+    echo "❌ Error: Frontend server process started but port 3000 is not listening!"
+    echo "   Check $LOG_DIR/frontend.log for errors"
+    kill $BACKEND_PID 2>/dev/null || true
+    kill $FRONTEND_PID 2>/dev/null || true
+    exit 1
+fi
+
+echo "✓ Frontend started successfully with PID: $FRONTEND_PID"
 
 # Save PIDs to file
 echo "$BACKEND_PID" > "$PID_FILE"

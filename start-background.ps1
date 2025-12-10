@@ -16,29 +16,90 @@ if ($Prod) {
 }
 Write-Host ""
 
-# Check if servers are already running
-$backendProcess = Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*server.js*" }
-$frontendProcess = Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*vite*" }
+# Function to check if a port is in use
+function Test-Port {
+    param([int]$Port)
+    $connection = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue -State Listen
+    return $null -ne $connection
+}
 
-if ($backendProcess -or $frontendProcess) {
-    Write-Host "Warning: Servers may already be running!" -ForegroundColor Yellow
-    Write-Host "Use stop-background.ps1 to stop them first." -ForegroundColor Yellow
-    Write-Host ""
-    $response = Read-Host "Continue anyway? (y/n)"
-    if ($response -ne "y") {
-        exit
+# Check if ports are in use
+$backendPortInUse = Test-Port -Port 3001
+$frontendPortInUse = Test-Port -Port 3000
+$portsInUse = $false
+
+if ($backendPortInUse) {
+    Write-Host "Error: Port 3001 (backend) is already in use!" -ForegroundColor Red
+    $portsInUse = $true
+}
+
+if ($frontendPortInUse) {
+    Write-Host "Error: Port 3000 (frontend) is already in use!" -ForegroundColor Red
+    $portsInUse = $true
+}
+
+# Check if servers are already running (via PID file)
+$jobsFile = Join-Path $scriptDir "server-jobs.txt"
+if (Test-Path $jobsFile) {
+    $jobIds = (Get-Content $jobsFile -ErrorAction SilentlyContinue) -split ','
+    foreach ($jobId in $jobIds) {
+        if ($jobId -match '^\d+$') {
+            $job = Get-Job -Id $jobId -ErrorAction SilentlyContinue
+            if ($job -and $job.State -eq "Running") {
+                Write-Host "Warning: Server job with ID $jobId is already running!" -ForegroundColor Yellow
+                $portsInUse = $true
+            }
+        }
     }
+}
+
+# If ports are in use, exit unless user explicitly overrides
+if ($portsInUse) {
+    Write-Host ""
+    Write-Host "Cannot start servers - ports are already in use or servers are running!" -ForegroundColor Red
+    Write-Host "Run .\stop-background.ps1 to stop existing servers first." -ForegroundColor Yellow
+    Write-Host ""
+    $response = Read-Host "Force start anyway? (not recommended) (y/n)"
+    if ($response -ne "y") {
+        Write-Host "Exiting. Please stop existing servers first." -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "Warning: Forcing start - this may cause conflicts!" -ForegroundColor Yellow
+    Write-Host ""
 }
 
 # Start backend server
 Write-Host "Starting backend server..." -ForegroundColor Cyan
 $backendJob = Start-Job -ScriptBlock {
     Set-Location $using:scriptDir\backend
-    npm start
+    npm start 2>&1
 }
 
-# Wait a moment for backend to start
-Start-Sleep -Seconds 2
+# Wait for backend to start and verify
+Start-Sleep -Seconds 3
+$backendJob | Receive-Job | Out-Null  # Flush any immediate output
+
+if ($backendJob.State -ne "Running") {
+    $backendOutput = $backendJob | Receive-Job
+    Write-Host "Error: Backend server failed to start!" -ForegroundColor Red
+    Write-Host $backendOutput -ForegroundColor Red
+    if ($backendOutput -like "*EADDRINUSE*" -or $backendOutput -like "*address already in use*") {
+        Write-Host "Port 3001 is already in use. Please stop the existing server first." -ForegroundColor Yellow
+    }
+    Stop-Job $backendJob -ErrorAction SilentlyContinue
+    Remove-Job $backendJob -ErrorAction SilentlyContinue
+    exit 1
+}
+
+if (-not (Test-Port -Port 3001)) {
+    Write-Host "Error: Backend server process started but port 3001 is not listening!" -ForegroundColor Red
+    Write-Host "Check job output with: Receive-Job -Id $($backendJob.Id)" -ForegroundColor Yellow
+    Stop-Job $backendJob -ErrorAction SilentlyContinue
+    Remove-Job $backendJob -ErrorAction SilentlyContinue
+    exit 1
+}
+
+Write-Host "Backend started successfully (Job ID: $($backendJob.Id))" -ForegroundColor Green
 
 # Start frontend server
 Write-Host "Starting frontend server..." -ForegroundColor Cyan
@@ -50,20 +111,54 @@ if ($Prod) {
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Error: Frontend build failed!" -ForegroundColor Red
         Write-Host $buildResult -ForegroundColor Red
+        # Clean up: stop backend job if frontend build failed
+        Stop-Job $backendJob -ErrorAction SilentlyContinue
+        Remove-Job $backendJob -ErrorAction SilentlyContinue
         exit 1
     }
     Write-Host "Starting frontend production server..." -ForegroundColor Cyan
     $frontendJob = Start-Job -ScriptBlock {
         Set-Location $using:scriptDir\frontend
-        npm run preview
+        npm run preview 2>&1
     }
 } else {
     Write-Host "Starting frontend development server..." -ForegroundColor Cyan
     $frontendJob = Start-Job -ScriptBlock {
         Set-Location $using:scriptDir\frontend
-        npm run dev
+        npm run dev 2>&1
     }
 }
+
+# Wait for frontend to start and verify
+Start-Sleep -Seconds 3
+$frontendJob | Receive-Job | Out-Null  # Flush any immediate output
+
+if ($frontendJob.State -ne "Running") {
+    $frontendOutput = $frontendJob | Receive-Job
+    Write-Host "Error: Frontend server failed to start!" -ForegroundColor Red
+    Write-Host $frontendOutput -ForegroundColor Red
+    if ($frontendOutput -like "*EADDRINUSE*" -or $frontendOutput -like "*address already in use*") {
+        Write-Host "Port 3000 is already in use. Please stop the existing server first." -ForegroundColor Yellow
+    }
+    # Clean up: stop backend job if frontend failed
+    Stop-Job $backendJob -ErrorAction SilentlyContinue
+    Remove-Job $backendJob -ErrorAction SilentlyContinue
+    Stop-Job $frontendJob -ErrorAction SilentlyContinue
+    Remove-Job $frontendJob -ErrorAction SilentlyContinue
+    exit 1
+}
+
+if (-not (Test-Port -Port 3000)) {
+    Write-Host "Error: Frontend server process started but port 3000 is not listening!" -ForegroundColor Red
+    Write-Host "Check job output with: Receive-Job -Id $($frontendJob.Id)" -ForegroundColor Yellow
+    Stop-Job $backendJob -ErrorAction SilentlyContinue
+    Remove-Job $backendJob -ErrorAction SilentlyContinue
+    Stop-Job $frontendJob -ErrorAction SilentlyContinue
+    Remove-Job $frontendJob -ErrorAction SilentlyContinue
+    exit 1
+}
+
+Write-Host "Frontend started successfully (Job ID: $($frontendJob.Id))" -ForegroundColor Green
 
 # Save job IDs to file for stopping later
 $jobsFile = Join-Path $scriptDir "server-jobs.txt"
