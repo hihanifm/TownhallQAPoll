@@ -2,6 +2,8 @@
 
 A web application that helps collect and rank the top 5 questions from employees to discuss in town hall meetings.
 
+![Application Screenshot](screenshot.png)
+
 ## Features
 
 - **Campaign Management**: Moderators can create new poll campaigns with optional initial questions
