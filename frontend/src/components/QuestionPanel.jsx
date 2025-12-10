@@ -19,6 +19,60 @@ function QuestionPanel({ campaignId }) {
     }
   }, [campaignId]);
 
+  // SSE connection for real-time updates
+  useEffect(() => {
+    if (!campaignId) return;
+
+    const eventSource = new EventSource(`/api/sse/campaigns/${campaignId}`);
+    
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      switch (data.type) {
+        case 'connected':
+          console.log('SSE connected for campaign:', campaignId);
+          break;
+        case 'vote_updated':
+          // Update vote count for the specific question
+          setQuestions(prevQuestions => {
+            const updated = prevQuestions.map(q => 
+              q.id === data.question_id 
+                ? { ...q, vote_count: data.vote_count }
+                : q
+            );
+            // Re-sort by vote count
+            return updated.sort((a, b) => b.vote_count - a.vote_count);
+          });
+          break;
+        case 'question_created':
+          // Add new question to the list
+          setQuestions(prevQuestions => {
+            const updated = [...prevQuestions, data.question];
+            return updated.sort((a, b) => b.vote_count - a.vote_count);
+          });
+          break;
+        case 'question_deleted':
+          // Remove deleted question from the list
+          setQuestions(prevQuestions => 
+            prevQuestions.filter(q => q.id !== data.question_id)
+          );
+          break;
+        default:
+          // For any other update, refresh the full list
+          loadQuestions();
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE error:', error);
+      // Optionally reconnect after a delay
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [campaignId]);
+
   const loadCampaign = async () => {
     try {
       const data = await api.getCampaign(campaignId);
@@ -45,6 +99,7 @@ function QuestionPanel({ campaignId }) {
       setIsLoading(false);
     }
   };
+
 
   const handleQuestionCreated = (newQuestion) => {
     loadQuestions(); // Reload to get updated list with vote counts

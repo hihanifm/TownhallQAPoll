@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { allQuery, getQuery, runQuery } = require('../db/database');
+const sseService = require('../services/sseService');
 
 // GET /api/campaigns - List all campaigns
 router.get('/', async (req, res, next) => {
@@ -122,6 +123,12 @@ router.post('/', async (req, res, next) => {
       [campaignId]
     );
     
+    // Broadcast new campaign to all clients
+    sseService.broadcast('all', {
+      type: 'campaign_created',
+      campaign: campaign
+    });
+    
     res.status(201).json(campaign);
   } catch (error) {
     next(error);
@@ -151,6 +158,12 @@ router.patch('/:id/close', async (req, res, next) => {
       'SELECT * FROM campaigns WHERE id = ?',
       [id]
     );
+    
+    // Broadcast campaign update to all clients
+    sseService.broadcast('all', {
+      type: 'campaign_updated',
+      campaign: updatedCampaign
+    });
     
     res.json(updatedCampaign);
   } catch (error) {
@@ -190,6 +203,12 @@ router.delete('/:id', async (req, res, next) => {
       'DELETE FROM campaigns WHERE id = ?',
       [id]
     );
+    
+    // Broadcast campaign deletion to all clients
+    sseService.broadcast('all', {
+      type: 'campaign_deleted',
+      campaign_id: parseInt(id)
+    });
     
     res.json({ success: true, message: 'Campaign deleted successfully' });
   } catch (error) {

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getQuery, runQuery } = require('../db/database');
+const sseService = require('../services/sseService');
 
 // POST /api/questions/:id/upvote - Toggle upvote on a question
 router.post('/questions/:id/upvote', async (req, res, next) => {
@@ -74,6 +75,13 @@ router.post('/questions/:id/upvote', async (req, res, next) => {
     );
     
     console.log('Final vote check:', { hasVoted, finalVoteCheck: !!finalVoteCheck, voteCount: voteCount.count });
+    
+    // Broadcast update to all clients watching this campaign
+    sseService.broadcast(question.campaign_id.toString(), {
+      type: 'vote_updated',
+      question_id: parseInt(id),
+      vote_count: voteCount.count
+    });
     
     res.json({ 
       success: true, 

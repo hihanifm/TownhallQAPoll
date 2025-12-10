@@ -4,6 +4,7 @@ const errorHandler = require('./middleware/errorHandler');
 const campaignsRouter = require('./routes/campaigns');
 const questionsRouter = require('./routes/questions');
 const votesRouter = require('./routes/votes');
+const sseRouter = require('./routes/sse');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -17,6 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/campaigns', campaignsRouter);
 app.use('/api', questionsRouter); // Handles /api/campaigns/:id/questions and /api/questions/:id/votes
 app.use('/api', votesRouter);
+app.use('/api/sse', sseRouter); // SSE endpoint for real-time updates
 
 // Health check
 app.get('/api/health', (req, res) => {

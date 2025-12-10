@@ -14,6 +14,49 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
     loadCampaigns();
   }, []);
 
+  // SSE connection for real-time campaign updates
+  useEffect(() => {
+    const eventSource = new EventSource('/api/sse/campaigns');
+    
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      switch (data.type) {
+        case 'connected':
+          console.log('SSE connected for campaigns');
+          break;
+        case 'campaign_created':
+          // Add new campaign to the list
+          setCampaigns(prevCampaigns => [data.campaign, ...prevCampaigns]);
+          break;
+        case 'campaign_updated':
+          // Update existing campaign
+          setCampaigns(prevCampaigns =>
+            prevCampaigns.map(c => c.id === data.campaign.id ? data.campaign : c)
+          );
+          break;
+        case 'campaign_deleted':
+          // Remove deleted campaign from the list
+          setCampaigns(prevCampaigns =>
+            prevCampaigns.filter(c => c.id !== data.campaign_id)
+          );
+          break;
+        default:
+          // For any other update, refresh the full list
+          loadCampaigns();
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE error:', error);
+      // Optionally reconnect after a delay
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
+
   const loadCampaigns = async () => {
     setIsLoading(true);
     setError(null);
@@ -26,6 +69,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
       setIsLoading(false);
     }
   };
+
 
   const handleCreateCampaign = async (e) => {
     e.preventDefault();

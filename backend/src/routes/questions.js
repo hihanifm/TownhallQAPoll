@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { allQuery, getQuery, runQuery } = require('../db/database');
+const sseService = require('../services/sseService');
 
 // GET /api/campaigns/:id/questions - Get questions for a campaign
 router.get('/campaigns/:campaignId/questions', async (req, res, next) => {
@@ -67,11 +68,19 @@ router.post('/campaigns/:campaignId/questions', async (req, res, next) => {
       [result.lastID]
     );
     
-    res.status(201).json({
+    const newQuestion = {
       ...question,
       vote_count: question.vote_count || 0,
       voters: []
+    };
+    
+    // Broadcast new question to all clients watching this campaign
+    sseService.broadcast(campaignId.toString(), {
+      type: 'question_created',
+      question: newQuestion
     });
+    
+    res.status(201).json(newQuestion);
   } catch (error) {
     next(error);
   }
@@ -124,6 +133,12 @@ router.delete('/questions/:id', async (req, res, next) => {
       'DELETE FROM questions WHERE id = ?',
       [id]
     );
+    
+    // Broadcast deletion to all clients watching this campaign
+    sseService.broadcast(question.campaign_id.toString(), {
+      type: 'question_deleted',
+      question_id: parseInt(id)
+    });
     
     res.json({ success: true, message: 'Question deleted successfully' });
   } catch (error) {
