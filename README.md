@@ -75,6 +75,67 @@ The frontend will run on `http://localhost:3000`
 
 3. Open your browser and navigate to `http://localhost:3000`
 
+## Running in Background (Linux/macOS only)
+
+To run both servers in the background on Linux or macOS, use the provided shell scripts:
+
+### Quick Start
+
+1. **Start both servers in background:**
+   ```bash
+   ./start-background.sh
+   ```
+
+2. **Check server status:**
+   ```bash
+   ./status-background.sh
+   ```
+
+3. **Stop both servers:**
+   ```bash
+   ./stop-background.sh
+   ```
+
+### What the scripts do:
+
+- **`start-background.sh`** (Linux/macOS only)
+  - Starts both backend and frontend servers in the background using `nohup`
+  - Saves process IDs to `server.pids` for easy management
+  - Logs output to `logs/backend.log` and `logs/frontend.log`
+  - Checks if servers are already running before starting
+
+- **`stop-background.sh`** (Linux/macOS only)
+  - Stops both servers by their saved process IDs
+  - Also checks and kills any processes using ports 3000 and 3001
+  - Cleans up the PID file
+
+- **`status-background.sh`** (Linux/macOS only)
+  - Shows whether servers are running
+  - Displays process IDs and port status
+  - Shows log file locations and sizes
+
+### Viewing Logs
+
+While servers are running in the background, you can view their logs:
+
+```bash
+# View backend logs
+tail -f logs/backend.log
+
+# View frontend logs
+tail -f logs/frontend.log
+
+# View both logs side by side (requires multitail)
+multitail logs/backend.log logs/frontend.log
+```
+
+### Notes
+
+- The scripts use `nohup` to ensure servers continue running even if you close the terminal
+- Logs are automatically created in the `logs/` directory
+- If you manually stop servers, you may need to run `stop-background.sh` to clean up the PID file
+- **These scripts are for Linux and macOS only.** For Windows, see the Windows-specific instructions below.
+
 ## Windows-Specific Instructions
 
 ### Quick Start on Windows
