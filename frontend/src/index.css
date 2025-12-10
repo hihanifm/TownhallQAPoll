@@ -1,0 +1,40 @@
+@font-face {
+  font-family: 'Excalifont';
+  src: url('/fonts/Excalifont-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}
+
+/* Ensure all input and textarea elements have light backgrounds */
+input,
+textarea {
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+}
+
+input:focus,
+textarea:focus {
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+}
+
