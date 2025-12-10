@@ -29,6 +29,31 @@ export const api = {
     return response.json();
   },
 
+  closeCampaign: async (campaignId) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/close`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to close campaign');
+    }
+    return response.json();
+  },
+
+  deleteCampaign: async (campaignId) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete campaign');
+    }
+    return response.json();
+  },
+
   // Questions
   getQuestions: async (campaignId) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/questions`);
@@ -54,6 +79,17 @@ export const api = {
   checkVote: async (questionId, userId) => {
     const response = await fetch(`${API_BASE_URL}/questions/${questionId}/votes?user_id=${userId}`);
     if (!response.ok) throw new Error('Failed to check vote');
+    return response.json();
+  },
+
+  deleteQuestion: async (questionId) => {
+    const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete question');
+    }
     return response.json();
   },
 

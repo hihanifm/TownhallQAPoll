@@ -31,20 +31,19 @@ function CreateQuestionForm({ campaignId, onQuestionCreated }) {
 
   return (
     <div className="create-question-form">
-      <h3>Ask a Question</h3>
       <form onSubmit={handleSubmit}>
-        <textarea
+        <input
+          type="text"
           value={questionText}
           onChange={(e) => setQuestionText(e.target.value)}
-          placeholder="Enter your question here..."
-          rows={4}
+          placeholder="Ask a question..."
           disabled={isSubmitting}
         />
-        {error && <div className="error-message">{error}</div>}
         <button type="submit" disabled={isSubmitting || !questionText.trim()}>
-          {isSubmitting ? 'Submitting...' : 'Submit Question'}
+          {isSubmitting ? '...' : 'Submit'}
         </button>
       </form>
+      {error && <div className="error-message">{error}</div>}
     </div>
   );
 }

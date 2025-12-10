@@ -40,6 +40,7 @@ body {
   padding: 20px 24px;
   box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
   flex-shrink: 0;
+  text-align: center;
 }
 
 .app-header h1 {

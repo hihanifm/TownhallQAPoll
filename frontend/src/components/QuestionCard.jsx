@@ -3,10 +3,11 @@ import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
 import './QuestionCard.css';
 
-function QuestionCard({ question, campaignId, onVoteUpdate, number }) {
+function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, number }) {
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(question.vote_count || 0);
   const [isVoting, setIsVoting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const justToggledRef = useRef(false);
 
   const checkVoteStatus = useCallback(async () => {
@@ -65,6 +66,27 @@ function QuestionCard({ question, campaignId, onVoteUpdate, number }) {
     }
   };
 
+  const handleDelete = async (e) => {
+    e.stopPropagation(); // Prevent any parent click handlers
+    
+    if (!window.confirm('Are you sure you want to delete this question? This will also delete all votes. This action cannot be undone.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await api.deleteQuestion(question.id);
+      if (onQuestionDeleted) {
+        onQuestionDeleted(question.id);
+      }
+    } catch (error) {
+      console.error('Error deleting question:', error);
+      alert(error.message || 'Failed to delete question');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className={`question-card ${hasVoted ? 'voted' : ''}`}>
       <span className="question-number">{number}</span>
@@ -77,12 +99,20 @@ function QuestionCard({ question, campaignId, onVoteUpdate, number }) {
       <button
         className={`upvote-button ${hasVoted ? 'voted' : ''}`}
         onClick={handleUpvote}
-        disabled={isVoting}
+        disabled={isVoting || isDeleting}
       >
         <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
         <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
       </button>
       <span className="vote-count">{voteCount}</span>
+      <button
+        className="delete-question-btn"
+        onClick={handleDelete}
+        disabled={isDeleting}
+        title="Delete question"
+      >
+        {isDeleting ? '...' : '×'}
+      </button>
     </div>
   );
 }

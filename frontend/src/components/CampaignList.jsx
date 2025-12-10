@@ -60,6 +60,44 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
     }
   };
 
+  const handleCloseCampaign = async (e, campaignId) => {
+    e.stopPropagation(); // Prevent campaign selection
+    
+    if (!window.confirm('Are you sure you want to close this campaign?')) {
+      return;
+    }
+
+    try {
+      const updatedCampaign = await api.closeCampaign(campaignId);
+      setCampaigns(campaigns.map(c => c.id === campaignId ? updatedCampaign : c));
+      // If the closed campaign was selected, deselect it
+      if (selectedCampaignId === campaignId && onCampaignSelect) {
+        onCampaignSelect(null);
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleDeleteCampaign = async (e, campaignId) => {
+    e.stopPropagation(); // Prevent campaign selection
+    
+    if (!window.confirm('Are you sure you want to delete this campaign? This will delete all questions and votes. This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await api.deleteCampaign(campaignId);
+      setCampaigns(campaigns.filter(c => c.id !== campaignId));
+      // If the deleted campaign was selected, deselect it
+      if (selectedCampaignId === campaignId && onCampaignSelect) {
+        onCampaignSelect(null);
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="campaign-list">
@@ -124,18 +162,42 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
             <div
               key={campaign.id}
               className={`campaign-item ${selectedCampaignId === campaign.id ? 'selected' : ''}`}
-              onClick={() => onCampaignSelect && onCampaignSelect(campaign.id)}
             >
-              <div className="campaign-title">{campaign.title}</div>
-              <div className="campaign-meta">
-                <span className="campaign-status">{campaign.status}</span>
-                <span className="campaign-questions">
-                  {campaign.question_count || 0} questions
-                </span>
+              <div 
+                className="campaign-content"
+                onClick={() => onCampaignSelect && onCampaignSelect(campaign.id)}
+              >
+                <div className="campaign-title">{campaign.title}</div>
+                <div className="campaign-meta">
+                  <span className={`campaign-status ${campaign.status === 'closed' ? 'status-closed' : 'status-active'}`}>
+                    {campaign.status}
+                  </span>
+                  <span className="campaign-questions">
+                    {campaign.question_count || 0} questions
+                  </span>
+                </div>
+                {campaign.description && (
+                  <div className="campaign-description">{campaign.description}</div>
+                )}
               </div>
-              {campaign.description && (
-                <div className="campaign-description">{campaign.description}</div>
-              )}
+              <div className="campaign-actions">
+                {campaign.status === 'active' && (
+                  <button
+                    className="close-campaign-btn"
+                    onClick={(e) => handleCloseCampaign(e, campaign.id)}
+                    title="Close campaign"
+                  >
+                    Close
+                  </button>
+                )}
+                <button
+                  className="delete-campaign-btn"
+                  onClick={(e) => handleDeleteCampaign(e, campaign.id)}
+                  title="Delete campaign"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))
         )}

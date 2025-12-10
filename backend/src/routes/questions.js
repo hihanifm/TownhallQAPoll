@@ -99,5 +99,37 @@ router.get('/questions/:id/votes', async (req, res, next) => {
   }
 });
 
+// DELETE /api/questions/:id - Delete a question
+router.delete('/questions/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const question = await getQuery(
+      'SELECT * FROM questions WHERE id = ?',
+      [id]
+    );
+    
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+    
+    // Delete all votes for this question
+    await runQuery(
+      'DELETE FROM votes WHERE question_id = ?',
+      [id]
+    );
+    
+    // Delete the question
+    await runQuery(
+      'DELETE FROM questions WHERE id = ?',
+      [id]
+    );
+    
+    res.json({ success: true, message: 'Question deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
 

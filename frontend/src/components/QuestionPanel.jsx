@@ -38,6 +38,10 @@ function QuestionPanel({ campaignId }) {
     loadQuestions(); // Reload to update vote counts and rankings
   };
 
+  const handleQuestionDeleted = (questionId) => {
+    loadQuestions(); // Reload to remove deleted question from list
+  };
+
   if (!campaignId) {
     return (
       <div className="question-panel empty">
@@ -79,6 +83,7 @@ function QuestionPanel({ campaignId }) {
               question={question}
               campaignId={campaignId}
               onVoteUpdate={handleVoteUpdate}
+              onQuestionDeleted={handleQuestionDeleted}
               number={index + 1}
             />
           ))}

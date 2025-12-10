@@ -65,5 +65,74 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+// PATCH /api/campaigns/:id/close - Close a campaign
+router.patch('/:id/close', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const campaign = await getQuery(
+      'SELECT * FROM campaigns WHERE id = ?',
+      [id]
+    );
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    await runQuery(
+      'UPDATE campaigns SET status = ? WHERE id = ?',
+      ['closed', id]
+    );
+    
+    const updatedCampaign = await getQuery(
+      'SELECT * FROM campaigns WHERE id = ?',
+      [id]
+    );
+    
+    res.json(updatedCampaign);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/campaigns/:id - Delete a campaign
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const campaign = await getQuery(
+      'SELECT * FROM campaigns WHERE id = ?',
+      [id]
+    );
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    // Delete all votes for questions in this campaign
+    await runQuery(
+      `DELETE FROM votes 
+       WHERE question_id IN (SELECT id FROM questions WHERE campaign_id = ?)`,
+      [id]
+    );
+    
+    // Delete all questions in this campaign
+    await runQuery(
+      'DELETE FROM questions WHERE campaign_id = ?',
+      [id]
+    );
+    
+    // Delete the campaign
+    await runQuery(
+      'DELETE FROM campaigns WHERE id = ?',
+      [id]
+    );
+    
+    res.json({ success: true, message: 'Campaign deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
 
