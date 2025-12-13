@@ -105,7 +105,17 @@ echo ""
 # Start backend server
 echo "Starting backend server..."
 cd "$SCRIPT_DIR/backend"
-nohup npm start > "$LOG_DIR/backend.log" 2>&1 &
+
+# Set NODE_ENV based on mode
+if [ "$PROD_MODE" = true ]; then
+    export NODE_ENV=production
+    echo "  Setting NODE_ENV=production"
+else
+    export NODE_ENV=development
+    echo "  Setting NODE_ENV=development"
+fi
+
+nohup env NODE_ENV=$NODE_ENV npm start > "$LOG_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 # Disown the process to fully detach it from the shell
 disown $BACKEND_PID 2>/dev/null || true

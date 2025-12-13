@@ -9,7 +9,20 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:3001',
-        changeOrigin: true
+        changeOrigin: true,
+        // Preserve the origin header so backend can validate it
+        configure: (proxy, options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            // Ensure origin header is preserved from the original request
+            if (req.headers.origin) {
+              proxyReq.setHeader('origin', req.headers.origin);
+            }
+            // Also set referer if available
+            if (req.headers.referer) {
+              proxyReq.setHeader('referer', req.headers.referer);
+            }
+          });
+        }
       }
     }
   },

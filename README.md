@@ -56,12 +56,20 @@ cd ../frontend && npm install
 1. Start the backend server (in one terminal):
 
 ```bash
+# Development mode (default - more permissive)
 npm run start:backend
 # or for development with auto-reload:
 npm run dev:backend
+
+# Production mode (strict security)
+npm run start:backend:prod
 ```
 
 The backend will run on `http://localhost:3001`
+
+**Note**: The scripts automatically set `NODE_ENV`:
+- Development: `NODE_ENV=development` (allows testing with curl, Postman, etc.)
+- Production: `NODE_ENV=production` (blocks direct API access)
 
 2. Start the frontend development server (in another terminal):
 
@@ -81,20 +89,31 @@ To run both servers in the background on Linux or macOS, use the provided shell 
 
 ### Quick Start
 
-1. **Start both servers in background:**
+1. **Start both servers in background (development mode):**
    ```bash
    ./start-background.sh
    ```
 
-2. **Check server status:**
+2. **Start both servers in background (production mode):**
+   ```bash
+   ./start-background.sh --prod
+   # or
+   ./start-background.sh -p
+   ```
+
+3. **Check server status:**
    ```bash
    ./status-background.sh
    ```
 
-3. **Stop both servers:**
+4. **Stop both servers:**
    ```bash
    ./stop-background.sh
    ```
+
+**Note**: The script automatically sets `NODE_ENV`:
+- Development mode (default): `NODE_ENV=development` - more permissive, allows curl/Postman
+- Production mode (`--prod`): `NODE_ENV=production` - strict security, blocks direct API access
 
 ### What the scripts do:
 
@@ -336,6 +355,76 @@ The SQLite database is automatically created in `backend/data/townhall.db` on fi
 - **questions**: Stores questions within campaigns
 - **votes**: Tracks upvotes with duplicate prevention
 
+## Security
+
+### Backend API Access Restrictions
+
+The backend API is **restricted to only accept requests from the frontend application**. Direct access to the backend API is blocked for security.
+
+**Security Features:**
+- **CORS Protection**: Only requests from allowed frontend origins are accepted
+- **Origin Validation**: Middleware validates that requests come from the authorized frontend
+- **Automatic IP Support**: By default, any origin on port 3000 is allowed (works with IP addresses automatically)
+- **Localhost Binding**: By default, backend binds to `127.0.0.1` (localhost only), preventing network access
+
+**How It Works:**
+- ✅ **No configuration needed for IP addresses!** If you access the frontend via `http://192.168.1.100:3000`, it will automatically work
+- ✅ The system allows any origin on port 3000 (the frontend port) by default
+- ✅ You can still explicitly set `FRONTEND_URL` for production domains
+- ✅ Direct API access (e.g., `curl http://localhost:3001/api/campaigns`) is blocked
+
+**Configuration:**
+
+1. **Default (Most Secure)**: Backend only accessible from localhost
+   ```bash
+   # Backend binds to 127.0.0.1 by default
+   # Frontend can be accessed via localhost or IP address - both work!
+   npm run start:backend
+   ```
+
+2. **Allow Remote Backend Access** (if needed):
+   ```bash
+   # Set environment variable to allow network access to backend
+   HOST=0.0.0.0 npm run start:backend
+   ```
+   ⚠️ **Warning**: When allowing remote access, origin validation still blocks direct API calls, but the backend port is exposed on the network.
+
+3. **Custom Frontend URL** (for production):
+   ```bash
+   # Set your frontend URL (optional - IP addresses work automatically)
+   FRONTEND_URL=https://your-frontend-domain.com npm run start:backend
+   
+   # Or multiple URLs (comma-separated)
+   FRONTEND_URLS=http://localhost:3000,https://your-frontend-domain.com npm run start:backend
+   ```
+
+4. **Strict Mode** (only explicitly allowed origins):
+   ```bash
+   # Disable automatic port 3000 allowance (more restrictive)
+   ALLOW_ANY_FRONTEND_PORT=false npm run start:backend
+   ```
+   This requires you to explicitly set `FRONTEND_URL` or `FRONTEND_URLS`.
+
+**What happens if someone tries to access the backend directly?**
+- **In Production**: They will receive a `403 Forbidden` error
+- **In Development**: More permissive - allows localhost requests for testing (curl, Postman, etc.)
+- The error message: "Forbidden: Direct API access is not allowed. Please use the frontend application."
+- All unauthorized access attempts are logged to the console
+
+**Development vs Production Mode:**
+- **Development** (`NODE_ENV=development` or not set): 
+  - ✅ Allows localhost requests without origin/referer (for testing with curl, Postman)
+  - ✅ Allows any localhost or private IP origins
+  - ✅ More permissive CORS settings
+  - ✅ Set automatically by `npm run start:backend` or `./start-background.sh`
+- **Production** (`NODE_ENV=production`):
+  - 🔒 Strict origin validation
+  - 🔒 Blocks all direct API calls
+  - 🔒 Only allows explicitly configured frontend origins
+  - ✅ Set automatically by `npm run start:backend:prod` or `./start-background.sh --prod`
+
+**Note**: The frontend uses Vite's proxy to communicate with the backend, so all requests go through the frontend application, ensuring proper origin validation.
+
 ## API Endpoints
 
 - `GET /api/campaigns` - List all campaigns
@@ -344,6 +433,8 @@ The SQLite database is automatically created in `backend/data/townhall.db` on fi
 - `POST /api/campaigns/:id/questions` - Create new question
 - `POST /api/questions/:id/upvote` - Upvote a question
 - `GET /api/questions/:id/votes` - Check if user has voted
+
+**Note**: These endpoints can only be accessed through the frontend application. Direct API access is blocked.
 
 ## Anonymity & Privacy
 

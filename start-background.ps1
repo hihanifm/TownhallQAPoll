@@ -70,8 +70,19 @@ if ($portsInUse) {
 
 # Start backend server
 Write-Host "Starting backend server..." -ForegroundColor Cyan
+
+# Set NODE_ENV based on mode
+if ($Prod) {
+    $env:NODE_ENV = "production"
+    Write-Host "  Setting NODE_ENV=production" -ForegroundColor Yellow
+} else {
+    $env:NODE_ENV = "development"
+    Write-Host "  Setting NODE_ENV=development" -ForegroundColor Yellow
+}
+
 $backendJob = Start-Job -ScriptBlock {
     Set-Location $using:scriptDir\backend
+    $env:NODE_ENV = $using:env:NODE_ENV
     npm start 2>&1
 }
 
