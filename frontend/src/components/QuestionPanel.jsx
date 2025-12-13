@@ -178,7 +178,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
           {campaign && (
             <h2 className="campaign-title">{campaign.title}</h2>
           )}
-          <h3 className="panel-subtitle">Questions & Answers</h3>
+          <p className="panel-subtitle">While it may not be possible to answer every question, priority will be given to those questions with the most votes - so if you see an existing question that closely matches your concern, vote for it!</p>
         </div>
         <div className="question-stats">
           Total: {questions.length} questions
