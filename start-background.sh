@@ -30,6 +30,18 @@ for arg in "$@"; do
     esac
 done
 
+# Validate: --no-vite-proxy can only be used in production mode
+if [ "$NO_VITE_PROXY" = true ] && [ "$PROD_MODE" = false ]; then
+    echo "❌ Error: --no-vite-proxy (-nvp) can only be used in production mode!"
+    echo ""
+    echo "The Vite proxy is required in development mode for proper CORS handling."
+    echo "To use direct backend calls, you must run in production mode:"
+    echo "  ./start-background.sh --prod --no-vite-proxy"
+    echo "  or: ./start-background.sh -p -nvp"
+    echo ""
+    exit 1
+fi
+
 # Create logs directory if it doesn't exist
 mkdir -p "$LOG_DIR"
 
