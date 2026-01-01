@@ -2,10 +2,37 @@
 
 # Script to stop both backend and frontend servers
 # LINUX/macOS ONLY
+# Automatically detects if PM2 is being used
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
+PM2_FLAG_FILE="$SCRIPT_DIR/.using-pm2"
 
+# Check if PM2 is being used
+if [ -f "$PM2_FLAG_FILE" ] || (command -v pm2 &> /dev/null && pm2 list | grep -q "townhall-backend\|townhall-frontend"); then
+    echo "Stopping Townhall Q&A Poll servers (PM2)..."
+    echo ""
+    
+    # Stop PM2 processes
+    pm2 stop ecosystem.config.js 2>/dev/null || true
+    pm2 delete ecosystem.config.js 2>/dev/null || true
+    
+    # Remove PM2 flag
+    rm -f "$PM2_FLAG_FILE" 2>/dev/null || true
+    
+    echo "✓ PM2 processes stopped"
+    echo ""
+    
+    # Also clean up PID file if it exists
+    if [ -f "$PID_FILE" ]; then
+        rm "$PID_FILE"
+    fi
+    
+    echo "All servers stopped."
+    exit 0
+fi
+
+# Regular background mode (nohup)
 if [ ! -f "$PID_FILE" ]; then
     echo "No PID file found. Servers may not be running."
     echo "Checking for running processes..."

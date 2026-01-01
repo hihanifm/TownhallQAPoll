@@ -8,6 +8,7 @@ module.exports = {
       exec_mode: 'fork',
       // Default environment (used when no --env flag is specified)
       // Backend wrapper script (start-pm2.sh) will use 'npm run start' in development, 'npm run start:prod' in production
+      // Default is DEVELOPMENT
       env: {
         NODE_ENV: 'development',
         PORT: 3001,
@@ -55,6 +56,7 @@ module.exports = {
       exec_mode: 'fork',
       // Default environment (used when no --env flag is specified)
       // Frontend wrapper script (start-pm2.sh) will use 'dev' in development, 'preview' in production
+      // Default is DEVELOPMENT
       env: {
         NODE_ENV: 'development',
         PORT: 3000,

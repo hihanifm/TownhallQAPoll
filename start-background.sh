@@ -2,17 +2,20 @@
 
 # Script to start both backend and frontend servers in the background
 # LINUX/macOS ONLY
-# Usage: ./start-background.sh [--prod|-p] [--vite-proxy|-vp]
+# Usage: ./start-background.sh [--prod|-p] [--vite-proxy|-vp] [--pm2|-pm2]
 #   --prod, -p: Start in production mode (default: no Vite proxy, direct backend calls)
 #   --vite-proxy, -vp: Enable Vite proxy (only valid in production mode)
+#   --pm2, -pm2: Use PM2 process manager instead of nohup
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
 LOG_DIR="$SCRIPT_DIR/logs"
+PM2_FLAG_FILE="$SCRIPT_DIR/.using-pm2"
 
 # Parse command line arguments
 PROD_MODE=false
 VITE_PROXY=false
+USE_PM2=false
 
 for arg in "$@"; do
     case $arg in
@@ -22,9 +25,12 @@ for arg in "$@"; do
         --vite-proxy|-vp)
             VITE_PROXY=true
             ;;
+        --pm2|-pm2)
+            USE_PM2=true
+            ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./start-background.sh [--prod|-p] [--vite-proxy|-vp]"
+            echo "Usage: ./start-background.sh [--prod|-p] [--vite-proxy|-vp] [--pm2|-pm2]"
             exit 1
             ;;
     esac
@@ -40,6 +46,18 @@ if [ "$VITE_PROXY" = true ] && [ "$PROD_MODE" = false ]; then
     echo "  or: ./start-background.sh -p -vp"
     echo ""
     exit 1
+fi
+
+# Check if PM2 is installed when --pm2 is used
+if [ "$USE_PM2" = true ]; then
+    if ! command -v pm2 &> /dev/null; then
+        echo "❌ Error: PM2 is not installed!"
+        echo ""
+        echo "Install PM2 with: npm install -g pm2"
+        echo "Or run without --pm2 flag to use regular background mode"
+        echo ""
+        exit 1
+    fi
 fi
 
 # Create logs directory if it doesn't exist
@@ -128,8 +146,125 @@ if [ "$PROD_MODE" = true ]; then
 else
     echo "Starting Townhall Q&A Poll servers in DEVELOPMENT mode..."
 fi
+if [ "$USE_PM2" = true ]; then
+    echo "Using PM2 process manager"
+fi
 echo ""
 
+# If using PM2, handle PM2 startup
+if [ "$USE_PM2" = true ]; then
+    # Stop existing PM2 processes if any
+    echo "Checking for existing PM2 processes..."
+    pm2 delete ecosystem.config.js 2>/dev/null || true
+    
+    # Build frontend if production mode
+    if [ "$PROD_MODE" = true ]; then
+        echo "Building frontend for production..."
+        cd "$SCRIPT_DIR/frontend"
+        if [ "$VITE_PROXY" = true ]; then
+            VITE_USE_PROXY=true VITE_API_URL=http://localhost:3001 npm run build > "$LOG_DIR/frontend-build.log" 2>&1
+        else
+            VITE_USE_PROXY=false VITE_API_URL=http://localhost:3001 npm run build > "$LOG_DIR/frontend-build.log" 2>&1
+        fi
+        if [ $? -ne 0 ]; then
+            echo "❌ Error: Frontend build failed! Check $LOG_DIR/frontend-build.log"
+            exit 1
+        fi
+        echo "✓ Frontend built successfully"
+        cd "$SCRIPT_DIR"
+        echo ""
+    fi
+    
+    # Determine PM2 environment
+    if [ "$PROD_MODE" = true ]; then
+        if [ "$VITE_PROXY" = true ]; then
+            PM2_ENV="production_proxy"
+        else
+            PM2_ENV="production"
+        fi
+    else
+        PM2_ENV="development"
+    fi
+    
+    # Start with PM2
+    echo "Starting applications with PM2..."
+    pm2 start ecosystem.config.js --env $PM2_ENV
+    
+    if [ $? -ne 0 ]; then
+        echo "❌ Error: Failed to start PM2 processes!"
+        exit 1
+    fi
+    
+    # Save PM2 flag
+    echo "pm2" > "$PM2_FLAG_FILE"
+    
+    # Wait a moment for processes to start
+    sleep 3
+    
+    # Verify processes are running
+    if ! pm2 list | grep -q "townhall-backend.*online"; then
+        echo "❌ Error: Backend failed to start with PM2!"
+        pm2 logs townhall-backend --lines 10 --nostream
+        exit 1
+    fi
+    
+    if ! pm2 list | grep -q "townhall-frontend.*online"; then
+        echo "❌ Error: Frontend failed to start with PM2!"
+        pm2 logs townhall-frontend --lines 10 --nostream
+        exit 1
+    fi
+    
+    echo "✓ Applications started with PM2"
+    echo ""
+    
+    # Get local IP address
+    LOCAL_IP=$(get_local_ip)
+    
+    echo "✓ Servers started with PM2!"
+    if [ "$PROD_MODE" = true ]; then
+        echo "  Mode: PRODUCTION (optimized build)"
+    else
+        echo "  Mode: DEVELOPMENT (hot reload enabled)"
+    fi
+    if [ "$PROD_MODE" = true ]; then
+        if [ "$VITE_PROXY" = true ]; then
+            echo "  API Mode: Vite proxy enabled"
+        else
+            echo "  API Mode: Direct backend calls (no Vite proxy - default)"
+        fi
+    else
+        echo "  API Mode: Vite proxy enabled (required for development)"
+    fi
+    echo ""
+    echo "Access URLs:"
+    echo "  Backend:"
+    echo "    - Local:  http://localhost:3001"
+    if [ -n "$LOCAL_IP" ]; then
+        echo "    - Network: http://$LOCAL_IP:3001"
+    fi
+    echo "  Frontend:"
+    echo "    - Local:  http://localhost:3000"
+    if [ -n "$LOCAL_IP" ]; then
+        echo "    - Network: http://$LOCAL_IP:3000"
+    fi
+    echo ""
+    echo "PM2 Management:"
+    echo "  pm2 status              - Check status"
+    echo "  pm2 logs                - View logs"
+    echo "  pm2 restart all         - Restart all"
+    echo "  ./stop-background.sh    - Stop servers"
+    echo ""
+    echo "Logs are available via: pm2 logs"
+    echo "  - Backend:  pm2 logs townhall-backend"
+    echo "  - Frontend: pm2 logs townhall-frontend"
+    if [ "$PROD_MODE" = true ]; then
+        echo "  - Build:    $LOG_DIR/frontend-build.log"
+    fi
+    echo ""
+    exit 0
+fi
+
+# Regular background mode (nohup) - existing logic
 # Start backend server
 echo "Starting backend server..."
 cd "$SCRIPT_DIR/backend"
@@ -206,7 +341,8 @@ if [ "$PROD_MODE" = true ]; then
     export NODE_ENV=production
     echo "  Setting NODE_ENV=production"
     echo "Building frontend for production..."
-    npm run build > "$LOG_DIR/frontend-build.log" 2>&1
+    # Build with the same env vars that will be used at runtime
+    env NODE_ENV=$NODE_ENV VITE_USE_PROXY=$VITE_USE_PROXY VITE_API_URL=$VITE_API_URL npm run build > "$LOG_DIR/frontend-build.log" 2>&1
     if [ $? -ne 0 ]; then
         echo "❌ Error: Frontend build failed! Check $LOG_DIR/frontend-build.log"
         # Clean up: kill backend if it was started
@@ -249,9 +385,10 @@ fi
 
 echo "✓ Frontend started successfully with PID: $FRONTEND_PID"
 
-# Save PIDs to file
+# Save PIDs to file and remove PM2 flag if it exists
 echo "$BACKEND_PID" > "$PID_FILE"
 echo "$FRONTEND_PID" >> "$PID_FILE"
+rm -f "$PM2_FLAG_FILE" 2>/dev/null || true
 
 # Get local IP address
 LOCAL_IP=$(get_local_ip)

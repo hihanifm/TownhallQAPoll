@@ -6,6 +6,7 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
 LOG_DIR="$SCRIPT_DIR/logs"
+PM2_FLAG_FILE="$SCRIPT_DIR/.using-pm2"
 
 # Function to get local IP address
 get_local_ip() {
@@ -34,6 +35,54 @@ get_local_ip() {
 echo "Townhall Q&A Poll Server Status"
 echo "================================"
 echo ""
+
+# Check if PM2 is being used
+USE_PM2=false
+if [ -f "$PM2_FLAG_FILE" ] || (command -v pm2 &> /dev/null && pm2 list | grep -q "townhall-backend\|townhall-frontend"); then
+    USE_PM2=true
+fi
+
+if [ "$USE_PM2" = true ]; then
+    echo "Process Manager: PM2"
+    echo ""
+    
+    # Get PM2 status
+    if command -v pm2 &> /dev/null; then
+        PM2_STATUS=$(pm2 jlist 2>/dev/null)
+        
+        if echo "$PM2_STATUS" | grep -q "townhall-backend\|townhall-frontend"; then
+            # Extract status for each app
+            BACKEND_STATUS=$(echo "$PM2_STATUS" | grep -A 20 '"name":"townhall-backend"' | grep '"pm2_env":{"status"' | grep -o '"status":"[^"]*"' | cut -d'"' -f4 | head -1)
+            FRONTEND_STATUS=$(echo "$PM2_STATUS" | grep -A 20 '"name":"townhall-frontend"' | grep '"pm2_env":{"status"' | grep -o '"status":"[^"]*"' | cut -d'"' -f4 | head -1)
+            
+            echo "PM2 Process Status:"
+            if [ -n "$BACKEND_STATUS" ]; then
+                STATUS_ICON="✓"
+                if [ "$BACKEND_STATUS" != "online" ]; then
+                    STATUS_ICON="✗"
+                fi
+                echo "  Backend:  $STATUS_ICON $BACKEND_STATUS"
+            fi
+            if [ -n "$FRONTEND_STATUS" ]; then
+                STATUS_ICON="✓"
+                if [ "$FRONTEND_STATUS" != "online" ]; then
+                    STATUS_ICON="✗"
+                fi
+                echo "  Frontend: $STATUS_ICON $FRONTEND_STATUS"
+            fi
+            echo ""
+        else
+            echo "⚠️  No PM2 processes found for townhall apps"
+            echo ""
+        fi
+    else
+        echo "⚠️  PM2 flag file found but PM2 is not installed or not in PATH"
+        echo ""
+    fi
+else
+    echo "Process Manager: Background (nohup)"
+    echo ""
+fi
 
 # Detect overall mode and configuration
 FRONTEND_MODE="UNKNOWN"
@@ -131,11 +180,13 @@ else
 fi
 echo ""
 
-# Check PID file
-if [ ! -f "$PID_FILE" ]; then
-    echo "No PID file found. Servers may not be running via start-background.sh"
-    echo ""
-else
+# Skip PID file check if using PM2
+if [ "$USE_PM2" = false ]; then
+    # Check PID file
+    if [ ! -f "$PID_FILE" ]; then
+        echo "No PID file found. Servers may not be running via start-background.sh"
+        echo ""
+    else
     echo "From PID file:"
     PIDS=()
     while IFS= read -r pid; do
@@ -191,6 +242,7 @@ else
         fi
     fi
     echo ""
+    fi
 fi
 
 # Check by port
@@ -233,26 +285,41 @@ if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1 || lsof -Pi :3000 -sTCP:LISTEN
 fi
 
 # Show log file info
-if [ -d "$LOG_DIR" ]; then
-    echo "Log files:"
-    if [ -f "$LOG_DIR/backend.log" ]; then
-        BACKEND_SIZE=$(du -h "$LOG_DIR/backend.log" | cut -f1)
-        echo "  Backend log:  $LOG_DIR/backend.log ($BACKEND_SIZE)"
-    fi
-    if [ -f "$LOG_DIR/frontend.log" ]; then
-        FRONTEND_SIZE=$(du -h "$LOG_DIR/frontend.log" | cut -f1)
-        echo "  Frontend log: $LOG_DIR/frontend.log ($FRONTEND_SIZE)"
-    fi
+if [ "$USE_PM2" = true ]; then
+    echo "PM2 Logs:"
+    echo "  View logs:    pm2 logs"
+    echo "  Backend:      pm2 logs townhall-backend"
+    echo "  Frontend:     pm2 logs townhall-frontend"
     if [ -f "$LOG_DIR/frontend-build.log" ]; then
         BUILD_SIZE=$(du -h "$LOG_DIR/frontend-build.log" | cut -f1)
         echo "  Build log:    $LOG_DIR/frontend-build.log ($BUILD_SIZE)"
     fi
     echo ""
-    echo "To view logs:"
-    echo "  tail -f $LOG_DIR/backend.log"
-    echo "  tail -f $LOG_DIR/frontend.log"
-    if [ -f "$LOG_DIR/frontend-build.log" ]; then
-        echo "  tail -f $LOG_DIR/frontend-build.log  # (production build log)"
+    echo "PM2 Log files location:"
+    echo "  Backend:  $LOG_DIR/pm2-backend.log"
+    echo "  Frontend: $LOG_DIR/pm2-frontend.log"
+else
+    if [ -d "$LOG_DIR" ]; then
+        echo "Log files:"
+        if [ -f "$LOG_DIR/backend.log" ]; then
+            BACKEND_SIZE=$(du -h "$LOG_DIR/backend.log" | cut -f1)
+            echo "  Backend log:  $LOG_DIR/backend.log ($BACKEND_SIZE)"
+        fi
+        if [ -f "$LOG_DIR/frontend.log" ]; then
+            FRONTEND_SIZE=$(du -h "$LOG_DIR/frontend.log" | cut -f1)
+            echo "  Frontend log: $LOG_DIR/frontend.log ($FRONTEND_SIZE)"
+        fi
+        if [ -f "$LOG_DIR/frontend-build.log" ]; then
+            BUILD_SIZE=$(du -h "$LOG_DIR/frontend-build.log" | cut -f1)
+            echo "  Build log:    $LOG_DIR/frontend-build.log ($BUILD_SIZE)"
+        fi
+        echo ""
+        echo "To view logs:"
+        echo "  tail -f $LOG_DIR/backend.log"
+        echo "  tail -f $LOG_DIR/frontend.log"
+        if [ -f "$LOG_DIR/frontend-build.log" ]; then
+            echo "  tail -f $LOG_DIR/frontend-build.log  # (production build log)"
+        fi
     fi
 fi
 
