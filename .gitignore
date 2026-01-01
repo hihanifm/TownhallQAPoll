@@ -49,6 +49,10 @@ lerna-debug.log*
 logs/
 server.pids
 
+# PM2
+.pm2/
+pm2-*.log
+
 # OS files
 .DS_Store
 .DS_Store?

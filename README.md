@@ -481,6 +481,223 @@ The backend API is **restricted to only accept requests from the frontend applic
 - This ID is used only to prevent duplicate votes
 - The ID persists across sessions but is not linked to any personal data
 
+## Production Deployment with PM2
+
+PM2 is a process manager for Node.js applications that ensures your application stays running, automatically restarts on crashes, and starts on system boot.
+
+### Prerequisites
+
+- Node.js installed
+- PM2 installed globally: `npm install -g pm2`
+
+### Quick Setup
+
+1. **Run the setup script:**
+   ```bash
+   ./setup-pm2.sh
+   ```
+   
+   This script will:
+   - Check/install PM2
+   - Build the frontend for production
+   - Start both backend and frontend with PM2
+   - Guide you through setting up auto-start on boot
+
+2. **Set up auto-start on boot:**
+   
+   After running the setup script, PM2 will output a command like:
+   ```bash
+   sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u YOUR_USER --hp /home/YOUR_USER
+   ```
+   
+   Copy and run that command (requires sudo), then:
+   ```bash
+   pm2 save
+   ```
+
+### Manual PM2 Setup
+
+If you prefer to set up manually:
+
+1. **Build the frontend:**
+   ```bash
+   npm run build:frontend
+   ```
+
+2. **Start with PM2:**
+   ```bash
+   npm run pm2:start
+   ```
+
+3. **Save PM2 process list:**
+   ```bash
+   npm run pm2:save
+   ```
+
+4. **Set up startup on boot:**
+   ```bash
+   npm run pm2:startup
+   # Then run the command it outputs with sudo
+   pm2 save
+   ```
+
+### PM2 Management Commands
+
+```bash
+# Check status
+npm run pm2:status
+# or: pm2 status
+
+# View logs
+npm run pm2:logs
+# or: pm2 logs
+
+# Restart applications
+npm run pm2:restart
+
+# Stop applications
+npm run pm2:stop
+
+# Remove from PM2
+npm run pm2:delete
+
+# Save current process list
+npm run pm2:save
+```
+
+### PM2 Configuration
+
+The PM2 configuration is in `ecosystem.config.js`. It includes:
+
+- **Backend**: Runs on port 3001 in production mode
+- **Frontend**: Runs on port 3000 (built and served via Vite preview)
+- **Auto-restart**: Enabled with memory limits
+- **Logging**: Logs saved to `logs/` directory
+- **Environment**: Production mode with proper environment variables
+
+### Customizing Environment Variables
+
+Edit `ecosystem.config.js` to customize:
+
+- `HOST`: Backend host (default: `127.0.0.1` for security, use `0.0.0.0` for remote access)
+- `PORT`: Backend port (default: `3001`)
+- `FRONTEND_URL`: Production frontend URL for CORS
+- `VITE_API_URL`: Backend URL for frontend (default: `http://localhost:3001`)
+
+After changes, restart PM2:
+```bash
+npm run pm2:restart
+```
+
+### Logs
+
+PM2 logs are stored in the `logs/` directory:
+- `pm2-backend.log` - Combined backend logs
+- `pm2-backend-error.log` - Backend errors
+- `pm2-backend-out.log` - Backend output
+- `pm2-frontend.log` - Combined frontend logs
+- `pm2-frontend-error.log` - Frontend errors
+- `pm2-frontend-out.log` - Frontend output
+
+View logs in real-time:
+```bash
+pm2 logs townhall-backend
+pm2 logs townhall-frontend
+pm2 logs  # All logs
+```
+
+### Continuous Crash Protection
+
+**What happens if the app crashes continuously?**
+
+PM2 has built-in protection against infinite restart loops:
+
+1. **Restart Attempts**: PM2 will attempt to restart the app up to **5 times** (configured in `ecosystem.config.js`)
+2. **Stability Check**: The app must run for at least **60 seconds** (`min_uptime`) to be considered "stable"
+3. **Exponential Backoff**: Restart delays increase with each failed attempt (starts at 100ms)
+4. **Final State**: After 5 failed restarts, PM2 stops trying and marks the app as **"errored"**
+
+**When an app is in "errored" state:**
+- The app will **NOT** automatically restart
+- PM2 will **NOT** try again until manually restarted
+- You'll see `status: errored` in `pm2 status`
+- This happens after 5 failed restart attempts (app crashes within 60 seconds each time)
+
+**How to handle continuous crashes:**
+
+1. **Check the status:**
+   ```bash
+   ./monitor-pm2.sh
+   # or
+   pm2 status
+   ```
+
+2. **Investigate the cause:**
+   ```bash
+   # View error logs
+   pm2 logs townhall-backend --err
+   pm2 logs townhall-frontend --err
+   
+   # Get detailed information
+   pm2 describe townhall-backend
+   ```
+
+3. **Common causes:**
+   - Port already in use (check with `lsof -i :3001` or `lsof -i :3000`)
+   - Database file permissions or corruption
+   - Missing environment variables
+   - Code errors or syntax issues
+   - Memory exhaustion (check with `pm2 monit`)
+
+4. **After fixing the issue, restart:**
+   ```bash
+   pm2 restart townhall-backend
+   pm2 restart townhall-frontend
+   # or restart all
+   npm run pm2:restart
+   ```
+
+5. **Reset restart counter** (if needed):
+   ```bash
+   pm2 reset townhall-backend
+   pm2 reset townhall-frontend
+   ```
+
+**Monitoring for crashes:**
+
+Run the monitoring script periodically:
+```bash
+./monitor-pm2.sh
+```
+
+Or set up a cron job to check every 5 minutes:
+```bash
+*/5 * * * * /path/to/TownhallQAPoll/monitor-pm2.sh >> /path/to/TownhallQAPoll/logs/monitor.log 2>&1
+```
+
+### Troubleshooting
+
+**PM2 processes not starting on boot:**
+1. Verify startup script: `pm2 startup`
+2. Run the generated command with sudo
+3. Save: `pm2 save`
+
+**Applications keep restarting:**
+- Check logs: `pm2 logs`
+- Check memory usage: `pm2 monit`
+- Verify ports 3000 and 3001 are available
+- Run `./monitor-pm2.sh` to check for errored state
+
+**App in "errored" state (stopped after continuous crashes):**
+- Check error logs: `pm2 logs --err`
+- Investigate the root cause (see "Continuous Crash Protection" above)
+- Fix the issue, then restart: `pm2 restart <app-name>`
+- Reset restart counter if needed: `pm2 reset <app-name>`
+
+**Frontend not building:**
+- Ensure dependencies are installed: `npm run install:all`
+- Check frontend build logs: `cd frontend && npm run build`
+
 ## Development
 
 ### Backend Development
