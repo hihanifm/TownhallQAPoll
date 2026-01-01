@@ -82,24 +82,20 @@ npm run dev:frontend
 The frontend will run on `http://localhost:3000`
 
 **Frontend API Configuration:**
-- **Default (Proxy Mode)**: Frontend uses Vite as a reverse proxy to communicate with the backend
+- **Development Mode (Default)**: Frontend uses Vite as a reverse proxy to communicate with the backend
   - No configuration needed - works out of the box
   - Requests go through Vite dev server: `/api/*` → `http://localhost:3001/api/*`
   - No CORS issues
-- **Direct Mode**: Frontend makes direct API calls to backend
-  - **Option 1**: Use `--no-vite-proxy` flag with start script:
-    ```bash
-    ./start-background.sh --no-vite-proxy
-    # or use the shortcut:
-    ./start-background.sh -nvp
+  - Always enabled in development mode
+- **Production Mode**: Defaults to direct backend calls (no proxy)
+  - **Default behavior**: Direct API calls (`VITE_USE_PROXY=false`)
+  - **With proxy**: Use `--vite-proxy` flag to enable Vite proxy in production
+  - Requires backend CORS to be properly configured when using direct calls
+  - **Option**: Create `frontend/.env` file to override:
     ```
-  - **Option 2**: Create `frontend/.env` file:
-    ```
-    VITE_USE_PROXY=false
+    VITE_USE_PROXY=false  # or true to enable proxy
     VITE_API_URL=http://localhost:3001
     ```
-  - Requires backend CORS to be properly configured
-  - Useful for production deployments
 
 See `frontend/src/config/README.md` for detailed configuration options.
 
@@ -121,17 +117,14 @@ To run both servers in the background on Linux or macOS, use the provided shell 
    ./start-background.sh --prod
    # or
    ./start-background.sh -p
+   # Production mode defaults to direct backend calls (no Vite proxy)
    ```
 
-3. **Start with direct backend calls (no Vite proxy):**
+3. **Start production mode with Vite proxy enabled:**
    ```bash
-   ./start-background.sh --no-vite-proxy
+   ./start-background.sh --prod --vite-proxy
    # or use the shortcut:
-   ./start-background.sh -nvp
-   # Can be combined with production mode:
-   ./start-background.sh --prod --no-vite-proxy
-   # or:
-   ./start-background.sh -p -nvp
+   ./start-background.sh -p -vp
    ```
 
 4. **Check server status:**
@@ -148,9 +141,10 @@ To run both servers in the background on Linux or macOS, use the provided shell 
 - The script automatically sets `NODE_ENV`:
   - Development mode (default): `NODE_ENV=development` - more permissive, allows curl/Postman
   - Production mode (`--prod`): `NODE_ENV=production` - strict security, blocks direct API access
-- **Vite Proxy** (default: enabled):
-  - Default: Frontend uses Vite as reverse proxy (`/api/*` → backend)
-  - Use `--no-vite-proxy` (or `-nvp`) to disable proxy and make direct backend calls
+- **Vite Proxy**:
+  - **Development mode**: Always uses Vite proxy (required for CORS handling)
+  - **Production mode**: Defaults to **no proxy** (direct backend calls)
+  - Use `--vite-proxy` (or `-vp`) flag to enable proxy in production mode
   - When proxy is disabled, frontend calls backend directly (requires CORS configuration)
 
 ### What the scripts do:
@@ -461,7 +455,8 @@ PM2 supports both development and production environments:
 
 **Production Mode (Default for setup script):**
 ```bash
-# Start in production mode (builds frontend first)
+# Start in production mode without proxy (builds frontend first)
+# Equivalent to: ./start-background.sh --prod (default: no proxy)
 npm run pm2:start:prod
 # or
 pm2 start ecosystem.config.js --env production
@@ -469,7 +464,20 @@ pm2 start ecosystem.config.js --env production
 - Backend: `NODE_ENV=production` (strict security)
 - Frontend: Runs `npm run preview` (serves built files)
 - Frontend must be built first: `npm run build:frontend`
-- Uses direct backend calls (`VITE_USE_PROXY=false`)
+- Uses direct backend calls (`VITE_USE_PROXY=false`) - **default for production**
+
+**Production Mode with Proxy:**
+```bash
+# Start in production mode with Vite proxy
+# Equivalent to: ./start-background.sh --prod --vite-proxy
+npm run pm2:start:prod:proxy
+# or
+pm2 start ecosystem.config.js --env production_proxy
+```
+- Backend: `NODE_ENV=production` (strict security)
+- Frontend: Runs `npm run preview` (serves built files)
+- Frontend must be built first: `npm run build:frontend`
+- Uses Vite proxy (`VITE_USE_PROXY=true`) - **optional for production**
 
 **Development Mode:**
 ```bash
@@ -488,11 +496,31 @@ pm2 start ecosystem.config.js --env development
 # Restart in development mode
 npm run pm2:restart:dev
 
-# Restart in production mode (rebuilds frontend)
+# Restart in production mode without proxy (rebuilds frontend)
 npm run pm2:restart:prod
+
+# Restart in production mode with proxy (rebuilds frontend)
+npm run pm2:restart:prod:proxy
 ```
 
 **Note:** The frontend wrapper script (`frontend/start-pm2.sh`) automatically detects `NODE_ENV` and runs the appropriate command (`dev` or `preview`).
+
+### Mapping: start-background.sh to PM2
+
+The following table shows how `start-background.sh` options map to PM2 environments:
+
+| start-background.sh Command | PM2 Equivalent | npm Script |
+|----------------------------|----------------|------------|
+| `./start-background.sh` (dev mode) | `pm2 start ecosystem.config.js --env development` | `npm run pm2:start:dev` |
+| `./start-background.sh --prod` | `pm2 start ecosystem.config.js --env production` | `npm run pm2:start:prod` |
+| `./start-background.sh --prod --vite-proxy` | `pm2 start ecosystem.config.js --env production_proxy` | `npm run pm2:start:prod:proxy` |
+
+**Key Points:**
+- **Production default**: No Vite proxy (direct backend calls) - matches `production` environment
+- **Production with proxy**: Use `--vite-proxy` flag to enable proxy - matches `production_proxy` environment
+- **Development**: Always uses Vite proxy (required for CORS handling)
+- PM2 `production` environment = no proxy (direct calls) - **default**
+- PM2 `production_proxy` environment = with proxy - **optional**
 
 ### PM2 Configuration
 
@@ -509,7 +537,8 @@ The PM2 configuration is in `ecosystem.config.js`. It includes:
 - **Environments**: 
   - `env`: Default (development)
   - `env_development`: Explicit development settings
-  - `env_production`: Production settings
+  - `env_production`: Production settings (no proxy, direct backend calls)
+  - `env_production_proxy`: Production settings (with Vite proxy)
 
 ### Customizing Environment Variables
 

@@ -72,10 +72,21 @@ module.exports = {
       // Production environment (use with: pm2 start ecosystem.config.js --env production)
       // Frontend will run 'npm run preview' (serves built files)
       // Note: Frontend must be built first: npm run build:frontend
+      // Uses direct backend calls (no proxy) - DEFAULT for production
+      // Matches: ./start-background.sh --prod (default: no proxy)
       env_production: {
         NODE_ENV: 'production',
         PORT: 3000,
-        VITE_USE_PROXY: 'false', // Direct backend calls in production
+        VITE_USE_PROXY: 'false', // Direct backend calls in production (default)
+        VITE_API_URL: 'http://localhost:3001',
+      },
+      // Production with proxy (use with: pm2 start ecosystem.config.js --env production_proxy)
+      // Uses Vite proxy in production - OPTIONAL
+      // Matches: ./start-background.sh --prod --vite-proxy
+      env_production_proxy: {
+        NODE_ENV: 'production',
+        PORT: 3000,
+        VITE_USE_PROXY: 'true', // Use Vite proxy in production (optional)
         VITE_API_URL: 'http://localhost:3001',
       },
       // Auto-restart settings

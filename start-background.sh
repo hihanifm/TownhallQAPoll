@@ -2,9 +2,9 @@
 
 # Script to start both backend and frontend servers in the background
 # LINUX/macOS ONLY
-# Usage: ./start-background.sh [--prod|-p] [--no-vite-proxy|-nvp]
-#   --prod, -p: Start in production mode
-#   --no-vite-proxy, -nvp: Disable Vite proxy, frontend will make direct API calls
+# Usage: ./start-background.sh [--prod|-p] [--vite-proxy|-vp]
+#   --prod, -p: Start in production mode (default: no Vite proxy, direct backend calls)
+#   --vite-proxy, -vp: Enable Vite proxy (only valid in production mode)
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
@@ -12,32 +12,32 @@ LOG_DIR="$SCRIPT_DIR/logs"
 
 # Parse command line arguments
 PROD_MODE=false
-NO_VITE_PROXY=false
+VITE_PROXY=false
 
 for arg in "$@"; do
     case $arg in
         --prod|-p)
             PROD_MODE=true
             ;;
-        --no-vite-proxy|-nvp)
-            NO_VITE_PROXY=true
+        --vite-proxy|-vp)
+            VITE_PROXY=true
             ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./start-background.sh [--prod|-p] [--no-vite-proxy|-nvp]"
+            echo "Usage: ./start-background.sh [--prod|-p] [--vite-proxy|-vp]"
             exit 1
             ;;
     esac
 done
 
-# Validate: --no-vite-proxy can only be used in production mode
-if [ "$NO_VITE_PROXY" = true ] && [ "$PROD_MODE" = false ]; then
-    echo "❌ Error: --no-vite-proxy (-nvp) can only be used in production mode!"
+# Validate: --vite-proxy can only be used in production mode
+if [ "$VITE_PROXY" = true ] && [ "$PROD_MODE" = false ]; then
+    echo "❌ Error: --vite-proxy (-vp) can only be used in production mode!"
     echo ""
-    echo "The Vite proxy is required in development mode for proper CORS handling."
-    echo "To use direct backend calls, you must run in production mode:"
-    echo "  ./start-background.sh --prod --no-vite-proxy"
-    echo "  or: ./start-background.sh -p -nvp"
+    echo "The Vite proxy is always enabled in development mode for proper CORS handling."
+    echo "To enable proxy in production mode:"
+    echo "  ./start-background.sh --prod --vite-proxy"
+    echo "  or: ./start-background.sh -p -vp"
     echo ""
     exit 1
 fi
@@ -134,7 +134,7 @@ echo ""
 echo "Starting backend server..."
 cd "$SCRIPT_DIR/backend"
 
-# Set NODE_ENV based on mode
+# Set environment variables for backend
 if [ "$PROD_MODE" = true ]; then
     export NODE_ENV=production
     echo "  Setting NODE_ENV=production"
@@ -143,7 +143,13 @@ else
     echo "  Setting NODE_ENV=development"
 fi
 
-nohup env NODE_ENV=$NODE_ENV npm start > "$LOG_DIR/backend.log" 2>&1 &
+# Set PORT and HOST for backend (consistent with PM2)
+export PORT=${PORT:-3001}
+export HOST=${HOST:-127.0.0.1}
+echo "  Setting PORT=$PORT"
+echo "  Setting HOST=$HOST"
+
+nohup env NODE_ENV=$NODE_ENV PORT=$PORT HOST=$HOST npm start > "$LOG_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 # Disown the process to fully detach it from the shell
 disown $BACKEND_PID 2>/dev/null || true
@@ -172,22 +178,33 @@ echo "✓ Backend started successfully with PID: $BACKEND_PID"
 echo "Starting frontend server..."
 cd "$SCRIPT_DIR/frontend"
 
-# Set VITE_USE_PROXY environment variable
-if [ "$NO_VITE_PROXY" = true ]; then
-    export VITE_USE_PROXY=false
-    echo "  Vite proxy: DISABLED (direct backend calls)"
+# Set environment variables for frontend
+# Production defaults to no proxy (direct calls), can be enabled with --vite-proxy
+# Development always uses proxy
+if [ "$PROD_MODE" = true ]; then
+    if [ "$VITE_PROXY" = true ]; then
+        export VITE_USE_PROXY=true
+        echo "  Vite proxy: ENABLED (via --vite-proxy flag)"
+    else
+        export VITE_USE_PROXY=false
+        echo "  Vite proxy: DISABLED (default for production - direct backend calls)"
+    fi
 else
     export VITE_USE_PROXY=true
-    echo "  Vite proxy: ENABLED (default)"
+    echo "  Vite proxy: ENABLED (required for development)"
 fi
 
-# Set VITE_API_URL if not already set (for direct mode)
-if [ "$NO_VITE_PROXY" = true ] && [ -z "$VITE_API_URL" ]; then
-    export VITE_API_URL="http://localhost:3001"
-    echo "  Backend URL: $VITE_API_URL"
-fi
+# Set VITE_API_URL (consistent with PM2)
+export VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
+echo "  Backend URL: $VITE_API_URL"
+
+# Set PORT for frontend (consistent with PM2)
+export PORT=${PORT:-3000}
+echo "  Setting PORT=$PORT"
 
 if [ "$PROD_MODE" = true ]; then
+    export NODE_ENV=production
+    echo "  Setting NODE_ENV=production"
     echo "Building frontend for production..."
     npm run build > "$LOG_DIR/frontend-build.log" 2>&1
     if [ $? -ne 0 ]; then
@@ -197,10 +214,12 @@ if [ "$PROD_MODE" = true ]; then
         exit 1
     fi
     echo "Starting frontend production server..."
-    nohup env VITE_USE_PROXY=$VITE_USE_PROXY VITE_API_URL=$VITE_API_URL npm run preview > "$LOG_DIR/frontend.log" 2>&1 &
+    nohup env NODE_ENV=$NODE_ENV PORT=$PORT VITE_USE_PROXY=$VITE_USE_PROXY VITE_API_URL=$VITE_API_URL npm run preview > "$LOG_DIR/frontend.log" 2>&1 &
 else
+    export NODE_ENV=development
+    echo "  Setting NODE_ENV=development"
     echo "Starting frontend development server..."
-    nohup env VITE_USE_PROXY=$VITE_USE_PROXY VITE_API_URL=$VITE_API_URL npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
+    nohup env NODE_ENV=$NODE_ENV PORT=$PORT VITE_USE_PROXY=$VITE_USE_PROXY VITE_API_URL=$VITE_API_URL npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
 fi
 
 FRONTEND_PID=$!
@@ -244,10 +263,14 @@ if [ "$PROD_MODE" = true ]; then
 else
     echo "  Mode: DEVELOPMENT (hot reload enabled)"
 fi
-if [ "$NO_VITE_PROXY" = true ]; then
-    echo "  API Mode: Direct backend calls (no Vite proxy)"
+if [ "$PROD_MODE" = true ]; then
+    if [ "$VITE_PROXY" = true ]; then
+        echo "  API Mode: Vite proxy enabled"
+    else
+        echo "  API Mode: Direct backend calls (no Vite proxy - default)"
+    fi
 else
-    echo "  API Mode: Vite proxy enabled"
+    echo "  API Mode: Vite proxy enabled (required for development)"
 fi
 echo ""
 echo "Access URLs:"
@@ -275,8 +298,8 @@ echo ""
 if [ "$PROD_MODE" = false ]; then
     echo "To start in production mode, run: ./start-background.sh --prod"
 fi
-if [ "$NO_VITE_PROXY" = false ]; then
-    echo "To disable Vite proxy, run: ./start-background.sh --no-vite-proxy (or -nvp)"
+if [ "$PROD_MODE" = true ] && [ "$VITE_PROXY" = false ]; then
+    echo "To enable Vite proxy in production, run: ./start-background.sh --prod --vite-proxy (or -p -vp)"
     echo ""
 fi
 echo "Note: Processes are running in the background and will continue"
