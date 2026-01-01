@@ -227,6 +227,9 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
           <div className="campaign-timestamps-footer">
             <span className="campaign-timestamp" title={formatDateTime(campaign.created_at)}>
               Created {formatRelativeTime(campaign.created_at)}
+              <span className={`mode-indicator mode-${import.meta.env.DEV ? 'development' : 'production'}`}>
+                {import.meta.env.DEV ? '🔧 DEV' : '🚀 PROD'}
+              </span>
             </span>
             <span className="campaign-timestamp" title={formatDateTime(campaign.last_updated || campaign.created_at)}>
               • Updated {formatRelativeTime(campaign.last_updated || campaign.created_at)}
