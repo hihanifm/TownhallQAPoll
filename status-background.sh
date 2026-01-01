@@ -35,25 +35,101 @@ echo "Townhall Q&A Poll Server Status"
 echo "================================"
 echo ""
 
-# Detect overall mode by checking frontend process on port 3000
-MODE="UNKNOWN"
+# Detect overall mode and configuration
+FRONTEND_MODE="UNKNOWN"
+BACKEND_MODE="UNKNOWN"
+VITE_PROXY_STATUS="UNKNOWN"
+
+# Detect frontend mode by checking process on port 3000
 if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
     # Get the first PID listening on port 3000
     FRONTEND_PORT_PID=$(lsof -ti:3000 | head -1)
     if [ -n "$FRONTEND_PORT_PID" ]; then
         FRONTEND_CMD=$(ps -p $FRONTEND_PORT_PID -o command= 2>/dev/null | tr -d '\n')
         if echo "$FRONTEND_CMD" | grep -q "vite preview"; then
-            MODE="PRODUCTION"
+            FRONTEND_MODE="PRODUCTION"
         elif echo "$FRONTEND_CMD" | grep -q "vite"; then
-            MODE="DEVELOPMENT"
+            FRONTEND_MODE="DEVELOPMENT"
+        fi
+        
+        # Try to detect VITE_USE_PROXY from environment or command
+        if echo "$FRONTEND_CMD" | grep -q "VITE_USE_PROXY=false"; then
+            VITE_PROXY_STATUS="DISABLED"
+        elif echo "$FRONTEND_CMD" | grep -q "VITE_USE_PROXY=true"; then
+            VITE_PROXY_STATUS="ENABLED"
         fi
     fi
 fi
 
-if [ "$MODE" != "UNKNOWN" ]; then
-    echo "Mode: $MODE"
-    echo ""
+# Detect backend mode by checking process on port 3001
+if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    BACKEND_PORT_PID=$(lsof -ti:3001 | head -1)
+    if [ -n "$BACKEND_PORT_PID" ]; then
+        BACKEND_CMD=$(ps -p $BACKEND_PORT_PID -o command= 2>/dev/null | tr -d '\n')
+        # Check for NODE_ENV in the command or try to get from process environment
+        if echo "$BACKEND_CMD" | grep -q "NODE_ENV=production"; then
+            BACKEND_MODE="PRODUCTION"
+        elif echo "$BACKEND_CMD" | grep -q "NODE_ENV=development"; then
+            BACKEND_MODE="DEVELOPMENT"
+        else
+            # Try to get from process environment (works on Linux, may not work on macOS)
+            BACKEND_ENV=$(ps e -p $BACKEND_PORT_PID -o command= 2>/dev/null | grep -o "NODE_ENV=[^ ]*" | head -1)
+            if echo "$BACKEND_ENV" | grep -q "NODE_ENV=production"; then
+                BACKEND_MODE="PRODUCTION"
+            elif echo "$BACKEND_ENV" | grep -q "NODE_ENV=development"; then
+                BACKEND_MODE="DEVELOPMENT"
+            fi
+        fi
+    fi
 fi
+
+# Fallback: Check log files for mode indicators
+if [ "$BACKEND_MODE" = "UNKNOWN" ] && [ -f "$LOG_DIR/backend.log" ]; then
+    if tail -n 20 "$LOG_DIR/backend.log" 2>/dev/null | grep -q "NODE_ENV=production\|PRODUCTION mode"; then
+        BACKEND_MODE="PRODUCTION"
+    elif tail -n 20 "$LOG_DIR/backend.log" 2>/dev/null | grep -q "NODE_ENV=development\|DEVELOPMENT mode"; then
+        BACKEND_MODE="DEVELOPMENT"
+    fi
+fi
+
+if [ "$FRONTEND_MODE" = "UNKNOWN" ] && [ -f "$LOG_DIR/frontend.log" ]; then
+    if tail -n 20 "$LOG_DIR/frontend.log" 2>/dev/null | grep -q "preview\|PRODUCTION"; then
+        FRONTEND_MODE="PRODUCTION"
+    elif tail -n 20 "$LOG_DIR/frontend.log" 2>/dev/null | grep -q "dev server\|DEVELOPMENT"; then
+        FRONTEND_MODE="DEVELOPMENT"
+    fi
+fi
+
+if [ "$VITE_PROXY_STATUS" = "UNKNOWN" ] && [ -f "$LOG_DIR/frontend.log" ] && [ "$FRONTEND_MODE" = "PRODUCTION" ]; then
+    if tail -n 20 "$LOG_DIR/frontend.log" 2>/dev/null | grep -q "VITE_USE_PROXY=false\|proxy: DISABLED"; then
+        VITE_PROXY_STATUS="DISABLED"
+    elif tail -n 20 "$LOG_DIR/frontend.log" 2>/dev/null | grep -q "VITE_USE_PROXY=true\|proxy: ENABLED"; then
+        VITE_PROXY_STATUS="ENABLED"
+    fi
+fi
+
+# Display mode information
+echo "Server Configuration:"
+if [ "$FRONTEND_MODE" != "UNKNOWN" ] || [ "$BACKEND_MODE" != "UNKNOWN" ]; then
+    if [ "$FRONTEND_MODE" = "$BACKEND_MODE" ] && [ "$FRONTEND_MODE" != "UNKNOWN" ]; then
+        echo "  Mode: $FRONTEND_MODE"
+    else
+        if [ "$BACKEND_MODE" != "UNKNOWN" ]; then
+            echo "  Backend Mode: $BACKEND_MODE"
+        fi
+        if [ "$FRONTEND_MODE" != "UNKNOWN" ]; then
+            echo "  Frontend Mode: $FRONTEND_MODE"
+        fi
+    fi
+    if [ "$VITE_PROXY_STATUS" != "UNKNOWN" ] && [ "$FRONTEND_MODE" = "PRODUCTION" ]; then
+        echo "  Vite Proxy: $VITE_PROXY_STATUS"
+    elif [ "$FRONTEND_MODE" = "DEVELOPMENT" ]; then
+        echo "  Vite Proxy: ENABLED (required for development)"
+    fi
+else
+    echo "  Mode: Not detected (servers may not be running)"
+fi
+echo ""
 
 # Check PID file
 if [ ! -f "$PID_FILE" ]; then
@@ -71,7 +147,15 @@ else
     if [ ${#PIDS[@]} -ge 1 ]; then
         BACKEND_PID=${PIDS[0]}
         if ps -p $BACKEND_PID > /dev/null 2>&1; then
-            echo "  Backend (PID $BACKEND_PID):  ✓ Running"
+            # Try to detect backend mode from this specific PID
+            BACKEND_CMD=$(ps -p $BACKEND_PID -o command= 2>/dev/null | tr -d '\n')
+            BACKEND_PID_MODE=""
+            if echo "$BACKEND_CMD" | grep -q "NODE_ENV=production"; then
+                BACKEND_PID_MODE=" (PRODUCTION)"
+            elif echo "$BACKEND_CMD" | grep -q "NODE_ENV=development"; then
+                BACKEND_PID_MODE=" (DEVELOPMENT)"
+            fi
+            echo "  Backend (PID $BACKEND_PID):  ✓ Running$BACKEND_PID_MODE"
         else
             echo "  Backend (PID $BACKEND_PID):  ✗ Not running"
         fi
@@ -89,10 +173,18 @@ else
             else
                 FRONTEND_MODE=""
             fi
+            # Check Vite proxy status for this specific PID
+            FRONTEND_PID_PROXY=""
+            if echo "$FRONTEND_CMD" | grep -q "VITE_USE_PROXY=false"; then
+                FRONTEND_PID_PROXY=", no proxy"
+            elif echo "$FRONTEND_CMD" | grep -q "VITE_USE_PROXY=true"; then
+                FRONTEND_PID_PROXY=", with proxy"
+            fi
+            
             if [ -n "$FRONTEND_MODE" ]; then
-                echo "  Frontend (PID $FRONTEND_PID): ✓ Running ($FRONTEND_MODE)"
+                echo "  Frontend (PID $FRONTEND_PID): ✓ Running ($FRONTEND_MODE$FRONTEND_PID_PROXY)"
             else
-                echo "  Frontend (PID $FRONTEND_PID): ✓ Running"
+                echo "  Frontend (PID $FRONTEND_PID): ✓ Running$FRONTEND_PID_PROXY"
             fi
         else
             echo "  Frontend (PID $FRONTEND_PID): ✗ Not running"
