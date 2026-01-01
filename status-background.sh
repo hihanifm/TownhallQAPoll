@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to check the status of background servers
-# LINUX/macOS ONLY - For Windows, check Task Manager or use netstat
+# LINUX/macOS ONLY
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"

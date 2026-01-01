@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to start both backend and frontend servers in the background
-# LINUX/macOS ONLY - For Windows, use the batch scripts or PowerShell scripts
+# LINUX/macOS ONLY
 # Usage: ./start-background.sh [--prod|-p] [--no-vite-proxy|-nvp]
 #   --prod, -p: Start in production mode
 #   --no-vite-proxy, -nvp: Disable Vite proxy, frontend will make direct API calls
