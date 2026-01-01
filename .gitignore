@@ -51,7 +51,15 @@ server.pids
 
 # PM2
 .pm2/
+**/.pm2/
 pm2-*.log
+**/pm2-*.log
+dump.pm2
+dump.pm2.bak
+pm2.log
+*.pid
+pids/
+**/pids/
 
 # OS files
 .DS_Store

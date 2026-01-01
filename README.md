@@ -455,15 +455,61 @@ npm run pm2:delete
 npm run pm2:save
 ```
 
+### Development vs Production Mode
+
+PM2 supports both development and production environments:
+
+**Production Mode (Default for setup script):**
+```bash
+# Start in production mode (builds frontend first)
+npm run pm2:start:prod
+# or
+pm2 start ecosystem.config.js --env production
+```
+- Backend: `NODE_ENV=production` (strict security)
+- Frontend: Runs `npm run preview` (serves built files)
+- Frontend must be built first: `npm run build:frontend`
+- Uses direct backend calls (`VITE_USE_PROXY=false`)
+
+**Development Mode:**
+```bash
+# Start in development mode
+npm run pm2:start:dev
+# or
+pm2 start ecosystem.config.js --env development
+```
+- Backend: `NODE_ENV=development` (more permissive)
+- Frontend: Runs `npm run dev` (Vite dev server with hot reload)
+- No build required
+- Uses Vite proxy (`VITE_USE_PROXY=true`)
+
+**Switching between modes:**
+```bash
+# Restart in development mode
+npm run pm2:restart:dev
+
+# Restart in production mode (rebuilds frontend)
+npm run pm2:restart:prod
+```
+
+**Note:** The frontend wrapper script (`frontend/start-pm2.sh`) automatically detects `NODE_ENV` and runs the appropriate command (`dev` or `preview`).
+
 ### PM2 Configuration
 
 The PM2 configuration is in `ecosystem.config.js`. It includes:
 
-- **Backend**: Runs on port 3001 in production mode
-- **Frontend**: Runs on port 3000 (built and served via Vite preview)
+- **Backend**: Runs on port 3001
+  - Development: `NODE_ENV=development` (more permissive CORS)
+  - Production: `NODE_ENV=production` (strict security)
+- **Frontend**: Runs on port 3000
+  - Development: `npm run dev` (Vite dev server with hot reload)
+  - Production: `npm run preview` (serves built files, requires build first)
 - **Auto-restart**: Enabled with memory limits
 - **Logging**: Logs saved to `logs/` directory
-- **Environment**: Production mode with proper environment variables
+- **Environments**: 
+  - `env`: Default (development)
+  - `env_development`: Explicit development settings
+  - `env_production`: Production settings
 
 ### Customizing Environment Variables
 

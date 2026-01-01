@@ -2,15 +2,26 @@ module.exports = {
   apps: [
     {
       name: 'townhall-backend',
-      script: './backend/src/server.js',
+      script: './start-pm2.sh',
       cwd: './backend',
       instances: 1,
       exec_mode: 'fork',
+      // Default environment (used when no --env flag is specified)
+      // Backend wrapper script (start-pm2.sh) will use 'npm run start' in development, 'npm run start:prod' in production
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: 'development',
         PORT: 3001,
         HOST: '127.0.0.1', // Default to localhost for security
       },
+      // Development environment (use with: pm2 start ecosystem.config.js --env development)
+      // Backend will run 'npm run start' (node src/server.js)
+      env_development: {
+        NODE_ENV: 'development',
+        PORT: 3001,
+        HOST: '127.0.0.1',
+      },
+      // Production environment (use with: pm2 start ecosystem.config.js --env production)
+      // Backend will run 'npm run start:prod' (NODE_ENV=production node src/server.js)
       env_production: {
         NODE_ENV: 'production',
         PORT: 3001,
@@ -38,21 +49,33 @@ module.exports = {
     },
     {
       name: 'townhall-frontend',
-      script: 'npm',
-      args: 'run preview',
+      script: './start-pm2.sh',
       cwd: './frontend',
       instances: 1,
       exec_mode: 'fork',
+      // Default environment (used when no --env flag is specified)
+      // Frontend wrapper script (start-pm2.sh) will use 'dev' in development, 'preview' in production
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: 'development',
         PORT: 3000,
-        VITE_USE_PROXY: 'false', // Direct backend calls in production
+        VITE_USE_PROXY: 'true', // Use Vite proxy in development
         VITE_API_URL: 'http://localhost:3001',
       },
+      // Development environment (use with: pm2 start ecosystem.config.js --env development)
+      // Frontend will run 'npm run dev' (Vite dev server with hot reload)
+      env_development: {
+        NODE_ENV: 'development',
+        PORT: 3000,
+        VITE_USE_PROXY: 'true', // Use Vite proxy in development
+        VITE_API_URL: 'http://localhost:3001',
+      },
+      // Production environment (use with: pm2 start ecosystem.config.js --env production)
+      // Frontend will run 'npm run preview' (serves built files)
+      // Note: Frontend must be built first: npm run build:frontend
       env_production: {
         NODE_ENV: 'production',
         PORT: 3000,
-        VITE_USE_PROXY: 'false',
+        VITE_USE_PROXY: 'false', // Direct backend calls in production
         VITE_API_URL: 'http://localhost:3001',
       },
       // Auto-restart settings
