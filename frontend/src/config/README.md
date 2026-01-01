@@ -1,116 +1,105 @@
-# Browser Restriction Configuration
+# Frontend Configuration
 
-This configuration file allows you to control browser restrictions for the application.
+## API Configuration (`apiConfig.js`)
 
-## Configuration Options
+Controls how the frontend communicates with the backend API.
 
-Edit `browserConfig.js` to customize browser restrictions:
+### Configuration Options
 
-### `enabled` (boolean)
-- `true`: Enable browser restrictions (default)
-- `false`: Disable browser restrictions, allow all browsers
+#### Environment Variables
 
-### `allowedBrowsers` (array of strings)
-List of allowed browser names (case-insensitive). Available options:
-- `'Microsoft Edge'` - Chromium-based Edge
-- `'Microsoft Edge (Legacy)'` - EdgeHTML-based Edge (old Edge)
-- `'Google Chrome'`
-- `'Mozilla Firefox'`
-- `'Safari'`
-- `'Opera'`
-- `'Unknown Browser'`
+Create a `.env` file in the `frontend/` directory (or set environment variables):
 
-**Examples:**
-- `['Microsoft Edge', 'Microsoft Edge (Legacy)']` - Only Edge (default)
-- `['Microsoft Edge', 'Google Chrome']` - Allow Edge and Chrome
-- `['Google Chrome', 'Mozilla Firefox', 'Safari']` - Allow Chrome, Firefox, and Safari
-- `[]` - If empty and `enabled: true`, defaults to Microsoft Edge only
+**`VITE_USE_PROXY`** (default: `true`)
+- `true` or not set: Use Vite as reverse proxy (recommended for development)
+- `false`: Frontend makes direct API calls to backend
 
-### `customMessage` (string)
-- Custom message to display when browser is not allowed
-- Leave empty (`''`) to use the default message
-- Supports HTML (use `<br />` for line breaks)
+**`VITE_API_URL`** (default: `http://localhost:3001`)
+- Backend API URL (only used when `VITE_USE_PROXY=false`)
+- Can be set to any backend URL (e.g., `http://192.168.1.100:3001`, `https://api.example.com`)
 
-### `showDownloadLink` (boolean)
-- `true`: Show download instructions and link to Microsoft Edge (default)
-- `false`: Hide download instructions
+### Usage Modes
 
-### `allowOverride` (boolean)
-- `true`: Show a "Continue Anyway" button that allows users to bypass the restriction (default)
-- `false`: Hide the override option, users must use an allowed browser
-- When enabled, users can click the button to proceed, and their choice is saved in localStorage
+#### Mode 1: Vite Proxy (Default - Recommended for Development)
 
-## Examples
-
-### Example 1: Disable restrictions (allow all browsers)
-```javascript
-export const browserConfig = {
-  enabled: false,
-  allowedBrowsers: [],
-  customMessage: '',
-  showDownloadLink: true,
-};
+```bash
+# .env file (or no .env - defaults to proxy mode)
+VITE_USE_PROXY=true
+# or just don't set it (defaults to true)
 ```
 
-### Example 2: Allow only Edge and Chrome
+**How it works:**
+- Frontend makes requests to `/api/*`
+- Vite dev server proxies these to the backend
+- No CORS issues
+- Origin headers are preserved for backend validation
+
+**Example:**
 ```javascript
-export const browserConfig = {
-  enabled: true,
-  allowedBrowsers: ['Microsoft Edge', 'Google Chrome'],
-  customMessage: '',
-  showDownloadLink: true,
-};
+// Frontend code calls: fetch('/api/campaigns')
+// Vite proxies to: http://localhost:3001/api/campaigns
 ```
 
-### Example 3: Allow all modern browsers except Safari
-```javascript
-export const browserConfig = {
-  enabled: true,
-  allowedBrowsers: ['Microsoft Edge', 'Google Chrome', 'Mozilla Firefox', 'Opera'],
-  customMessage: '',
-  showDownloadLink: false,
-};
+#### Mode 2: Direct Backend Calls
+
+```bash
+# .env file
+VITE_USE_PROXY=false
+VITE_API_URL=http://localhost:3001
 ```
 
-### Example 4: Custom message
+**How it works:**
+- Frontend makes direct requests to backend URL
+- No proxy involved
+- Requires CORS to be properly configured on backend
+- Useful for production deployments where frontend and backend are on different domains
+
+**Example:**
 ```javascript
-export const browserConfig = {
-  enabled: true,
-  allowedBrowsers: ['Microsoft Edge'],
-  customMessage: 'Please use Microsoft Edge to access this application.<br />This ensures a consistent experience for all users.',
-  showDownloadLink: true,
-  allowOverride: true,
-};
+// Frontend code calls: fetch('/api/campaigns')
+// Actually calls: http://localhost:3001/api/campaigns
 ```
 
-### Example 5: Strict mode (no override allowed)
-```javascript
-export const browserConfig = {
-  enabled: true,
-  allowedBrowsers: ['Microsoft Edge'],
-  customMessage: '',
-  showDownloadLink: true,
-  allowOverride: false, // Users cannot bypass the restriction
-};
+### Production Builds
+
+For production builds, the configuration is baked in at build time:
+
+```bash
+# Build with proxy enabled (default)
+npm run build
+
+# Build with direct backend calls
+VITE_USE_PROXY=false VITE_API_URL=https://api.example.com npm run build
 ```
 
-## User Override Feature
+### Examples
 
-When `allowOverride` is set to `true`, users will see a "Continue Anyway" button on the browser restriction screen. When clicked:
+#### Development with Proxy (Default)
+```bash
+# No .env needed - works out of the box
+npm run dev
+```
 
-- The override is applied for the current session only (stored in component state)
-- The application will load normally for that session
-- **The override does NOT persist** - users will be asked again on page refresh or when using a different browser
-- This ensures users are reminded each time they access the application from a non-allowed browser
+#### Development with Direct Calls
+```bash
+# Create frontend/.env
+echo "VITE_USE_PROXY=false" > frontend/.env
+echo "VITE_API_URL=http://localhost:3001" >> frontend/.env
 
-**Note:** The override is session-only, so users must click "Continue Anyway" each time they:
-- Refresh the page
-- Open the application in a new tab/window
-- Switch to a different browser
+npm run dev
+```
 
-## Notes
+#### Production Build with Direct Calls
+```bash
+# Build for production with direct backend calls
+VITE_USE_PROXY=false \
+VITE_API_URL=https://api.yourdomain.com \
+npm run build
+```
 
-- Changes to the configuration require rebuilding the frontend (`npm run build`)
-- Browser detection is based on the user agent string
-- The restriction check happens immediately when the app loads
-- User override is session-only and does not persist across page refreshes or browser sessions
+### Notes
+
+- **SSE (Server-Sent Events)**: Also respects the proxy configuration
+- **CORS**: When using direct calls, ensure backend CORS is configured to allow your frontend origin
+- **Environment Variables**: Must be prefixed with `VITE_` to be accessible in the frontend code
+- **Build Time**: Configuration is determined at build time, not runtime

@@ -4,6 +4,7 @@ import QuestionCard from './QuestionCard';
 import CreateQuestionForm from './CreateQuestionForm';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import { getUserId } from '../utils/userId';
+import { SSE_BASE_URL } from '../config/apiConfig';
 import './QuestionPanel.css';
 
 function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
@@ -24,7 +25,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
   useEffect(() => {
     if (!campaignId) return;
 
-    const eventSource = new EventSource(`/api/sse/campaigns/${campaignId}`);
+    const eventSource = new EventSource(`${SSE_BASE_URL}/campaigns/${campaignId}`);
     
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);

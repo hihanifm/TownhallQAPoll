@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
+import { SSE_BASE_URL } from '../config/apiConfig';
 import './CampaignList.css';
 
 function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated }) {
@@ -17,7 +18,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
 
   // SSE connection for real-time campaign updates
   useEffect(() => {
-    const eventSource = new EventSource('/api/sse/campaigns');
+    const eventSource = new EventSource(`${SSE_BASE_URL}/campaigns`);
     
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);

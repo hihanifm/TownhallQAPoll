@@ -81,6 +81,28 @@ npm run dev:frontend
 
 The frontend will run on `http://localhost:3000`
 
+**Frontend API Configuration:**
+- **Default (Proxy Mode)**: Frontend uses Vite as a reverse proxy to communicate with the backend
+  - No configuration needed - works out of the box
+  - Requests go through Vite dev server: `/api/*` → `http://localhost:3001/api/*`
+  - No CORS issues
+- **Direct Mode**: Frontend makes direct API calls to backend
+  - **Option 1**: Use `--no-vite-proxy` flag with start script:
+    ```bash
+    ./start-background.sh --no-vite-proxy
+    # or use the shortcut:
+    ./start-background.sh -nvp
+    ```
+  - **Option 2**: Create `frontend/.env` file:
+    ```
+    VITE_USE_PROXY=false
+    VITE_API_URL=http://localhost:3001
+    ```
+  - Requires backend CORS to be properly configured
+  - Useful for production deployments
+
+See `frontend/src/config/README.md` for detailed configuration options.
+
 3. Open your browser and navigate to `http://localhost:3000`
 
 ## Running in Background (Linux/macOS only)
@@ -101,19 +123,35 @@ To run both servers in the background on Linux or macOS, use the provided shell 
    ./start-background.sh -p
    ```
 
-3. **Check server status:**
+3. **Start with direct backend calls (no Vite proxy):**
+   ```bash
+   ./start-background.sh --no-vite-proxy
+   # or use the shortcut:
+   ./start-background.sh -nvp
+   # Can be combined with production mode:
+   ./start-background.sh --prod --no-vite-proxy
+   # or:
+   ./start-background.sh -p -nvp
+   ```
+
+4. **Check server status:**
    ```bash
    ./status-background.sh
    ```
 
-4. **Stop both servers:**
+5. **Stop both servers:**
    ```bash
    ./stop-background.sh
    ```
 
-**Note**: The script automatically sets `NODE_ENV`:
-- Development mode (default): `NODE_ENV=development` - more permissive, allows curl/Postman
-- Production mode (`--prod`): `NODE_ENV=production` - strict security, blocks direct API access
+**Notes**: 
+- The script automatically sets `NODE_ENV`:
+  - Development mode (default): `NODE_ENV=development` - more permissive, allows curl/Postman
+  - Production mode (`--prod`): `NODE_ENV=production` - strict security, blocks direct API access
+- **Vite Proxy** (default: enabled):
+  - Default: Frontend uses Vite as reverse proxy (`/api/*` → backend)
+  - Use `--no-vite-proxy` (or `-nvp`) to disable proxy and make direct backend calls
+  - When proxy is disabled, frontend calls backend directly (requires CORS configuration)
 
 ### What the scripts do:
 
@@ -174,11 +212,11 @@ multitail logs/backend.log logs/frontend.log
 
 4. **Open your browser** and go to `http://localhost:3000`
 
-#### Option 2: Using Command Prompt or PowerShell
+#### Option 2: Using Command Prompt
 
-1. **Open Command Prompt or PowerShell**
-   - Press `Win + R`, type `cmd` or `powershell`, and press Enter
-   - Or search for "Command Prompt" or "PowerShell" in the Start menu
+1. **Open Command Prompt**
+   - Press `Win + R`, type `cmd`, and press Enter
+   - Or search for "Command Prompt" in the Start menu
 
 2. **Navigate to the project directory**
    ```cmd
@@ -259,7 +297,7 @@ To allow access from other devices on your local network:
   3. Verify your IP address with `ipconfig`
 
 **Issue: "Permission denied" errors**
-- Solution: Run Command Prompt or PowerShell as Administrator (Right-click → "Run as administrator")
+- Solution: Run Command Prompt as Administrator (Right-click → "Run as administrator")
 
 **Issue: Database errors**
 - Solution: Make sure the `backend/data` directory exists and has write permissions. The database will be created automatically on first run.

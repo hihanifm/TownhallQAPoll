@@ -2,17 +2,33 @@
 
 # Script to start both backend and frontend servers in the background
 # LINUX/macOS ONLY - For Windows, use the batch scripts or PowerShell scripts
-# Usage: ./start-background.sh [--prod|-p]  (use --prod for production mode)
+# Usage: ./start-background.sh [--prod|-p] [--no-vite-proxy|-nvp]
+#   --prod, -p: Start in production mode
+#   --no-vite-proxy, -nvp: Disable Vite proxy, frontend will make direct API calls
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
 LOG_DIR="$SCRIPT_DIR/logs"
 
-# Check for production mode
+# Parse command line arguments
 PROD_MODE=false
-if [[ "$1" == "--prod" ]] || [[ "$1" == "-p" ]]; then
-    PROD_MODE=true
-fi
+NO_VITE_PROXY=false
+
+for arg in "$@"; do
+    case $arg in
+        --prod|-p)
+            PROD_MODE=true
+            ;;
+        --no-vite-proxy|-nvp)
+            NO_VITE_PROXY=true
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Usage: ./start-background.sh [--prod|-p] [--no-vite-proxy|-nvp]"
+            exit 1
+            ;;
+    esac
+done
 
 # Create logs directory if it doesn't exist
 mkdir -p "$LOG_DIR"
@@ -144,6 +160,21 @@ echo "✓ Backend started successfully with PID: $BACKEND_PID"
 echo "Starting frontend server..."
 cd "$SCRIPT_DIR/frontend"
 
+# Set VITE_USE_PROXY environment variable
+if [ "$NO_VITE_PROXY" = true ]; then
+    export VITE_USE_PROXY=false
+    echo "  Vite proxy: DISABLED (direct backend calls)"
+else
+    export VITE_USE_PROXY=true
+    echo "  Vite proxy: ENABLED (default)"
+fi
+
+# Set VITE_API_URL if not already set (for direct mode)
+if [ "$NO_VITE_PROXY" = true ] && [ -z "$VITE_API_URL" ]; then
+    export VITE_API_URL="http://localhost:3001"
+    echo "  Backend URL: $VITE_API_URL"
+fi
+
 if [ "$PROD_MODE" = true ]; then
     echo "Building frontend for production..."
     npm run build > "$LOG_DIR/frontend-build.log" 2>&1
@@ -154,10 +185,10 @@ if [ "$PROD_MODE" = true ]; then
         exit 1
     fi
     echo "Starting frontend production server..."
-    nohup npm run preview > "$LOG_DIR/frontend.log" 2>&1 &
+    nohup env VITE_USE_PROXY=$VITE_USE_PROXY VITE_API_URL=$VITE_API_URL npm run preview > "$LOG_DIR/frontend.log" 2>&1 &
 else
     echo "Starting frontend development server..."
-    nohup npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
+    nohup env VITE_USE_PROXY=$VITE_USE_PROXY VITE_API_URL=$VITE_API_URL npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
 fi
 
 FRONTEND_PID=$!
@@ -201,6 +232,11 @@ if [ "$PROD_MODE" = true ]; then
 else
     echo "  Mode: DEVELOPMENT (hot reload enabled)"
 fi
+if [ "$NO_VITE_PROXY" = true ]; then
+    echo "  API Mode: Direct backend calls (no Vite proxy)"
+else
+    echo "  API Mode: Vite proxy enabled"
+fi
 echo ""
 echo "Access URLs:"
 echo "  Backend:"
@@ -226,6 +262,9 @@ echo "To check status, run: ./status-background.sh"
 echo ""
 if [ "$PROD_MODE" = false ]; then
     echo "To start in production mode, run: ./start-background.sh --prod"
+fi
+if [ "$NO_VITE_PROXY" = false ]; then
+    echo "To disable Vite proxy, run: ./start-background.sh --no-vite-proxy (or -nvp)"
     echo ""
 fi
 echo "Note: Processes are running in the background and will continue"
