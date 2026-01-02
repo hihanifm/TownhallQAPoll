@@ -2,7 +2,6 @@
 
 ### Changed
 - UI: Added responsive mobile design with flexible layout
-- UI: Moved edit button to left for consistent vote button alignment
 
 ---
 
