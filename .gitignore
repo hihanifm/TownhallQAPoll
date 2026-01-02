@@ -58,6 +58,10 @@ coverage/
 *.lcov
 .nyc_output/
 
+# Backups
+backups/
+*.db.gz
+
 # PM2
 .pm2/
 **/.pm2/

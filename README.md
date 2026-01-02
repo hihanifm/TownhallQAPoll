@@ -773,6 +773,146 @@ cd backend && npm run test:ci
 cd frontend && npm test
 ```
 
+## Database Backup
+
+The application includes a comprehensive backup system for the SQLite database in production environments.
+
+### Manual Backup
+
+**Create a backup:**
+```bash
+./backup-db.sh
+```
+
+**Options:**
+- `--retention DAYS` - Keep backups for N days (default: 30)
+- `--compress` - Compress backup file (saves space)
+- `--no-verify` - Skip backup verification
+- `--simple-copy` - Use simple file copy instead of SQLite backup command
+
+**Examples:**
+```bash
+# Basic backup
+./backup-db.sh
+
+# Compressed backup with 60-day retention
+./backup-db.sh --compress --retention 60
+
+# Quick backup without verification
+./backup-db.sh --no-verify
+```
+
+### Restore Database
+
+**Restore from backup:**
+```bash
+./restore-db.sh <backup_file>
+```
+
+**Examples:**
+```bash
+# List available backups and restore
+./restore-db.sh
+
+# Restore specific backup
+./restore-db.sh townhall_backup_20240115_020000.db
+
+# Force restore (skip confirmation)
+./restore-db.sh townhall_backup_20240115_020000.db --force
+```
+
+**Important:** The restore script automatically creates a safety backup of your current database before restoring.
+
+### Automated Backups (Cron)
+
+**Set up automated backups:**
+```bash
+./setup-backup-cron.sh
+```
+
+This interactive script helps you:
+1. Set up daily backups (recommended: 2 AM)
+2. Set up hourly backups
+3. Configure custom schedule
+4. Remove existing backup cron job
+
+**View your cron jobs:**
+```bash
+crontab -l
+```
+
+**Manual cron setup example:**
+```bash
+# Daily backup at 2 AM with compression and 30-day retention
+0 2 * * * /path/to/TownhallQAPoll/backup-db.sh --compress --retention 30 >> /path/to/TownhallQAPoll/logs/backup-cron.log 2>&1
+```
+
+### Backup Storage
+
+- **Location:** `./backups/` directory
+- **Naming:** `townhall_backup_YYYYMMDD_HHMMSS.db`
+- **Compressed:** `townhall_backup_YYYYMMDD_HHMMSS.db.gz`
+
+### Backup Strategies
+
+**1. Local Backups (Default)**
+- Backups stored in `./backups/` directory
+- Automatic cleanup based on retention policy
+- Fast and simple
+
+**2. Remote Backups (Recommended for Production)**
+You can extend the backup script to:
+- Copy backups to cloud storage (S3, Google Drive, etc.)
+- Send backups to remote server via SCP/RSYNC
+- Upload to backup service
+
+**Example: Add S3 upload to backup script:**
+```bash
+# After backup creation, add:
+aws s3 cp "$BACKUP_PATH" s3://your-bucket/backups/
+```
+
+**3. PM2 Integration**
+You can add backup hooks to PM2 ecosystem config:
+```javascript
+// In ecosystem.config.js
+post_update: './backup-db.sh --compress'
+```
+
+### Backup Best Practices
+
+1. **Regular Backups:** Set up daily automated backups
+2. **Retention Policy:** Keep at least 30 days of backups
+3. **Off-site Storage:** Copy backups to remote location
+4. **Test Restores:** Periodically test restore process
+5. **Monitor Backups:** Check backup logs regularly
+6. **Before Updates:** Always backup before deployments
+
+### Backup Verification
+
+The backup script automatically:
+- Verifies backup file was created
+- Checks file size matches original
+- Validates SQLite database integrity
+- Reports any issues
+
+### Troubleshooting
+
+**Backup fails:**
+- Check database file permissions
+- Ensure backup directory is writable
+- Verify SQLite is installed (`sqlite3 --version`)
+
+**Restore fails:**
+- Ensure backup file is not corrupted
+- Check database directory permissions
+- Verify backup file is complete (check file size)
+
+**Cron job not running:**
+- Check cron service is running: `service cron status`
+- View cron logs: `grep CRON /var/log/syslog`
+- Check backup log: `tail -f logs/backup-cron.log`
+
 ## License
 
 ISC
