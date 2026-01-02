@@ -115,11 +115,26 @@ fi
 
 # Run tests before release
 echo ""
-echo -e "${BLUE}Running tests before release...${NC}"
-if npm test > /dev/null 2>&1; then
+echo -e "${BLUE}==========================================${NC}"
+echo -e "${BLUE}Step 1: Running Tests${NC}"
+echo -e "${BLUE}==========================================${NC}"
+echo ""
+echo -e "${BLUE}Running test suite...${NC}"
+echo ""
+
+# Run tests and capture output
+TEST_OUTPUT=$(npm test 2>&1)
+TEST_EXIT_CODE=$?
+
+# Display test output
+echo "$TEST_OUTPUT"
+echo ""
+
+if [ $TEST_EXIT_CODE -eq 0 ]; then
   echo -e "${GREEN}✓ All tests passed${NC}"
 else
   echo -e "${RED}❌ Tests failed!${NC}"
+  echo ""
   echo "Please fix failing tests before creating a release."
   read -p "Continue anyway? (y/N): " continue_anyway
   if [ "$continue_anyway" != "y" ] && [ "$continue_anyway" != "Y" ]; then
@@ -131,6 +146,10 @@ echo ""
 
 # Get current version
 current_version=$(get_current_version)
+echo -e "${BLUE}==========================================${NC}"
+echo -e "${BLUE}Step 2: Version Selection${NC}"
+echo -e "${BLUE}==========================================${NC}"
+echo ""
 echo -e "${BLUE}Current version: ${current_version}${NC}"
 echo ""
 
@@ -171,30 +190,43 @@ fi
 
 # Update versions in all package.json files
 echo ""
-echo "Updating versions in package.json files..."
+echo -e "${BLUE}==========================================${NC}"
+echo -e "${BLUE}Step 3: Updating Files${NC}"
+echo -e "${BLUE}==========================================${NC}"
+echo ""
+echo -e "${BLUE}Updating versions in package.json files...${NC}"
 update_package_version "$new_version" "package.json"
+echo -e "  ${GREEN}✓${NC} package.json"
 update_package_version "$new_version" "backend/package.json"
+echo -e "  ${GREEN}✓${NC} backend/package.json"
 update_package_version "$new_version" "frontend/package.json"
-echo -e "${GREEN}✓ Versions updated${NC}"
+echo -e "  ${GREEN}✓${NC} frontend/package.json"
+echo -e "${GREEN}✓ All versions updated${NC}"
+echo ""
 
 # Update README version badge
-echo "Updating README version badge..."
+echo -e "${BLUE}Updating README version badge...${NC}"
 sed -i.bak "s/\*\*Current Version: [0-9.]\+\*\*/**Current Version: ${new_version}**/" README.md
 rm -f README.md.bak
 echo -e "${GREEN}✓ README updated${NC}"
+echo ""
 
 # Update CHANGELOG
-echo "Updating CHANGELOG.md..."
+echo -e "${BLUE}Updating CHANGELOG.md...${NC}"
 update_changelog "$new_version"
 echo -e "${GREEN}✓ CHANGELOG updated${NC}"
+echo ""
 
 # Show changes
+echo -e "${BLUE}==========================================${NC}"
+echo -e "${BLUE}Step 4: Review Changes${NC}"
+echo -e "${BLUE}==========================================${NC}"
 echo ""
 echo -e "${BLUE}Changes to be committed:${NC}"
 git status --short
+echo ""
 
 # Ask for commit message
-echo ""
 read -p "Enter release commit message (or press Enter for default): " commit_msg
 if [ -z "$commit_msg" ]; then
   commit_msg="Release v${new_version}"
@@ -202,33 +234,56 @@ fi
 
 # Commit changes
 echo ""
-echo "Committing version bump..."
+echo -e "${BLUE}==========================================${NC}"
+echo -e "${BLUE}Step 5: Committing Changes${NC}"
+echo -e "${BLUE}==========================================${NC}"
+echo ""
+echo -e "${BLUE}Committing version bump...${NC}"
 git add package.json backend/package.json frontend/package.json README.md CHANGELOG.md
 git commit -m "$commit_msg"
 echo -e "${GREEN}✓ Changes committed${NC}"
+echo ""
 
 # Create git tag
+echo -e "${BLUE}==========================================${NC}"
+echo -e "${BLUE}Step 6: Creating Git Tag${NC}"
+echo -e "${BLUE}==========================================${NC}"
 echo ""
 read -p "Create git tag v${new_version}? (Y/n): " create_tag
 if [ "$create_tag" != "n" ] && [ "$create_tag" != "N" ]; then
+  echo -e "${BLUE}Creating tag v${new_version}...${NC}"
   git tag -a "v${new_version}" -m "Release v${new_version}"
   echo -e "${GREEN}✓ Git tag created: v${new_version}${NC}"
+else
+  echo -e "${YELLOW}⚠️  Skipping tag creation${NC}"
 fi
+echo ""
 
 # Push to remote
+echo -e "${BLUE}==========================================${NC}"
+echo -e "${BLUE}Step 7: Pushing to Remote${NC}"
+echo -e "${BLUE}==========================================${NC}"
 echo ""
 read -p "Push to remote? (Y/n): " push_remote
 if [ "$push_remote" != "n" ] && [ "$push_remote" != "N" ]; then
-  echo "Pushing to remote..."
+  echo -e "${BLUE}Pushing commits to origin/$current_branch...${NC}"
   git push origin "$current_branch"
+  echo -e "${GREEN}✓ Commits pushed${NC}"
   
   if [ "$create_tag" != "n" ] && [ "$create_tag" != "N" ]; then
+    echo -e "${BLUE}Pushing tag v${new_version}...${NC}"
     git push origin "v${new_version}"
     echo -e "${GREEN}✓ Tag pushed to remote${NC}"
   fi
-  
-  echo -e "${GREEN}✓ Pushed to remote${NC}"
+else
+  echo -e "${YELLOW}⚠️  Skipping push${NC}"
+  echo "  You can push manually later with:"
+  echo "    git push origin $current_branch"
+  if [ "$create_tag" != "n" ] && [ "$create_tag" != "N" ]; then
+    echo "    git push origin v${new_version}"
+  fi
 fi
+echo ""
 
 echo ""
 echo -e "${GREEN}==========================================${NC}"
