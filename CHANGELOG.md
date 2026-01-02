@@ -1,13 +1,8 @@
 ## [1.1.2] - 2026-01-02
 
-### Added
-- 
-
 ### Changed
-- 
-
-### Fixed
-- 
+- UI: Moved edit button to left side for consistent vote button alignment
+- Release script: Added automatic test execution before release
 
 ---
 
