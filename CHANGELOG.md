@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2024-12-19
+
+### Fixed
+- **CORS Optimization**: Reduced frequency of OPTIONS preflight requests
+  - Added `maxAge: 86400` to cache preflight responses for 24 hours
+  - OPTIONS requests now sent once per day per origin instead of before every POST/PATCH/DELETE
+  - Improves performance and reduces network overhead
+
 ## [1.1.0] - 2024-12-19
 
 ### Added

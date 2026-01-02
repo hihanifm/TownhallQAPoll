@@ -2,7 +2,7 @@
 
 A web application that helps collect and rank the top 5 questions from employees to discuss in town hall meetings.
 
-**Current Version: 1.1.0** | [Changelog](CHANGELOG.md)
+**Current Version: 1.1.1** | [Changelog](CHANGELOG.md)
 
 ![Application Screenshot](screenshot.png)
 
