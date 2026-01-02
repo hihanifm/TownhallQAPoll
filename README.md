@@ -683,6 +683,96 @@ cd frontend
 npm run dev
 ```
 
+## Testing
+
+The project includes comprehensive unit tests to ensure code quality and prevent regressions.
+
+### Running Tests
+
+**Run all tests:**
+```bash
+npm test
+```
+
+**Run backend tests only:**
+```bash
+npm run test:backend
+# or
+cd backend && npm test
+```
+
+**Run frontend tests only:**
+```bash
+npm run test:frontend
+# or
+cd frontend && npm test
+```
+
+**Watch mode (for development):**
+```bash
+npm run test:watch
+# Runs both backend and frontend tests in watch mode
+```
+
+**Backend watch mode:**
+```bash
+npm run test:backend:watch
+```
+
+**Frontend watch mode:**
+```bash
+npm run test:frontend:watch
+```
+
+### Test Coverage
+
+**Backend:**
+```bash
+cd backend && npm test
+# Coverage report is generated automatically
+```
+
+**Frontend:**
+```bash
+cd frontend && npm test
+# Coverage report is generated automatically
+```
+
+### Test Structure
+
+**Backend Tests** (`backend/__tests__/`):
+- `routes/campaigns.test.js` - Campaign API endpoint tests
+- `routes/questions.test.js` - Question API endpoint tests
+- `routes/votes.test.js` - Vote API endpoint tests
+- Uses Jest with Supertest for API testing
+- Uses a separate test database (`test-townhall.db`)
+
+**Frontend Tests** (`frontend/src/__tests__/`):
+- `components/` - React component tests
+- `services/` - API service tests
+- `utils/` - Utility function tests
+- `config/` - Configuration tests
+- Uses Vitest with React Testing Library
+
+### Writing New Tests
+
+When adding new features, ensure you:
+1. Write tests for new API endpoints (backend)
+2. Write tests for new components (frontend)
+3. Write tests for new utility functions
+4. Run tests before committing: `npm test`
+
+### CI/CD Integration
+
+Tests can be run in CI/CD pipelines:
+```bash
+# Backend CI mode
+cd backend && npm run test:ci
+
+# Frontend CI mode  
+cd frontend && npm test
+```
+
 ## License
 
 ISC

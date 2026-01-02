@@ -7,6 +7,8 @@ backend/data/
 *.db
 *.sqlite
 *.sqlite3
+# Test databases
+backend/data/test-*.db
 
 # Environment variables
 .env
@@ -49,6 +51,12 @@ lerna-debug.log*
 logs/
 server.pids
 .using-pm2
+
+# Test files
+backend/data/test-*.db
+coverage/
+*.lcov
+.nyc_output/
 
 # PM2
 .pm2/
