@@ -113,6 +113,22 @@ if ! git diff-index --quiet HEAD --; then
   exit 1
 fi
 
+# Run tests before release
+echo ""
+echo -e "${BLUE}Running tests before release...${NC}"
+if npm test > /dev/null 2>&1; then
+  echo -e "${GREEN}✓ All tests passed${NC}"
+else
+  echo -e "${RED}❌ Tests failed!${NC}"
+  echo "Please fix failing tests before creating a release."
+  read -p "Continue anyway? (y/N): " continue_anyway
+  if [ "$continue_anyway" != "y" ] && [ "$continue_anyway" != "Y" ]; then
+    exit 1
+  fi
+  echo -e "${YELLOW}⚠️  Proceeding with release despite test failures${NC}"
+fi
+echo ""
+
 # Get current version
 current_version=$(get_current_version)
 echo -e "${BLUE}Current version: ${current_version}${NC}"

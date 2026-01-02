@@ -165,7 +165,19 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, o
 
   return (
     <div className={`question-card ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''} ${isEditing ? 'editing' : ''}`}>
-      <span className="question-number">{number}</span>
+      <div className="question-left-actions">
+        <span className="question-number">{number}</span>
+        {!isEditing && isQuestionCreator && (
+          <button
+            className="edit-question-btn"
+            onClick={handleEdit}
+            disabled={isDeleting || isVoting}
+            title="Edit question"
+          >
+            ✎
+          </button>
+        )}
+      </div>
       <div className="question-content">
         {isEditing ? (
           <div className="edit-question-form">
@@ -216,28 +228,16 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, o
         )}
       </div>
       {!isEditing && (
-        <button
-          className={`upvote-button ${hasVoted ? 'voted' : ''}`}
-          onClick={handleUpvote}
-          disabled={isVoting || isDeleting}
-        >
-          <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
-          <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
-          {voteCount > 0 && <span className="vote-count-inline">{voteCount}</span>}
-        </button>
-      )}
-      {!isEditing && (
-        <div className="question-actions">
-          {isQuestionCreator && (
-            <button
-              className="edit-question-btn"
-              onClick={handleEdit}
-              disabled={isDeleting || isVoting}
-              title="Edit question"
-            >
-              ✎
-            </button>
-          )}
+        <div className="question-right-actions">
+          <button
+            className={`upvote-button ${hasVoted ? 'voted' : ''}`}
+            onClick={handleUpvote}
+            disabled={isVoting || isDeleting}
+          >
+            <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
+            <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
+            {voteCount > 0 && <span className="vote-count-inline">{voteCount}</span>}
+          </button>
           {isCampaignCreator && (
             <button
               className="delete-question-btn"
