@@ -105,7 +105,8 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400 // Cache preflight requests for 24 hours (in seconds)
 }));
 
 // Trust proxy to get real client IP (important for accurate origin validation)
