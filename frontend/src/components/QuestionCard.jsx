@@ -35,17 +35,19 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, o
     }
   }, [question.id]);
 
+  // Sync editText with external question text changes (only when not editing)
+  useEffect(() => {
+    if (!isEditing && question.question_text && question.question_text !== editText) {
+      setEditText(question.question_text);
+    }
+  }, [question.question_text, isEditing]);
+
+  // Handle vote count updates, position changes, and vote status checks
   useEffect(() => {
     const newVoteCount = question.vote_count || 0;
-    const oldVoteCount = previousVoteCountRef.current;
     
     // Update vote count
     setVoteCount(newVoteCount);
-    
-    // Update question text if it changed (from external update)
-    if (question.question_text && question.question_text !== editText && !isEditing) {
-      setEditText(question.question_text);
-    }
     
     // Check if position changed (moved up in list) - only if we have previous number
     if (previousNumber !== undefined && previousNumber > 0 && number < previousNumber) {
@@ -57,11 +59,11 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, o
     previousVoteCountRef.current = newVoteCount;
     previousNumberRef.current = number;
     
-    // Check vote status when question ID changes or on initial load
-    if (question.id) {
+    // Check vote status when question ID changes or on initial load - but not while editing
+    if (question.id && !isEditing) {
       checkVoteStatus();
     }
-  }, [question.id, question.vote_count, question.question_text, number, previousNumber, checkVoteStatus, editText, isEditing]);
+  }, [question.id, question.vote_count, number, previousNumber, checkVoteStatus, isEditing]);
 
   const handleUpvote = async () => {
     if (isVoting) return;
