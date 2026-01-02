@@ -8,6 +8,69 @@
   backdrop-filter: blur(10px);
 }
 
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .campaign-list {
+    width: 100%;
+    border-right: none;
+    border-bottom: 2px solid rgba(59, 130, 246, 0.2);
+    max-height: 40vh;
+    min-height: 200px;
+  }
+
+  .campaign-list-header {
+    padding: 16px;
+  }
+
+  .campaign-list-header h2 {
+    font-size: 18px;
+  }
+
+  .create-campaign-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .campaign-items {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .campaign-item {
+    padding: 12px;
+  }
+
+  .campaign-title {
+    font-size: 15px;
+  }
+
+  .campaign-meta {
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  .create-campaign-form {
+    padding: 16px;
+    margin: 12px;
+  }
+
+  .create-campaign-btn {
+    min-height: 44px; /* Touch-friendly */
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  .campaign-item {
+    padding: 14px;
+  }
+
+  .create-campaign-btn {
+    min-height: 44px;
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2);
+  }
+}
+
 .campaign-list-header {
   padding: 20px;
   border-bottom: 1px solid #e0e0e0;

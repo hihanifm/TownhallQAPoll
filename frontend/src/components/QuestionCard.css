@@ -361,3 +361,134 @@
   margin-left: 6px;
 }
 
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .question-card {
+    padding: 10px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .question-number {
+    font-size: 12px;
+    min-width: 20px;
+  }
+
+  .question-text {
+    font-size: 16px;
+  }
+
+  .question-left-actions {
+    gap: 6px;
+  }
+
+  .question-right-actions {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .upvote-button {
+    padding: 6px 12px;
+    font-size: 11px;
+    height: 32px;
+  }
+
+  .upvote-text {
+    font-size: 11px;
+  }
+
+  .upvote-icon {
+    font-size: 12px;
+  }
+
+  .edit-question-btn,
+  .delete-question-btn {
+    min-width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .edit-question-form {
+    gap: 6px;
+  }
+
+  .edit-question-input {
+    padding: 10px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  .save-edit-btn,
+  .cancel-edit-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  .moderator-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+
+  .edited-badge {
+    font-size: 10px;
+    margin-left: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .question-card {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .question-text {
+    font-size: 14px;
+  }
+
+  .upvote-button {
+    padding: 6px 10px;
+    font-size: 10px;
+    height: 28px;
+  }
+
+  .upvote-text {
+    display: none; /* Hide text on very small screens, show only icon */
+  }
+
+  .vote-count-inline {
+    font-size: 10px;
+  }
+
+  /* Ensure touch targets are at least 44x44px for mobile */
+  .upvote-button,
+  .edit-question-btn,
+  .delete-question-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  /* Mobile devices */
+  .question-card {
+    padding: 12px;
+  }
+
+  .upvote-button,
+  .edit-question-btn,
+  .delete-question-btn,
+  .save-edit-btn,
+  .cancel-edit-btn {
+    min-height: 44px;
+    min-width: 44px;
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2);
+  }
+
+  .create-campaign-btn,
+  .close-campaign-btn,
+  .delete-campaign-btn {
+    min-height: 44px;
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2);
+  }
+}
+

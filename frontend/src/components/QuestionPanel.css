@@ -6,6 +6,63 @@
   backdrop-filter: blur(10px);
 }
 
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .question-panel {
+    padding: 16px;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .panel-header h2.campaign-title {
+    font-size: 22px;
+  }
+
+  .panel-header p.panel-subtitle {
+    font-size: 13px;
+  }
+
+  .question-stats {
+    font-size: 13px;
+    padding-top: 0;
+  }
+
+  .questions-section {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+
+  .campaign-footer {
+    margin-top: 20px;
+    padding-top: 16px;
+    gap: 12px;
+  }
+
+  .campaign-timestamps-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .campaign-actions-footer {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .close-campaign-btn,
+  .delete-campaign-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+  }
+}
+
 .question-panel.empty {
   display: flex;
   align-items: center;

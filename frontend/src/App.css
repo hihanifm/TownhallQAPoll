@@ -59,6 +59,26 @@ body {
   overflow: hidden;
 }
 
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 16px 20px;
+  }
+
+  .app-header h1 {
+    font-size: 20px;
+  }
+
+  .app-header p {
+    font-size: 12px;
+  }
+
+  .app-content {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+}
+
 /* Browser Restriction Message Styles */
 .browser-restriction-message {
   display: flex;
@@ -186,6 +206,48 @@ body {
   font-size: 13px;
   font-style: italic;
   margin-top: 8px;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 16px 20px;
+  }
+
+  .app-header h1 {
+    font-size: 20px;
+  }
+
+  .app-header p {
+    font-size: 12px;
+  }
+
+  .app-content {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .browser-restriction-content {
+    padding: 24px;
+    margin: 16px;
+  }
+
+  .browser-restriction-content h1 {
+    font-size: 22px;
+  }
+
+  .browser-restriction-content > p {
+    font-size: 14px;
+  }
+
+  .browser-restriction-icon {
+    font-size: 48px;
+  }
+
+  .browser-override-button {
+    width: 100%;
+    padding: 14px;
+  }
 }
 
 /* Mode Indicator - Inline with timestamps */
