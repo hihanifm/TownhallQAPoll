@@ -103,7 +103,8 @@ describe('Questions API', () => {
   describe('POST /api/campaigns/:campaignId/questions', () => {
     test('should create a new question', async () => {
       const newQuestion = {
-        question_text: 'New Question'
+        question_text: 'New Question',
+        user_id: 'user123'
       };
 
       const response = await request(app)
@@ -124,7 +125,8 @@ describe('Questions API', () => {
       );
       expect(question).toMatchObject({
         question_text: 'New Question',
-        campaign_id: testCampaignId
+        campaign_id: testCampaignId,
+        user_id: 'user123'
       });
     });
 
@@ -153,6 +155,111 @@ describe('Questions API', () => {
         .expect(404);
 
       expect(response.body.error).toContain('not found');
+    });
+  });
+
+  describe('PATCH /api/questions/:id', () => {
+    test('should update a question by its creator', async () => {
+      const questionResult = await runQuery(
+        'INSERT INTO questions (campaign_id, question_text, user_id) VALUES (?, ?, ?)',
+        [testCampaignId, 'Original Question', 'user123']
+      );
+      const questionId = questionResult.lastID;
+
+      const response = await request(app)
+        .patch(`/api/questions/${questionId}`)
+        .send({ question_text: 'Updated Question', user_id: 'user123' })
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        question_text: 'Updated Question',
+        campaign_id: testCampaignId
+      });
+      expect(response.body.updated_at).toBeDefined();
+
+      // Verify in database
+      const question = await getQuery(
+        'SELECT * FROM questions WHERE id = ?',
+        [questionId]
+      );
+      expect(question.question_text).toBe('Updated Question');
+      expect(question.updated_at).toBeDefined();
+    });
+
+    test('should only allow question creator to edit', async () => {
+      const questionResult = await runQuery(
+        'INSERT INTO questions (campaign_id, question_text, user_id) VALUES (?, ?, ?)',
+        [testCampaignId, 'Original Question', 'user123']
+      );
+      const questionId = questionResult.lastID;
+
+      const response = await request(app)
+        .patch(`/api/questions/${questionId}`)
+        .send({ question_text: 'Updated Question', user_id: 'different_user' })
+        .expect(403);
+
+      expect(response.body.error).toContain('creator');
+    });
+
+    test('should require question text', async () => {
+      const questionResult = await runQuery(
+        'INSERT INTO questions (campaign_id, question_text, user_id) VALUES (?, ?, ?)',
+        [testCampaignId, 'Original Question', 'user123']
+      );
+      const questionId = questionResult.lastID;
+
+      const response = await request(app)
+        .patch(`/api/questions/${questionId}`)
+        .send({ user_id: 'user123' })
+        .expect(400);
+
+      expect(response.body.error).toContain('required');
+    });
+
+    test('should require user_id', async () => {
+      const questionResult = await runQuery(
+        'INSERT INTO questions (campaign_id, question_text, user_id) VALUES (?, ?, ?)',
+        [testCampaignId, 'Original Question', 'user123']
+      );
+      const questionId = questionResult.lastID;
+
+      const response = await request(app)
+        .patch(`/api/questions/${questionId}`)
+        .send({ question_text: 'Updated Question' })
+        .expect(400);
+
+      expect(response.body.error).toContain('user_id');
+    });
+
+    test('should return 404 for non-existent question', async () => {
+      const response = await request(app)
+        .patch('/api/questions/99999')
+        .send({ question_text: 'Updated Question', user_id: 'user123' })
+        .expect(404);
+
+      expect(response.body.error).toContain('not found');
+    });
+
+    test('should not allow editing questions in closed campaigns', async () => {
+      // Create a closed campaign
+      const closedCampaignResult = await runQuery(
+        'INSERT INTO campaigns (title, description, creator_id, status) VALUES (?, ?, ?, ?)',
+        ['Closed Campaign', 'Description', 'user123', 'closed']
+      );
+      const closedCampaignId = closedCampaignResult.lastID;
+
+      const questionResult = await runQuery(
+        'INSERT INTO questions (campaign_id, question_text, user_id) VALUES (?, ?, ?)',
+        [closedCampaignId, 'Original Question', 'user123']
+      );
+      const questionId = questionResult.lastID;
+
+      const response = await request(app)
+        .patch(`/api/questions/${questionId}`)
+        .send({ question_text: 'Updated Question', user_id: 'user123' })
+        .expect(403);
+
+      expect(response.body.error).toContain('closed');
     });
   });
 

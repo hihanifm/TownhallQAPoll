@@ -53,6 +53,18 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
             return updated.sort((a, b) => b.vote_count - a.vote_count);
           });
           break;
+        case 'question_updated':
+          // Update the question in the list
+          setQuestions(prevQuestions => {
+            const updated = prevQuestions.map(q => 
+              q.id === data.question.id 
+                ? { ...data.question, voters: q.voters || [] }
+                : q
+            );
+            // Re-sort by vote count
+            return updated.sort((a, b) => b.vote_count - a.vote_count);
+          });
+          break;
         case 'question_deleted':
           // Remove deleted question from the list
           setQuestions(prevQuestions => 
@@ -113,6 +125,19 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
 
   const handleQuestionDeleted = (questionId) => {
     loadQuestions(); // Reload to remove deleted question from list
+  };
+
+  const handleQuestionUpdated = (updatedQuestion) => {
+    // Update the question in the list
+    setQuestions(prevQuestions => {
+      const updated = prevQuestions.map(q => 
+        q.id === updatedQuestion.id 
+          ? { ...updatedQuestion, voters: q.voters || [] }
+          : q
+      );
+      // Re-sort by vote count
+      return updated.sort((a, b) => b.vote_count - a.vote_count);
+    });
   };
 
   const handleCloseCampaign = async () => {
@@ -202,6 +227,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
                 campaignId={campaignId}
                 onVoteUpdate={handleVoteUpdate}
                 onQuestionDeleted={handleQuestionDeleted}
+                onQuestionUpdated={handleQuestionUpdated}
                 number={index + 1}
                 previousNumber={previousIndex >= 0 ? previousIndex + 1 : undefined}
                 isCampaignCreator={isCreator || false}

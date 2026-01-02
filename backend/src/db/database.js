@@ -41,6 +41,21 @@ function initDatabase() {
         }
       });
       
+      // Add user_id and updated_at columns to existing questions table if they don't exist
+      db.run('ALTER TABLE questions ADD COLUMN user_id TEXT', (alterErr) => {
+        // Ignore error if column already exists
+        if (alterErr && !alterErr.message.includes('duplicate column')) {
+          console.warn('Note: user_id column may already exist:', alterErr.message);
+        }
+      });
+      
+      db.run('ALTER TABLE questions ADD COLUMN updated_at DATETIME', (alterErr) => {
+        // Ignore error if column already exists
+        if (alterErr && !alterErr.message.includes('duplicate column')) {
+          console.warn('Note: updated_at column may already exist:', alterErr.message);
+        }
+      });
+      
       resolve(db);
     });
   });

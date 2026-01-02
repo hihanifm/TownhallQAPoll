@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS questions (
     campaign_id INTEGER NOT NULL,
     question_text TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME,
+    user_id TEXT,
     is_moderator_created BOOLEAN DEFAULT 0,
     FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
 );

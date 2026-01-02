@@ -37,7 +37,7 @@ router.get('/campaigns/:campaignId/questions', async (req, res, next) => {
 router.post('/campaigns/:campaignId/questions', async (req, res, next) => {
   try {
     const { campaignId } = req.params;
-    const { question_text } = req.body;
+    const { question_text, user_id } = req.body;
     
     if (!question_text || question_text.trim() === '') {
       return res.status(400).json({ error: 'Question text is required' });
@@ -53,9 +53,14 @@ router.post('/campaigns/:campaignId/questions', async (req, res, next) => {
       return res.status(404).json({ error: 'Campaign not found' });
     }
     
+    // Check if campaign is active (can't add questions to closed campaigns)
+    if (campaign.status === 'closed') {
+      return res.status(403).json({ error: 'Cannot add questions to a closed campaign' });
+    }
+    
     const result = await runQuery(
-      'INSERT INTO questions (campaign_id, question_text, is_moderator_created) VALUES (?, ?, ?)',
-      [campaignId, question_text.trim(), 0]
+      'INSERT INTO questions (campaign_id, question_text, user_id, is_moderator_created) VALUES (?, ?, ?, ?)',
+      [campaignId, question_text.trim(), user_id || null, 0]
     );
     
     const question = await getQuery(
@@ -103,6 +108,88 @@ router.get('/questions/:id/votes', async (req, res, next) => {
     );
     
     res.json({ hasVoted: !!vote });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PATCH /api/questions/:id - Update a question
+router.patch('/questions/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { question_text, user_id } = req.body;
+    
+    if (!question_text || question_text.trim() === '') {
+      return res.status(400).json({ error: 'Question text is required' });
+    }
+    
+    if (!user_id) {
+      return res.status(400).json({ error: 'user_id is required' });
+    }
+    
+    // Get the question
+    const question = await getQuery(
+      'SELECT * FROM questions WHERE id = ?',
+      [id]
+    );
+    
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+    
+    // Get the campaign to check status
+    const campaign = await getQuery(
+      'SELECT * FROM campaigns WHERE id = ?',
+      [question.campaign_id]
+    );
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    // Check if campaign is active (can't edit questions in closed campaigns)
+    if (campaign.status === 'closed') {
+      return res.status(403).json({ error: 'Cannot edit questions in a closed campaign' });
+    }
+    
+    // Check if user is the question creator
+    if (!question.user_id) {
+      return res.status(403).json({ error: 'This question has no creator. Only questions with a creator can be edited.' });
+    }
+    if (question.user_id !== user_id) {
+      return res.status(403).json({ error: 'Only the question creator can edit this question' });
+    }
+    
+    // Update the question
+    await runQuery(
+      'UPDATE questions SET question_text = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [question_text.trim(), id]
+    );
+    
+    // Get updated question with vote count
+    const updatedQuestion = await getQuery(
+      `SELECT q.*, 
+       COUNT(v.id) as vote_count
+       FROM questions q
+       LEFT JOIN votes v ON q.id = v.question_id
+       WHERE q.id = ?
+       GROUP BY q.id`,
+      [id]
+    );
+    
+    const questionWithVotes = {
+      ...updatedQuestion,
+      vote_count: updatedQuestion.vote_count || 0,
+      voters: []
+    };
+    
+    // Broadcast update to all clients watching this campaign
+    sseService.broadcast(question.campaign_id.toString(), {
+      type: 'question_updated',
+      question: questionWithVotes
+    });
+    
+    res.json(questionWithVotes);
   } catch (error) {
     next(error);
   }
