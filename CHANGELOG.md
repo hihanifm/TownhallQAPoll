@@ -1,13 +1,7 @@
 ## [1.1.4] - 2026-01-02
 
-### Added
-- 
-
 ### Changed
-- 
-
-### Fixed
-- 
+- Release script: Improved output clarity with step-by-step progress and full test output
 
 ---
 
