@@ -915,6 +915,66 @@ The backup script automatically:
 - View cron logs: `grep CRON /var/log/syslog`
 - Check backup log: `tail -f logs/backup-cron.log`
 
+## Versioning and Releases
+
+This project follows [Semantic Versioning](https://semver.org/):
+- **MAJOR** (X.0.0): Breaking changes that require migration or API changes
+- **MINOR** (x.Y.0): New features that are backward compatible
+- **PATCH** (x.y.Z): Bug fixes and small improvements
+
+### Release Process
+
+**Automated Release Script:**
+```bash
+./release.sh
+```
+
+The release script will:
+1. Check for uncommitted changes
+2. Prompt for version bump type (major/minor/patch)
+3. Update all `package.json` files
+4. Update README version badge
+5. Update CHANGELOG.md with new version header
+6. Commit version changes
+7. Create git tag
+8. Optionally push to remote
+
+**Manual Release Process:**
+```bash
+# 1. Update versions in package.json files
+# 2. Update CHANGELOG.md with release notes
+# 3. Update README.md version badge
+# 4. Commit changes
+git commit -m "Release v1.1.0"
+
+# 5. Create and push tag
+git tag -a v1.1.0 -m "Release v1.1.0"
+git push origin main --tags
+```
+
+**View Release History:**
+```bash
+# List all tags
+git tag -l
+
+# View tag details
+git show v1.1.0
+
+# View CHANGELOG
+cat CHANGELOG.md
+```
+
+### Release Checklist
+
+Before creating a release:
+- [ ] All features are complete and tested
+- [ ] All tests are passing (`npm test`)
+- [ ] CHANGELOG.md is updated with release notes
+- [ ] README.md is up to date
+- [ ] Version numbers are consistent across all package.json files
+- [ ] Database migrations (if any) are documented
+- [ ] Breaking changes are clearly documented
+
 ## License
 
 ISC
