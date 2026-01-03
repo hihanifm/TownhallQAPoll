@@ -3,7 +3,7 @@
  */
 
 import { describe, test, expect, beforeEach } from 'vitest';
-import { getUserId } from '../../utils/userId';
+import { getUserId } from '@townhall/shared/utils/userId';
 
 describe('userId utility', () => {
   beforeEach(() => {

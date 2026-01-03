@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { getUserId } from '../utils/userId';
+import { getUserId } from '@townhall/shared/utils/userId';
 import { SSE_BASE_URL } from '../config/apiConfig';
 import './CampaignList.css';
 

@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import QuestionCard from './QuestionCard';
 import CreateQuestionForm from './CreateQuestionForm';
-import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
-import { getUserId } from '../utils/userId';
+import { DiscussionSection } from '@townhall/discussion';
+import { formatRelativeTime, formatDateTime } from '@townhall/shared/utils/dateFormat';
+import { getUserId } from '@townhall/shared/utils/userId';
 import { SSE_BASE_URL } from '../config/apiConfig';
 import './QuestionPanel.css';
 
@@ -247,6 +248,15 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
         campaignId={campaignId} 
         onQuestionCreated={handleQuestionCreated}
       />
+
+      {campaignId && (
+        <div className="discussion-section-wrapper">
+          <DiscussionSection 
+            contextId={campaignId.toString()} 
+            contextType="campaign"
+          />
+        </div>
+      )}
 
       {campaign && (
         <div className="campaign-footer">

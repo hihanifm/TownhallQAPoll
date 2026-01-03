@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
-import { getUserId } from '../utils/userId';
+import { getUserId } from '@townhall/shared/utils/userId';
 import './QuestionCard.css';
 
 function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, onQuestionUpdated, number, previousNumber, isCampaignCreator }) {

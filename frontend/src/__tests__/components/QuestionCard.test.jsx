@@ -6,11 +6,11 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import QuestionCard from '../../components/QuestionCard';
 import { api } from '../../services/api';
-import { getUserId } from '../../utils/userId';
+import { getUserId } from '@townhall/shared/utils/userId';
 
 // Mock API and utilities
 vi.mock('../../services/api');
-vi.mock('../../utils/userId');
+vi.mock('@townhall/shared/utils/userId');
 
 describe('QuestionCard', () => {
   const mockQuestion = {
