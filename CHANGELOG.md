@@ -2,10 +2,12 @@
 
 ### Added
 - DiscussionApp integration with shared library support
-- Integrated startup scripts for running both applications together
+- Integrated startup scripts for running both applications together (start-integrated.sh, status-integrated.sh, stop-integrated.sh)
+- Release workflow scripts (release-both.sh, update-changelogs.sh) for managing releases across both projects
 
 ### Changed
 - Updated shared library path to TownhallQAPoll_SharedLibrary
+- Updated DiscussionSection styling to align with parent window styling
 - Added integrated.pids to .gitignore
 
 ---
