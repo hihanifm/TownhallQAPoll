@@ -124,3 +124,4 @@ coverage/
 # Yarn Integrity file
 .yarn-integrity
 
+integrated.pids
