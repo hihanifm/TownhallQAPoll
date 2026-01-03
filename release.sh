@@ -181,9 +181,9 @@ esac
 new_version=$(bump_version $current_version $bump_type)
 echo ""
 echo -e "${GREEN}New version will be: ${new_version}${NC}"
-read -p "Continue? (y/N): " confirm
+read -p "Continue? (Y/n): " confirm
 
-if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+if [ "$confirm" = "n" ] || [ "$confirm" = "N" ]; then
   echo "Release cancelled."
   exit 0
 fi

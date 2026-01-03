@@ -56,9 +56,9 @@ echo "  3. Optional commit message"
 echo "  4. Tag creation confirmation"
 echo "  5. Push confirmation"
 echo ""
-read -p "Continue with releases? (y/N): " confirm_start
+read -p "Continue with releases? (Y/n): " confirm_start
 
-if [ "$confirm_start" != "y" ] && [ "$confirm_start" != "Y" ]; then
+if [ "$confirm_start" = "n" ] || [ "$confirm_start" = "N" ]; then
     echo "Release workflow cancelled."
     exit 0
 fi
@@ -75,8 +75,8 @@ DISCUSSION_EXIT_CODE=$?
 if [ $DISCUSSION_EXIT_CODE -ne 0 ]; then
     echo ""
     echo -e "${RED}❌ DiscussionApp release failed or was cancelled${NC}"
-    read -p "Continue with TownhallQAPoll release anyway? (y/N): " continue_anyway
-    if [ "$continue_anyway" != "y" ] && [ "$continue_anyway" != "Y" ]; then
+    read -p "Continue with TownhallQAPoll release anyway? (Y/n): " continue_anyway
+    if [ "$continue_anyway" = "n" ] || [ "$continue_anyway" = "N" ]; then
         echo "Release workflow stopped."
         exit 1
     fi
