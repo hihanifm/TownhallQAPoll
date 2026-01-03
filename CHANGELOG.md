@@ -1,13 +1,7 @@
 ## [2.0.0] - 2026-01-03
 
-### Added
-- 
-
 ### Changed
-- 
-
-### Fixed
-- 
+- Updated release scripts to default to 'Y' for confirmation prompts
 
 ---
 
