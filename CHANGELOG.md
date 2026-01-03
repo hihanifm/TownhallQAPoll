@@ -1,13 +1,12 @@
 ## [1.1.6] - 2026-01-03
 
 ### Added
-- 
+- DiscussionApp integration with shared library support
+- Integrated startup scripts for running both applications together
 
 ### Changed
-- 
-
-### Fixed
-- 
+- Updated shared library path to TownhallQAPoll_SharedLibrary
+- Added integrated.pids to .gitignore
 
 ---
 
