@@ -16,6 +16,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, o
   const justToggledRef = useRef(false);
   const previousVoteCountRef = useRef(question.vote_count || 0);
   const previousNumberRef = useRef(number);
+  const hasCheckedVoteStatusRef = useRef(false);
   
   const userId = getUserId();
   const isQuestionCreator = question.user_id && question.user_id === userId;
@@ -26,6 +27,8 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, o
       justToggledRef.current = false;
       return;
     }
+    // Only check vote status on initial load, not on every vote_count change
+    // The API response from upvote already updates hasVoted state
     try {
       const userId = getUserId();
       const result = await api.checkVote(question.id, userId);
@@ -42,7 +45,21 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, o
     }
   }, [question.question_text, isEditing]);
 
-  // Handle vote count updates, position changes, and vote status checks
+  // Check vote status only once when question ID is set (initial load)
+  useEffect(() => {
+    if (question.id && !isEditing && !hasCheckedVoteStatusRef.current) {
+      hasCheckedVoteStatusRef.current = true;
+      checkVoteStatus();
+    }
+    // Reset when question ID changes
+    return () => {
+      if (question.id) {
+        hasCheckedVoteStatusRef.current = false;
+      }
+    };
+  }, [question.id, isEditing, checkVoteStatus]);
+
+  // Handle vote count updates and position changes (separate from vote status check)
   useEffect(() => {
     const newVoteCount = question.vote_count || 0;
     
@@ -58,12 +75,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, o
     // Update refs
     previousVoteCountRef.current = newVoteCount;
     previousNumberRef.current = number;
-    
-    // Check vote status when question ID changes or on initial load - but not while editing
-    if (question.id && !isEditing) {
-      checkVoteStatus();
-    }
-  }, [question.id, question.vote_count, number, previousNumber, checkVoteStatus, isEditing]);
+  }, [question.vote_count, number, previousNumber]);
 
   const handleUpvote = async () => {
     if (isVoting) return;
@@ -85,10 +97,8 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, o
       setVoteCount(result.vote_count);
       previousVoteCountRef.current = result.vote_count;
       
-      // Call onVoteUpdate to refresh the list
-      if (onVoteUpdate) {
-        onVoteUpdate();
-      }
+      // Don't call onVoteUpdate - SSE will handle the update for all clients
+      // The vote count is already updated from the API response above
     } catch (error) {
       console.error('Error toggling vote:', error);
       console.error('Error details:', {

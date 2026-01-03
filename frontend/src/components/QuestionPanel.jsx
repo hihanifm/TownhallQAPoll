@@ -116,11 +116,11 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
 
 
   const handleQuestionCreated = (newQuestion) => {
-    loadQuestions(); // Reload to get updated list with vote counts
+    // SSE will handle the update, no need to reload
   };
 
   const handleVoteUpdate = () => {
-    loadQuestions(); // Reload to update vote counts and rankings
+    // SSE will handle the update, no need to reload
   };
 
   const handleQuestionDeleted = (questionId) => {
