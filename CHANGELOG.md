@@ -1,13 +1,9 @@
 ## [1.1.5] - 2026-01-02
 
-### Added
-- 
-
-### Changed
-- 
-
 ### Fixed
-- 
+- SSE optimization: Removed unnecessary API calls when votes are updated
+- Frontend no longer refetches all questions when a single vote is cast
+- Vote status check now only runs on initial load, not on every vote_count change
 
 ---
 
