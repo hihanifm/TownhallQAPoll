@@ -1,0 +1,99 @@
+.app-footer {
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+  color: white;
+  padding: 8px 24px;
+  box-shadow: 0 -2px 8px rgba(30, 64, 175, 0.3);
+  flex-shrink: 0;
+  font-size: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.footer-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-label {
+  opacity: 0.8;
+  font-weight: 500;
+}
+
+.footer-value {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footer-mode.dev {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.footer-mode.prod {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.footer-api-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .footer-content {
+    gap: 12px;
+    font-size: 11px;
+  }
+  
+  .footer-section {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-footer {
+    padding: 8px 12px;
+  }
+  
+  .footer-content {
+    gap: 8px;
+    font-size: 10px;
+  }
+  
+  .footer-label {
+    display: none; /* Hide labels on very small screens */
+  }
+}

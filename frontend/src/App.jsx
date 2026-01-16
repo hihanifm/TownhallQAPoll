@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import CampaignList from './components/CampaignList';
 import QuestionPanel from './components/QuestionPanel';
+import AppFooter from './components/AppFooter';
 import { getBrowserName } from './utils/browserDetection';
 import { browserConfig } from './config/browserConfig';
 import './App.css';
@@ -124,6 +125,7 @@ function App() {
           }}
         />
       </div>
+      <AppFooter />
     </div>
   );
 }

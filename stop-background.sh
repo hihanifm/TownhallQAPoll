@@ -6,6 +6,19 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
 
+# Function to get version
+get_version() {
+    if [ -f "$SCRIPT_DIR/VERSION" ]; then
+        cat "$SCRIPT_DIR/VERSION" | tr -d '[:space:]'
+    elif [ -f "$SCRIPT_DIR/package.json" ]; then
+        grep -o '"version": "[^"]*"' "$SCRIPT_DIR/package.json" | cut -d'"' -f4
+    else
+        echo "unknown"
+    fi
+}
+
+VERSION=$(get_version)
+
 if [ ! -f "$PID_FILE" ]; then
     echo "No PID file found. Servers may not be running."
     echo "Checking for running processes..."
@@ -32,6 +45,7 @@ else
 fi
 
 echo "Stopping Townhall Q&A Poll servers..."
+echo "Version: $VERSION"
 echo ""
 
 # Stop backend

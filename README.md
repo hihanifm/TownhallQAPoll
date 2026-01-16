@@ -38,7 +38,26 @@ TownhallQAPoll/
 
 ### Installation
 
-1. Install dependencies for both frontend and backend:
+#### Option 1: Automated Setup (Recommended for Linux/macOS)
+
+Run the setup script which will check prerequisites, create necessary directories, and install all dependencies:
+
+```bash
+./setup.sh
+```
+
+The setup script will:
+- ✓ Check for Node.js and npm
+- ✓ Verify Node.js version (requires v16+)
+- ✓ Create necessary directories (`logs/`, `backend/data/`)
+- ✓ Install backend dependencies
+- ✓ Install frontend dependencies
+- ✓ Check for security vulnerabilities
+- ✓ Display next steps
+
+#### Option 2: Manual Installation
+
+If you prefer to install manually or are on Windows:
 
 ```bash
 npm run install:all

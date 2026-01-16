@@ -31,7 +31,21 @@ get_local_ip() {
     echo "$ip"
 }
 
+# Function to get version
+get_version() {
+    if [ -f "$SCRIPT_DIR/VERSION" ]; then
+        cat "$SCRIPT_DIR/VERSION" | tr -d '[:space:]'
+    elif [ -f "$SCRIPT_DIR/package.json" ]; then
+        grep -o '"version": "[^"]*"' "$SCRIPT_DIR/package.json" | cut -d'"' -f4
+    else
+        echo "unknown"
+    fi
+}
+
+VERSION=$(get_version)
+
 echo "Townhall Q&A Poll Server Status"
+echo "Version: $VERSION"
 echo "================================"
 echo ""
 
