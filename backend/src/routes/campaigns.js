@@ -105,7 +105,7 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/campaigns - Create new campaign
 router.post('/', async (req, res, next) => {
   try {
-    const { title, description, creator_id } = req.body;
+    const { title, description, creator_id, creator_name } = req.body;
     
     if (!title) {
       return res.status(400).json({ error: 'Title is required' });
@@ -116,8 +116,8 @@ router.post('/', async (req, res, next) => {
     }
     
     const result = await runQuery(
-      'INSERT INTO campaigns (title, description, status, creator_id) VALUES (?, ?, ?, ?)',
-      [title, description || null, 'active', creator_id]
+      'INSERT INTO campaigns (title, description, status, creator_id, creator_name) VALUES (?, ?, ?, ?, ?)',
+      [title, description || null, 'active', creator_id, creator_name || null]
     );
     
     const campaignId = result.lastID;

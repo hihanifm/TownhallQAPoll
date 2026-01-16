@@ -13,17 +13,20 @@ export function generateUserId() {
 
 /**
  * Create a campaign
+ * @param {Object} request - Playwright request context
  * @param {string} title - Campaign title
  * @param {string} description - Campaign description (optional)
  * @param {string} creatorId - Creator user ID
+ * @param {string} creatorName - Creator name (optional)
  * @returns {Promise<Object>} Created campaign object
  */
-export async function createCampaign(request, title, description = null, creatorId) {
+export async function createCampaign(request, title, description = null, creatorId, creatorName = null) {
   const response = await request.post(`${API_BASE_URL}/campaigns`, {
     data: {
       title,
       description,
       creator_id: creatorId,
+      creator_name: creatorName,
     },
   });
   

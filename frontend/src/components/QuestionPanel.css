@@ -120,6 +120,14 @@
   display: inline;
 }
 
+.campaign-creator-name {
+  font-weight: 500;
+  color: #64748b;
+  white-space: nowrap;
+  display: inline;
+  margin-right: 8px;
+}
+
 .campaign-actions-footer {
   display: flex;
   gap: 12px;

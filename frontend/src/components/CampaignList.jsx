@@ -8,7 +8,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '' });
+  const [formData, setFormData] = useState({ title: '', description: '', creator_name: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -86,12 +86,13 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
       const campaignData = {
         title: formData.title.trim(),
         description: formData.description.trim() || null,
-        creator_id: userId
+        creator_id: userId,
+        creator_name: formData.creator_name.trim() || null
       };
       
       const newCampaign = await api.createCampaign(campaignData);
       setCampaigns([newCampaign, ...campaigns]);
-      setFormData({ title: '', description: '' });
+      setFormData({ title: '', description: '', creator_name: '' });
       setShowCreateForm(false);
       if (onCampaignCreated) {
         onCampaignCreated(newCampaign);
@@ -148,6 +149,13 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
               required
               disabled={isSubmitting}
             />
+            <input
+              type="text"
+              placeholder="Your Name (optional)"
+              value={formData.creator_name}
+              onChange={(e) => setFormData({ ...formData, creator_name: e.target.value })}
+              disabled={isSubmitting}
+            />
             <textarea
               placeholder="Description (optional)"
               value={formData.description}
@@ -187,6 +195,11 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
                   <span className="campaign-questions">
                     {campaign.question_count || 0} questions
                   </span>
+                  {campaign.creator_name && (
+                    <span className="campaign-creator">
+                      Created by {campaign.creator_name}
+                    </span>
+                  )}
                 </div>
                 {campaign.description && (
                   <div className="campaign-description">{campaign.description}</div>

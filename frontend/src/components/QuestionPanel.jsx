@@ -224,6 +224,11 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
       {campaign && (
         <div className="campaign-footer">
           <div className="campaign-timestamps-footer">
+            {campaign.creator_name && (
+              <span className="campaign-creator-name">
+                Created by {campaign.creator_name}
+              </span>
+            )}
             <span className="campaign-timestamp" title={formatDateTime(campaign.created_at)}>
               Created {formatRelativeTime(campaign.created_at)}
             </span>

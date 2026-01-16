@@ -34,23 +34,31 @@ test.describe('Campaign Voting E2E Test', () => {
       title: `Test Campaign ${Date.now()}`,
       description: 'E2E Test Campaign',
       creatorId: testUserId,
+      creatorName: 'Test Author',
     };
     
     const campaign = await createCampaign(
       request,
       campaignData.title,
       campaignData.description,
-      campaignData.creatorId
+      campaignData.creatorId,
+      campaignData.creatorName
     );
     
     expect(campaign).toBeDefined();
     expect(campaign.id).toBeDefined();
     expect(campaign.title).toBe(campaignData.title);
     expect(campaign.description).toBe(campaignData.description);
+    expect(campaign.creator_name).toBe(campaignData.creatorName);
     expect(campaign.status).toBe('active');
     
     campaignId = campaign.id;
     console.log(`✓ Created campaign with ID: ${campaignId}`);
+
+    // Verify campaign can be fetched and creator_name persists
+    const fetchedCampaign = await getCampaign(request, campaignId);
+    expect(fetchedCampaign.creator_name).toBe(campaignData.creatorName);
+    console.log(`✓ Verified creator_name persists in fetched campaign: ${fetchedCampaign.creator_name}`);
 
     // Step 2: Create first question
     const question1Text = 'What is the company strategy for 2024?';
