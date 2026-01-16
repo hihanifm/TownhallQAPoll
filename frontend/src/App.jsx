@@ -103,7 +103,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Townhall Q&A Poll</h1>
-        <p>Collect and rank questions from employees</p>
+        <p>Ask. Vote. Be heard.</p>
       </header>
       <div className="app-content">
         <CampaignList
@@ -125,7 +125,7 @@ function App() {
           }}
         />
       </div>
-      <AppFooter />
+      <AppFooter selectedCampaignId={selectedCampaignId} />
     </div>
   );
 }

@@ -6,6 +6,10 @@ import {
   upvoteQuestion,
   getCampaign,
   getQuestions,
+  verifyCampaignPin,
+  closeCampaign,
+  deleteCampaign,
+  deleteQuestion,
   checkBackendHealth
 } from '../helpers/api.js';
 
@@ -140,5 +144,99 @@ test.describe('Campaign Voting E2E Test', () => {
     expect(q2Final.voters).toContain(testUserId);
 
     console.log('✓ Test completed successfully!');
+  });
+
+  test('should create campaign with PIN, verify PIN, and use PIN for admin operations', async () => {
+    const creatorId = testUserId;
+    const adminUserId = generateUserId(); // Different user who will use PIN
+    const campaignPin = 'test-pin-1234';
+    
+    // Step 1: Create a campaign with a PIN
+    const campaignData = {
+      title: `Test Campaign with PIN ${Date.now()}`,
+      description: 'E2E Test Campaign with PIN',
+      creatorId: creatorId,
+      creatorName: 'PIN Test Creator',
+      pin: campaignPin,
+    };
+    
+    const campaign = await createCampaign(
+      request,
+      campaignData.title,
+      campaignData.description,
+      campaignData.creatorId,
+      campaignData.creatorName,
+      campaignData.pin
+    );
+    
+    expect(campaign).toBeDefined();
+    expect(campaign.id).toBeDefined();
+    expect(campaign.title).toBe(campaignData.title);
+    expect(campaign.pin).toBeUndefined(); // PIN should NOT be in response
+    campaignId = campaign.id;
+    console.log(`✓ Created campaign with PIN - ID: ${campaignId}`);
+
+    // Step 2: Verify PIN verification works
+    const verifyResult = await verifyCampaignPin(request, campaignId, campaignPin);
+    expect(verifyResult.success).toBe(true);
+    expect(verifyResult.message).toBe('PIN verified successfully');
+    console.log(`✓ Verified PIN successfully`);
+
+    // Step 3: Verify wrong PIN fails
+    try {
+      await verifyCampaignPin(request, campaignId, 'wrong-pin');
+      throw new Error('Should have failed with wrong PIN');
+    } catch (error) {
+      expect(error.message).toContain('Invalid PIN');
+      console.log(`✓ Correctly rejected wrong PIN`);
+    }
+
+    // Step 4: Create a question in the campaign
+    const questionText = 'Can I delete this question with PIN?';
+    const question = await createQuestion(request, campaignId, questionText);
+    question1Id = question.id;
+    console.log(`✓ Created question with ID: ${question1Id}`);
+
+    // Step 5: Try to delete question without PIN (should fail for non-creator)
+    try {
+      await deleteQuestion(request, question1Id, adminUserId, null);
+      throw new Error('Should have failed without PIN');
+    } catch (error) {
+      expect(error.message).toMatch(/Not authorized|creator|PIN/);
+      console.log(`✓ Correctly prevented deletion without PIN/creator_id`);
+    }
+
+    // Step 6: Delete question with PIN (should succeed)
+    const deleteResult = await deleteQuestion(request, question1Id, null, campaignPin);
+    expect(deleteResult.success).toBe(true);
+    expect(deleteResult.message).toBe('Question deleted successfully');
+    console.log(`✓ Successfully deleted question using PIN`);
+
+    // Step 7: Create another question for further testing
+    const question2Text = 'Another test question';
+    const question2 = await createQuestion(request, campaignId, question2Text);
+    question2Id = question2.id;
+    console.log(`✓ Created question 2 with ID: ${question2Id}`);
+
+    // Step 8: Try to close campaign without PIN (should fail for non-creator)
+    try {
+      await closeCampaign(request, campaignId, adminUserId, null);
+      throw new Error('Should have failed without PIN');
+    } catch (error) {
+      expect(error.message).toMatch(/Not authorized|creator|PIN/);
+      console.log(`✓ Correctly prevented closing campaign without PIN/creator_id`);
+    }
+
+    // Step 9: Close campaign with PIN (should succeed)
+    const closedCampaign = await closeCampaign(request, campaignId, null, campaignPin);
+    expect(closedCampaign.status).toBe('closed');
+    console.log(`✓ Successfully closed campaign using PIN`);
+
+    // Step 10: Verify campaign is actually closed
+    const fetchedClosedCampaign = await getCampaign(request, campaignId);
+    expect(fetchedClosedCampaign.status).toBe('closed');
+    console.log(`✓ Verified campaign is closed`);
+
+    console.log('✓ PIN test completed successfully!');
   });
 });

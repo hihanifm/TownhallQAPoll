@@ -112,10 +112,10 @@ router.get('/questions/:id/votes', async (req, res, next) => {
 router.delete('/questions/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { creator_id } = req.body;
+    const { creator_id, campaign_pin } = req.body;
     
-    if (!creator_id) {
-      return res.status(400).json({ error: 'creator_id is required' });
+    if (!creator_id && !campaign_pin) {
+      return res.status(400).json({ error: 'Either creator_id or campaign_pin is required' });
     }
     
     const question = await getQuery(
@@ -127,9 +127,9 @@ router.delete('/questions/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Question not found' });
     }
     
-    // Get the campaign to check if user is the creator
+    // Get the campaign to check authorization
     const campaign = await getQuery(
-      'SELECT * FROM campaigns WHERE id = ?',
+      'SELECT id, creator_id, pin FROM campaigns WHERE id = ?',
       [question.campaign_id]
     );
     
@@ -138,11 +138,13 @@ router.delete('/questions/:id', async (req, res, next) => {
     }
     
     // Check if user is the campaign creator
-    if (!campaign.creator_id) {
-      return res.status(403).json({ error: 'This campaign has no creator. Only campaigns with a creator can have questions deleted.' });
-    }
-    if (campaign.creator_id !== creator_id) {
-      return res.status(403).json({ error: 'Only the campaign creator can delete questions' });
+    const isCreator = campaign.creator_id && campaign.creator_id === creator_id;
+    
+    // Check if PIN is provided and matches
+    const isPinValid = campaign_pin && campaign.pin && campaign.pin === campaign_pin;
+    
+    if (!isCreator && !isPinValid) {
+      return res.status(403).json({ error: 'Only the campaign creator or someone with a valid PIN can delete questions' });
     }
     
     // Delete all votes for this question

@@ -41,6 +41,14 @@ function initDatabase() {
         }
       });
       
+      // Add pin column to existing campaigns table if it doesn't exist
+      db.run('ALTER TABLE campaigns ADD COLUMN pin TEXT', (alterErr) => {
+        // Ignore error if column already exists
+        if (alterErr && !alterErr.message.includes('duplicate column')) {
+          console.warn('Note: pin column may already exist:', alterErr.message);
+        }
+      });
+      
       resolve(db);
     });
   });

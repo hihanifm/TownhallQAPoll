@@ -4,6 +4,7 @@ import QuestionCard from './QuestionCard';
 import CreateQuestionForm from './CreateQuestionForm';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import { getUserId } from '../utils/userId';
+import { hasVerifiedPin, getVerifiedPin } from '../utils/campaignPin';
 import './QuestionPanel.css';
 
 function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
@@ -121,7 +122,8 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
 
     try {
       const userId = getUserId();
-      const updatedCampaign = await api.closeCampaign(campaignId, userId);
+      const campaignPin = hasVerifiedPin(campaignId) ? getVerifiedPin(campaignId) : undefined;
+      const updatedCampaign = await api.closeCampaign(campaignId, userId, campaignPin);
       setCampaign(updatedCampaign);
       if (onCampaignClosed) {
         onCampaignClosed(campaignId);
@@ -138,7 +140,8 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
 
     try {
       const userId = getUserId();
-      await api.deleteCampaign(campaignId, userId);
+      const campaignPin = hasVerifiedPin(campaignId) ? getVerifiedPin(campaignId) : undefined;
+      await api.deleteCampaign(campaignId, userId, campaignPin);
       if (onCampaignDeleted) {
         onCampaignDeleted(campaignId);
       }
@@ -192,7 +195,10 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
             const previousQuestion = previousQuestions.find(q => q.id === question.id);
             const previousIndex = previousQuestion ? previousQuestions.findIndex(q => q.id === question.id) : index;
             
-            const isCreator = campaign && campaign.creator_id && campaign.creator_id === getUserId();
+            const hasAdminAccess = campaign && (
+              (campaign.creator_id && campaign.creator_id === getUserId()) ||
+              hasVerifiedPin(campaignId)
+            );
             
             return (
               <QuestionCard
@@ -203,7 +209,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
                 onQuestionDeleted={handleQuestionDeleted}
                 number={index + 1}
                 previousNumber={previousIndex >= 0 ? previousIndex + 1 : undefined}
-                isCampaignCreator={isCreator || false}
+                hasAdminAccess={hasAdminAccess || false}
               />
             );
           })}
@@ -236,7 +242,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
               • Updated {formatRelativeTime(campaign.last_updated || campaign.created_at)}
             </span>
           </div>
-          {campaign.creator_id && campaign.creator_id === getUserId() && (
+          {((campaign.creator_id && campaign.creator_id === getUserId()) || hasVerifiedPin(campaignId)) && (
             <div className="campaign-actions-footer">
               {campaign.status === 'active' && (
                 <button

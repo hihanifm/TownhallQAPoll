@@ -8,7 +8,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', creator_name: '' });
+  const [formData, setFormData] = useState({ title: '', description: '', creator_name: '', pin: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -87,12 +87,13 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
         title: formData.title.trim(),
         description: formData.description.trim() || null,
         creator_id: userId,
-        creator_name: formData.creator_name.trim() || null
+        creator_name: formData.creator_name.trim() || null,
+        pin: formData.pin.trim() || null
       };
       
       const newCampaign = await api.createCampaign(campaignData);
       setCampaigns([newCampaign, ...campaigns]);
-      setFormData({ title: '', description: '', creator_name: '' });
+      setFormData({ title: '', description: '', creator_name: '', pin: '' });
       setShowCreateForm(false);
       if (onCampaignCreated) {
         onCampaignCreated(newCampaign);
@@ -161,6 +162,13 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
+              disabled={isSubmitting}
+            />
+            <input
+              type="password"
+              placeholder="Admin PIN (optional - share with others to grant admin access)"
+              value={formData.pin}
+              onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
               disabled={isSubmitting}
             />
             <button type="submit" disabled={isSubmitting}>

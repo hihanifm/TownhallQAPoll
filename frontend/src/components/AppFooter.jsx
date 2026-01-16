@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { getBrowserName } from '../utils/browserDetection';
 import { APP_VERSION } from '../config/version';
+import { hasVerifiedPin } from '../utils/campaignPin';
+import PinEntryModal from './PinEntryModal';
 import './AppFooter.css';
 
-function AppFooter() {
+function AppFooter({ selectedCampaignId }) {
   const [apiStatus, setApiStatus] = useState('checking');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinVerified, setPinVerified] = useState(false);
 
   // Get version from config
   const version = APP_VERSION;
@@ -48,6 +52,19 @@ function AppFooter() {
     }, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Check PIN verification status when campaign changes
+  useEffect(() => {
+    if (selectedCampaignId) {
+      setPinVerified(hasVerifiedPin(selectedCampaignId));
+    } else {
+      setPinVerified(false);
+    }
+  }, [selectedCampaignId]);
+
+  const handlePinVerified = () => {
+    setPinVerified(true);
+  };
 
   const formatTime = (date) => {
     return date.toLocaleTimeString('en-US', { 
@@ -118,7 +135,33 @@ function AppFooter() {
           <span className="footer-label">Time:</span>
           <span className="footer-value">{formatTime(currentTime)}</span>
         </div>
+        
+        {selectedCampaignId && (
+          <div className="footer-section">
+            {pinVerified ? (
+              <div className="footer-admin-indicator">
+                <span className="admin-badge">✓ Admin Access</span>
+              </div>
+            ) : (
+              <button
+                className="footer-admin-button"
+                onClick={() => setShowPinModal(true)}
+                title="Request admin privileges for this campaign"
+              >
+                Request Admin Access
+              </button>
+            )}
+          </div>
+        )}
       </div>
+      
+      {showPinModal && selectedCampaignId && (
+        <PinEntryModal
+          campaignId={selectedCampaignId}
+          onClose={() => setShowPinModal(false)}
+          onVerified={handlePinVerified}
+        />
+      )}
     </footer>
   );
 }

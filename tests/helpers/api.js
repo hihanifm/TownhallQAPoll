@@ -18,15 +18,17 @@ export function generateUserId() {
  * @param {string} description - Campaign description (optional)
  * @param {string} creatorId - Creator user ID
  * @param {string} creatorName - Creator name (optional)
+ * @param {string} pin - Campaign PIN (optional)
  * @returns {Promise<Object>} Created campaign object
  */
-export async function createCampaign(request, title, description = null, creatorId, creatorName = null) {
+export async function createCampaign(request, title, description = null, creatorId, creatorName = null, pin = null) {
   const response = await request.post(`${API_BASE_URL}/campaigns`, {
     data: {
       title,
       description,
       creator_id: creatorId,
       creator_name: creatorName,
+      pin,
     },
   });
   
@@ -111,6 +113,103 @@ export async function getQuestions(request, campaignId) {
   if (!response.ok()) {
     const error = await response.json();
     throw new Error(`Failed to get questions: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Verify PIN for a campaign
+ * @param {Object} request - Playwright request context
+ * @param {number} campaignId - Campaign ID
+ * @param {string} pin - PIN to verify
+ * @returns {Promise<Object>} Verification result
+ */
+export async function verifyCampaignPin(request, campaignId, pin) {
+  const response = await request.post(`${API_BASE_URL}/campaigns/${campaignId}/verify-pin`, {
+    data: {
+      pin,
+    },
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to verify PIN: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Close a campaign
+ * @param {Object} request - Playwright request context
+ * @param {number} campaignId - Campaign ID
+ * @param {string} creatorId - Creator user ID (optional if using PIN)
+ * @param {string} campaignPin - Campaign PIN (optional if using creator_id)
+ * @returns {Promise<Object>} Updated campaign object
+ */
+export async function closeCampaign(request, campaignId, creatorId = null, campaignPin = null) {
+  const body = campaignPin 
+    ? { campaign_pin: campaignPin }
+    : { creator_id: creatorId };
+  
+  const response = await request.patch(`${API_BASE_URL}/campaigns/${campaignId}/close`, {
+    data: body,
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to close campaign: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Delete a campaign
+ * @param {Object} request - Playwright request context
+ * @param {number} campaignId - Campaign ID
+ * @param {string} creatorId - Creator user ID (optional if using PIN)
+ * @param {string} campaignPin - Campaign PIN (optional if using creator_id)
+ * @returns {Promise<Object>} Deletion result
+ */
+export async function deleteCampaign(request, campaignId, creatorId = null, campaignPin = null) {
+  const body = campaignPin 
+    ? { campaign_pin: campaignPin }
+    : { creator_id: creatorId };
+  
+  const response = await request.delete(`${API_BASE_URL}/campaigns/${campaignId}`, {
+    data: body,
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to delete campaign: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Delete a question
+ * @param {Object} request - Playwright request context
+ * @param {number} questionId - Question ID
+ * @param {string} creatorId - Creator user ID (optional if using PIN)
+ * @param {string} campaignPin - Campaign PIN (optional if using creator_id)
+ * @returns {Promise<Object>} Deletion result
+ */
+export async function deleteQuestion(request, questionId, creatorId = null, campaignPin = null) {
+  const body = campaignPin 
+    ? { campaign_pin: campaignPin }
+    : { creator_id: creatorId };
+  
+  const response = await request.delete(`${API_BASE_URL}/questions/${questionId}`, {
+    data: body,
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to delete question: ${error.error || response.statusText()}`);
   }
   
   return await response.json();

@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
+import { getVerifiedPin, hasVerifiedPin } from '../utils/campaignPin';
 import './QuestionCard.css';
 
-function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, number, previousNumber, isCampaignCreator }) {
+function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, number, previousNumber, hasAdminAccess }) {
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(question.vote_count || 0);
   const [isVoting, setIsVoting] = useState(false);
@@ -100,7 +101,8 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     setIsDeleting(true);
     try {
       const userId = getUserId();
-      await api.deleteQuestion(question.id, userId);
+      const campaignPin = hasVerifiedPin(campaignId) ? getVerifiedPin(campaignId) : undefined;
+      await api.deleteQuestion(question.id, userId, campaignPin);
       if (onQuestionDeleted) {
         onQuestionDeleted(question.id);
       }
@@ -130,7 +132,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
         <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
         {voteCount > 0 && <span className="vote-count-inline">{voteCount}</span>}
       </button>
-      {isCampaignCreator && (
+      {hasAdminAccess && (
         <button
           className="delete-question-btn"
           onClick={handleDelete}

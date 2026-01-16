@@ -7,7 +7,7 @@ const sseService = require('../services/sseService');
 router.get('/', async (req, res, next) => {
   try {
     const campaigns = await allQuery(
-      `SELECT c.*, 
+      `SELECT c.id, c.title, c.description, c.created_at, c.status, c.creator_id, c.creator_name,
        COUNT(DISTINCT q.id) as question_count
        FROM campaigns c
        LEFT JOIN questions q ON c.id = q.campaign_id
@@ -60,7 +60,7 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const campaign = await getQuery(
-      'SELECT * FROM campaigns WHERE id = ?',
+      'SELECT id, title, description, created_at, status, creator_id, creator_name FROM campaigns WHERE id = ?',
       [req.params.id]
     );
     
@@ -102,10 +102,34 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
+// Helper function to check if user is authorized (creator or PIN verified)
+async function isAuthorized(campaignId, creatorId, campaignPin) {
+  const campaign = await getQuery(
+    'SELECT * FROM campaigns WHERE id = ?',
+    [campaignId]
+  );
+  
+  if (!campaign) {
+    return { authorized: false, error: 'Campaign not found' };
+  }
+  
+  // Check if user is the creator
+  if (campaign.creator_id && campaign.creator_id === creatorId) {
+    return { authorized: true };
+  }
+  
+  // Check if PIN is provided and matches
+  if (campaignPin && campaign.pin && campaign.pin === campaignPin) {
+    return { authorized: true };
+  }
+  
+  return { authorized: false, error: 'Not authorized' };
+}
+
 // POST /api/campaigns - Create new campaign
 router.post('/', async (req, res, next) => {
   try {
-    const { title, description, creator_id, creator_name } = req.body;
+    const { title, description, creator_id, creator_name, pin } = req.body;
     
     if (!title) {
       return res.status(400).json({ error: 'Title is required' });
@@ -116,18 +140,18 @@ router.post('/', async (req, res, next) => {
     }
     
     const result = await runQuery(
-      'INSERT INTO campaigns (title, description, status, creator_id, creator_name) VALUES (?, ?, ?, ?, ?)',
-      [title, description || null, 'active', creator_id, creator_name || null]
+      'INSERT INTO campaigns (title, description, status, creator_id, creator_name, pin) VALUES (?, ?, ?, ?, ?, ?)',
+      [title, description || null, 'active', creator_id, creator_name || null, pin || null]
     );
     
     const campaignId = result.lastID;
     
     const campaign = await getQuery(
-      'SELECT * FROM campaigns WHERE id = ?',
+      'SELECT id, title, description, created_at, status, creator_id, creator_name FROM campaigns WHERE id = ?',
       [campaignId]
     );
     
-    // Broadcast new campaign to all clients
+    // Broadcast new campaign to all clients (without PIN)
     sseService.broadcast('all', {
       type: 'campaign_created',
       campaign: campaign
@@ -139,18 +163,18 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PATCH /api/campaigns/:id/close - Close a campaign
-router.patch('/:id/close', async (req, res, next) => {
+// POST /api/campaigns/:id/verify-pin - Verify PIN for a campaign
+router.post('/:id/verify-pin', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { creator_id } = req.body;
+    const { pin } = req.body;
     
-    if (!creator_id) {
-      return res.status(400).json({ error: 'creator_id is required' });
+    if (!pin) {
+      return res.status(400).json({ error: 'PIN is required' });
     }
     
     const campaign = await getQuery(
-      'SELECT * FROM campaigns WHERE id = ?',
+      'SELECT id, pin FROM campaigns WHERE id = ?',
       [id]
     );
     
@@ -158,12 +182,34 @@ router.patch('/:id/close', async (req, res, next) => {
       return res.status(404).json({ error: 'Campaign not found' });
     }
     
-    // Check if user is the creator
-    if (!campaign.creator_id) {
-      return res.status(403).json({ error: 'This campaign has no creator. Only campaigns with a creator can be closed.' });
+    if (!campaign.pin) {
+      return res.status(400).json({ error: 'This campaign does not have a PIN set' });
     }
-    if (campaign.creator_id !== creator_id) {
-      return res.status(403).json({ error: 'Only the campaign creator can close this campaign' });
+    
+    if (campaign.pin !== pin) {
+      return res.status(403).json({ error: 'Invalid PIN' });
+    }
+    
+    res.json({ success: true, message: 'PIN verified successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PATCH /api/campaigns/:id/close - Close a campaign
+router.patch('/:id/close', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { creator_id, campaign_pin } = req.body;
+    
+    if (!creator_id && !campaign_pin) {
+      return res.status(400).json({ error: 'Either creator_id or campaign_pin is required' });
+    }
+    
+    const auth = await isAuthorized(id, creator_id || null, campaign_pin || null);
+    
+    if (!auth.authorized) {
+      return res.status(403).json({ error: auth.error || 'Only the campaign creator or someone with a valid PIN can close this campaign' });
     }
     
     await runQuery(
@@ -172,7 +218,7 @@ router.patch('/:id/close', async (req, res, next) => {
     );
     
     const updatedCampaign = await getQuery(
-      'SELECT * FROM campaigns WHERE id = ?',
+      'SELECT id, title, description, created_at, status, creator_id, creator_name FROM campaigns WHERE id = ?',
       [id]
     );
     
@@ -192,27 +238,16 @@ router.patch('/:id/close', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { creator_id } = req.body;
+    const { creator_id, campaign_pin } = req.body;
     
-    if (!creator_id) {
-      return res.status(400).json({ error: 'creator_id is required' });
+    if (!creator_id && !campaign_pin) {
+      return res.status(400).json({ error: 'Either creator_id or campaign_pin is required' });
     }
     
-    const campaign = await getQuery(
-      'SELECT * FROM campaigns WHERE id = ?',
-      [id]
-    );
+    const auth = await isAuthorized(id, creator_id || null, campaign_pin || null);
     
-    if (!campaign) {
-      return res.status(404).json({ error: 'Campaign not found' });
-    }
-    
-    // Check if user is the creator
-    if (!campaign.creator_id) {
-      return res.status(403).json({ error: 'This campaign has no creator. Only campaigns with a creator can be deleted.' });
-    }
-    if (campaign.creator_id !== creator_id) {
-      return res.status(403).json({ error: 'Only the campaign creator can delete this campaign' });
+    if (!auth.authorized) {
+      return res.status(403).json({ error: auth.error || 'Only the campaign creator or someone with a valid PIN can delete this campaign' });
     }
     
     // Delete all votes for questions in this campaign

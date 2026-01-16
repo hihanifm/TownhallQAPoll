@@ -29,13 +29,32 @@ export const api = {
     return response.json();
   },
 
-  closeCampaign: async (campaignId, creatorId) => {
+  verifyCampaignPin: async (campaignId, pin) => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/verify-pin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ pin }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to verify PIN');
+    }
+    return response.json();
+  },
+
+  closeCampaign: async (campaignId, creatorId, campaignPin) => {
+    const body = campaignPin 
+      ? { campaign_pin: campaignPin }
+      : { creator_id: creatorId };
+    
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/close`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ creator_id: creatorId }),
+      body: JSON.stringify(body),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -44,13 +63,17 @@ export const api = {
     return response.json();
   },
 
-  deleteCampaign: async (campaignId, creatorId) => {
+  deleteCampaign: async (campaignId, creatorId, campaignPin) => {
+    const body = campaignPin 
+      ? { campaign_pin: campaignPin }
+      : { creator_id: creatorId };
+    
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ creator_id: creatorId }),
+      body: JSON.stringify(body),
     });
     if (!response.ok) {
       const error = await response.json();
@@ -87,13 +110,17 @@ export const api = {
     return response.json();
   },
 
-  deleteQuestion: async (questionId, creatorId) => {
+  deleteQuestion: async (questionId, creatorId, campaignPin) => {
+    const body = campaignPin 
+      ? { campaign_pin: campaignPin }
+      : { creator_id: creatorId };
+    
     const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ creator_id: creatorId }),
+      body: JSON.stringify(body),
     });
     if (!response.ok) {
       const error = await response.json();
