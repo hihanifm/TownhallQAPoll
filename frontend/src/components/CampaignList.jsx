@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
+import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import './CampaignList.css';
 
 function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated }) {
@@ -226,7 +227,12 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
                   </span>
                   {campaign.creator_name && (
                     <span className="campaign-creator">
-                      Created by {campaign.creator_name}
+                      {campaign.creator_name}
+                    </span>
+                  )}
+                  {campaign.created_at && (
+                    <span className="campaign-created-time" title={formatDateTime(campaign.created_at)}>
+                      🕒 {formatRelativeTime(campaign.created_at)} • {formatDateTime(campaign.created_at)}
                     </span>
                   )}
                 </div>

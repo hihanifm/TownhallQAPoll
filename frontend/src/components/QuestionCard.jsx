@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
 import { getFingerprint } from '../utils/browserFingerprint';
 import { getVerifiedPin, hasVerifiedPin } from '../utils/campaignPin';
+import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import './QuestionCard.css';
 
 function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, number, previousNumber, hasAdminAccess }) {
@@ -233,24 +234,20 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
           </div>
         ) : (
           <>
-            <span className="question-text">{question.question_text?.trim()}</span>
-            {Boolean(question.is_moderator_created) && (
-              <span className="moderator-badge">Moderator</span>
-            )}
+            <div className="question-text-container">
+              <span className="question-text">{question.question_text?.trim()}</span>
+              {Boolean(question.is_moderator_created) && (
+                <span className="moderator-badge">Moderator</span>
+              )}
+              {question.created_at && (
+                <span className="question-timestamp" title={formatDateTime(question.created_at)}>
+                  {formatRelativeTime(question.created_at)}
+                </span>
+              )}
+            </div>
           </>
         )}
       </div>
-      {!isEditing && (
-        <button
-          className={`upvote-button ${hasVoted ? 'voted' : ''}`}
-          onClick={handleUpvote}
-          disabled={isVoting || isDeleting || isUpdating}
-        >
-          <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
-          <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
-          {voteCount > 0 && <span className="vote-count-inline">{voteCount}</span>}
-        </button>
-      )}
       {canEdit && !isEditing && (
         <>
           <button
@@ -272,6 +269,17 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
             </button>
           )}
         </>
+      )}
+      {!isEditing && (
+        <button
+          className={`upvote-button ${hasVoted ? 'voted' : ''}`}
+          onClick={handleUpvote}
+          disabled={isVoting || isDeleting || isUpdating}
+        >
+          <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
+          <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
+          {voteCount > 0 && <span className="vote-count-inline">{voteCount}</span>}
+        </button>
       )}
     </div>
   );

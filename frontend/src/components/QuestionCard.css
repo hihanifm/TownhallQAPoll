@@ -103,6 +103,15 @@
   min-width: 0;
 }
 
+.question-text-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .question-text {
   margin: 0;
   color: #1a1a1a;
@@ -111,6 +120,15 @@
   font-weight: normal;
   font-family: 'Excalifont', sans-serif;
   flex: 1;
+  min-width: 0;
+}
+
+.question-timestamp {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .moderator-badge {
