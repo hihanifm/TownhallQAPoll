@@ -37,10 +37,14 @@ router.get('/campaigns/:campaignId/questions', async (req, res, next) => {
 router.post('/campaigns/:campaignId/questions', async (req, res, next) => {
   try {
     const { campaignId } = req.params;
-    const { question_text } = req.body;
+    const { question_text, creator_id } = req.body;
     
     if (!question_text || question_text.trim() === '') {
       return res.status(400).json({ error: 'Question text is required' });
+    }
+    
+    if (!creator_id) {
+      return res.status(400).json({ error: 'creator_id is required' });
     }
     
     // Verify campaign exists
@@ -54,8 +58,8 @@ router.post('/campaigns/:campaignId/questions', async (req, res, next) => {
     }
     
     const result = await runQuery(
-      'INSERT INTO questions (campaign_id, question_text, is_moderator_created) VALUES (?, ?, ?)',
-      [campaignId, question_text.trim(), 0]
+      'INSERT INTO questions (campaign_id, question_text, is_moderator_created, creator_id) VALUES (?, ?, ?, ?)',
+      [campaignId, question_text.trim(), 0, creator_id]
     );
     
     const question = await getQuery(
@@ -81,6 +85,84 @@ router.post('/campaigns/:campaignId/questions', async (req, res, next) => {
     });
     
     res.status(201).json(newQuestion);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PATCH /api/questions/:id - Update a question
+router.patch('/questions/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { question_text, creator_id, campaign_pin } = req.body;
+    
+    if (!question_text || question_text.trim() === '') {
+      return res.status(400).json({ error: 'Question text is required' });
+    }
+    
+    if (!creator_id && !campaign_pin) {
+      return res.status(400).json({ error: 'Either creator_id or campaign_pin is required' });
+    }
+    
+    // Get the question
+    const question = await getQuery(
+      'SELECT * FROM questions WHERE id = ?',
+      [id]
+    );
+    
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+    
+    // Get the campaign to check authorization
+    const campaign = await getQuery(
+      'SELECT id, creator_id, pin FROM campaigns WHERE id = ?',
+      [question.campaign_id]
+    );
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    // Check authorization: user must be question creator, campaign creator, or have valid PIN
+    const isQuestionCreator = question.creator_id && question.creator_id === creator_id;
+    const isCampaignCreator = campaign.creator_id && campaign.creator_id === creator_id;
+    const isPinValid = campaign_pin && campaign.pin && campaign.pin === campaign_pin;
+    
+    if (!isQuestionCreator && !isCampaignCreator && !isPinValid) {
+      return res.status(403).json({ error: 'Only the question creator, campaign creator, or someone with a valid PIN can edit questions' });
+    }
+    
+    // Update the question
+    await runQuery(
+      'UPDATE questions SET question_text = ? WHERE id = ?',
+      [question_text.trim(), id]
+    );
+    
+    // Get updated question with vote counts
+    const updatedQuestion = await getQuery(
+      `SELECT q.*, 
+       COUNT(v.id) as vote_count
+       FROM questions q
+       LEFT JOIN votes v ON q.id = v.question_id
+       WHERE q.id = ?
+       GROUP BY q.id`,
+      [id]
+    );
+    
+    const questionWithVotes = {
+      ...updatedQuestion,
+      vote_count: updatedQuestion.vote_count || 0,
+      voters: []
+    };
+    
+    // Broadcast update to all clients watching this campaign
+    sseService.broadcast(question.campaign_id.toString(), {
+      type: 'question_updated',
+      question: questionWithVotes
+    });
+    
+    res.json(questionWithVotes);
   } catch (error) {
     next(error);
   }

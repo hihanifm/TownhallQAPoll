@@ -45,18 +45,49 @@ export async function createCampaign(request, title, description = null, creator
  * @param {Object} request - Playwright request context
  * @param {number} campaignId - Campaign ID
  * @param {string} questionText - Question text
+ * @param {string} creatorId - Creator user ID (required)
  * @returns {Promise<Object>} Created question object
  */
-export async function createQuestion(request, campaignId, questionText) {
+export async function createQuestion(request, campaignId, questionText, creatorId = null) {
+  // Generate a default creator ID if not provided
+  const questionCreatorId = creatorId || generateUserId();
+  
   const response = await request.post(`${API_BASE_URL}/campaigns/${campaignId}/questions`, {
     data: {
       question_text: questionText,
+      creator_id: questionCreatorId,
     },
   });
   
   if (!response.ok()) {
     const error = await response.json();
     throw new Error(`Failed to create question: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Update a question
+ * @param {Object} request - Playwright request context
+ * @param {number} questionId - Question ID
+ * @param {string} questionText - Updated question text
+ * @param {string} creatorId - Creator user ID (optional if using PIN)
+ * @param {string} campaignPin - Campaign PIN (optional if using creator_id)
+ * @returns {Promise<Object>} Updated question object
+ */
+export async function updateQuestion(request, questionId, questionText, creatorId = null, campaignPin = null) {
+  const body = campaignPin 
+    ? { question_text: questionText, campaign_pin: campaignPin }
+    : { question_text: questionText, creator_id: creatorId };
+  
+  const response = await request.patch(`${API_BASE_URL}/questions/${questionId}`, {
+    data: body,
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to update question: ${error.error || response.statusText()}`);
   }
   
   return await response.json();

@@ -89,17 +89,36 @@ export const api = {
     return response.json();
   },
 
-  createQuestion: async (campaignId, questionText) => {
+  createQuestion: async (campaignId, questionText, creatorId) => {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/questions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ question_text: questionText }),
+      body: JSON.stringify({ question_text: questionText, creator_id: creatorId }),
     });
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to create question');
+    }
+    return response.json();
+  },
+
+  updateQuestion: async (questionId, questionText, creatorId, campaignPin) => {
+    const body = campaignPin 
+      ? { question_text: questionText, campaign_pin: campaignPin }
+      : { question_text: questionText, creator_id: creatorId };
+    
+    const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update question');
     }
     return response.json();
   },

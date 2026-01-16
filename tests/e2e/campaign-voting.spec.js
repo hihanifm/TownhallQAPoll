@@ -3,6 +3,7 @@ import {
   generateUserId, 
   createCampaign, 
   createQuestion, 
+  updateQuestion,
   upvoteQuestion,
   getCampaign,
   getQuestions,
@@ -66,26 +67,28 @@ test.describe('Campaign Voting E2E Test', () => {
 
     // Step 2: Create first question
     const question1Text = 'What is the company strategy for 2024?';
-    const question1 = await createQuestion(request, campaignId, question1Text);
+    const question1 = await createQuestion(request, campaignId, question1Text, testUserId);
     
     expect(question1).toBeDefined();
     expect(question1.id).toBeDefined();
     expect(question1.question_text).toBe(question1Text);
     expect(question1.campaign_id).toBe(campaignId);
     expect(question1.vote_count).toBe(0);
+    expect(question1.creator_id).toBe(testUserId);
     
     question1Id = question1.id;
     console.log(`✓ Created question 1 with ID: ${question1Id}`);
 
     // Step 3: Create second question
     const question2Text = 'Will there be any organizational changes?';
-    const question2 = await createQuestion(request, campaignId, question2Text);
+    const question2 = await createQuestion(request, campaignId, question2Text, testUserId);
     
     expect(question2).toBeDefined();
     expect(question2.id).toBeDefined();
     expect(question2.question_text).toBe(question2Text);
     expect(question2.campaign_id).toBe(campaignId);
     expect(question2.vote_count).toBe(0);
+    expect(question2.creator_id).toBe(testUserId);
     
     question2Id = question2.id;
     console.log(`✓ Created question 2 with ID: ${question2Id}`);
@@ -120,7 +123,18 @@ test.describe('Campaign Voting E2E Test', () => {
     expect(q1AfterUpvote.voters).toContain(testUserId);
     expect(q2AfterUpvote.voters).toContain(testUserId);
 
-    // Step 6: "Downvote" question 1 (toggle off by calling upvote again)
+    // Step 6: Edit question 1 (as creator)
+    const updatedQuestion1Text = 'What is the company strategy for 2024 and beyond?';
+    const updatedQuestion1 = await updateQuestion(request, question1Id, updatedQuestion1Text, testUserId);
+    
+    expect(updatedQuestion1).toBeDefined();
+    expect(updatedQuestion1.id).toBe(question1Id);
+    expect(updatedQuestion1.question_text).toBe(updatedQuestion1Text);
+    expect(updatedQuestion1.vote_count).toBe(1); // Vote count should remain
+    
+    console.log(`✓ Edited question 1 - updated text: "${updatedQuestion1.question_text}"`);
+
+    // Step 7: "Downvote" question 1 (toggle off by calling upvote again)
     const toggleOffResult = await upvoteQuestion(request, question1Id, testUserId);
     
     expect(toggleOffResult).toBeDefined();
@@ -135,11 +149,13 @@ test.describe('Campaign Voting E2E Test', () => {
     const q1Final = finalQuestions.find(q => q.id === question1Id);
     const q2Final = finalQuestions.find(q => q.id === question2Id);
     
-    // Question 1 should have 0 votes (vote removed)
+    // Question 1 should have updated text and 0 votes (vote removed)
+    expect(q1Final.question_text).toBe(updatedQuestion1Text);
     expect(q1Final.vote_count).toBe(0);
     expect(q1Final.voters).not.toContain(testUserId);
     
-    // Question 2 should still have 1 vote
+    // Question 2 should still have 1 vote and original text
+    expect(q2Final.question_text).toBe(question2Text);
     expect(q2Final.vote_count).toBe(1);
     expect(q2Final.voters).toContain(testUserId);
 
@@ -193,7 +209,7 @@ test.describe('Campaign Voting E2E Test', () => {
 
     // Step 4: Create a question in the campaign
     const questionText = 'Can I delete this question with PIN?';
-    const question = await createQuestion(request, campaignId, questionText);
+    const question = await createQuestion(request, campaignId, questionText, creatorId);
     question1Id = question.id;
     console.log(`✓ Created question with ID: ${question1Id}`);
 
@@ -214,7 +230,7 @@ test.describe('Campaign Voting E2E Test', () => {
 
     // Step 7: Create another question for further testing
     const question2Text = 'Another test question';
-    const question2 = await createQuestion(request, campaignId, question2Text);
+    const question2 = await createQuestion(request, campaignId, question2Text, creatorId);
     question2Id = question2.id;
     console.log(`✓ Created question 2 with ID: ${question2Id}`);
 

@@ -11,6 +11,9 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
   const [isDeleting, setIsDeleting] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const [voteUpdated, setVoteUpdated] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState(question.question_text || '');
+  const [isUpdating, setIsUpdating] = useState(false);
   const justToggledRef = useRef(false);
   const previousVoteCountRef = useRef(question.vote_count || 0);
   const previousNumberRef = useRef(number);
@@ -37,6 +40,11 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     // Update vote count
     setVoteCount(newVoteCount);
     
+    // Update edited text when question changes (but not when we're actively editing)
+    if (!isEditing && question.question_text) {
+      setEditedText(question.question_text);
+    }
+    
     // Check if position changed (moved up in list) - only if we have previous number
     if (previousNumber !== undefined && previousNumber > 0 && number < previousNumber) {
       setIsMoving(true);
@@ -51,7 +59,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     if (question.id) {
       checkVoteStatus();
     }
-  }, [question.id, question.vote_count, number, previousNumber, checkVoteStatus]);
+  }, [question.id, question.vote_count, question.question_text, number, previousNumber, checkVoteStatus, isEditing]);
 
   const handleUpvote = async () => {
     if (isVoting) return;
@@ -114,33 +122,134 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     }
   };
 
+  const handleEdit = (e) => {
+    e.stopPropagation();
+    setIsEditing(true);
+    setEditedText(question.question_text || '');
+  };
+
+  const handleCancelEdit = (e) => {
+    e.stopPropagation();
+    setIsEditing(false);
+    setEditedText(question.question_text || '');
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.stopPropagation();
+    
+    if (!editedText.trim()) {
+      alert('Question text cannot be empty');
+      return;
+    }
+
+    if (editedText.trim() === question.question_text?.trim()) {
+      // No changes, just cancel
+      setIsEditing(false);
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const userId = getUserId();
+      const campaignPin = hasVerifiedPin(campaignId) ? getVerifiedPin(campaignId) : undefined;
+      const updatedQuestion = await api.updateQuestion(question.id, editedText.trim(), userId, campaignPin);
+      setIsEditing(false);
+      // Update local state with the updated question
+      if (onVoteUpdate) {
+        onVoteUpdate();
+      }
+    } catch (error) {
+      console.error('Error updating question:', error);
+      alert(error.message || 'Failed to update question');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Determine if user can edit this question
+  const canEdit = question.creator_id === getUserId() || hasAdminAccess;
+
   return (
     <div className={`question-card ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''}`}>
       <span className="question-number">{number}</span>
       <div className="question-content">
-        <span className="question-text">{question.question_text?.trim()}</span>
-        {Boolean(question.is_moderator_created) && (
-          <span className="moderator-badge">Moderator</span>
+        {isEditing ? (
+          <div className="question-edit-form">
+            <input
+              type="text"
+              className="question-edit-input"
+              value={editedText}
+              onChange={(e) => setEditedText(e.target.value)}
+              disabled={isUpdating}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSaveEdit(e);
+                } else if (e.key === 'Escape') {
+                  handleCancelEdit(e);
+                }
+              }}
+            />
+            <div className="question-edit-actions">
+              <button
+                className="save-question-btn"
+                onClick={handleSaveEdit}
+                disabled={isUpdating || !editedText.trim()}
+                title="Save changes"
+              >
+                {isUpdating ? '...' : '✓'}
+              </button>
+              <button
+                className="cancel-question-btn"
+                onClick={handleCancelEdit}
+                disabled={isUpdating}
+                title="Cancel"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <span className="question-text">{question.question_text?.trim()}</span>
+            {Boolean(question.is_moderator_created) && (
+              <span className="moderator-badge">Moderator</span>
+            )}
+          </>
         )}
       </div>
-      <button
-        className={`upvote-button ${hasVoted ? 'voted' : ''}`}
-        onClick={handleUpvote}
-        disabled={isVoting || isDeleting}
-      >
-        <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
-        <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
-        {voteCount > 0 && <span className="vote-count-inline">{voteCount}</span>}
-      </button>
-      {hasAdminAccess && (
+      {!isEditing && (
         <button
-          className="delete-question-btn"
-          onClick={handleDelete}
-          disabled={isDeleting}
-          title="Delete question"
+          className={`upvote-button ${hasVoted ? 'voted' : ''}`}
+          onClick={handleUpvote}
+          disabled={isVoting || isDeleting || isUpdating}
         >
-          {isDeleting ? '...' : '×'}
+          <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
+          <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
+          {voteCount > 0 && <span className="vote-count-inline">{voteCount}</span>}
         </button>
+      )}
+      {canEdit && !isEditing && (
+        <>
+          <button
+            className="edit-question-btn"
+            onClick={handleEdit}
+            disabled={isDeleting || isUpdating}
+            title="Edit question"
+          >
+            ✎
+          </button>
+          {hasAdminAccess && (
+            <button
+              className="delete-question-btn"
+              onClick={handleDelete}
+              disabled={isDeleting || isUpdating}
+              title="Delete question"
+            >
+              {isDeleting ? '...' : '×'}
+            </button>
+          )}
+        </>
       )}
     </div>
   );

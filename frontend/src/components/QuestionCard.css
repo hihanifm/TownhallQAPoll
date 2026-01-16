@@ -240,3 +240,122 @@
   cursor: not-allowed;
 }
 
+.edit-question-btn {
+  padding: 4px 8px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
+}
+
+.edit-question-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.edit-question-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.question-edit-form {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.question-edit-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #3b82f6;
+  border-radius: 6px;
+  font-size: 20px;
+  font-family: 'Excalifont', sans-serif;
+  color: #1a1a1a;
+  background: white;
+  min-width: 0;
+}
+
+.question-edit-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.question-edit-input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.question-edit-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.save-question-btn,
+.cancel-question-btn {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.save-question-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3);
+}
+
+.save-question-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+.save-question-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancel-question-btn {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: white;
+  box-shadow: 0 1px 3px rgba(107, 114, 128, 0.3);
+}
+
+.cancel-question-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  box-shadow: 0 2px 6px rgba(107, 114, 128, 0.4);
+  transform: translateY(-1px);
+}
+
+.cancel-question-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+

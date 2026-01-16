@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../services/api';
+import { getUserId } from '../utils/userId';
 import './CreateQuestionForm.css';
 
 function CreateQuestionForm({ campaignId, onQuestionCreated }) {
@@ -19,7 +20,8 @@ function CreateQuestionForm({ campaignId, onQuestionCreated }) {
     setError(null);
 
     try {
-      const newQuestion = await api.createQuestion(campaignId, questionText);
+      const creatorId = getUserId();
+      const newQuestion = await api.createQuestion(campaignId, questionText, creatorId);
       setQuestionText('');
       onQuestionCreated(newQuestion);
     } catch (err) {

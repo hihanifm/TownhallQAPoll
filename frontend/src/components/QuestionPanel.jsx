@@ -59,6 +59,18 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
             prevQuestions.filter(q => q.id !== data.question_id)
           );
           break;
+        case 'question_updated':
+          // Update the question in the list
+          setQuestions(prevQuestions => {
+            const updated = prevQuestions.map(q => 
+              q.id === data.question.id 
+                ? { ...q, ...data.question }
+                : q
+            );
+            // Re-sort by vote count
+            return updated.sort((a, b) => b.vote_count - a.vote_count);
+          });
+          break;
         default:
           // For any other update, refresh the full list
           loadQuestions();
