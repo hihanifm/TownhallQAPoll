@@ -10,7 +10,9 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "build:frontend": "cd frontend && npm run build",
-    "start:frontend:prod": "cd frontend && npm run build && npm run preview"
+    "start:frontend:prod": "cd frontend && npm run build && npm run preview",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "keywords": [
     "townhall",
@@ -19,6 +21,9 @@
     "questions"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
 }
 
