@@ -23,9 +23,11 @@ CREATE TABLE IF NOT EXISTS votes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     question_id INTEGER NOT NULL,
     user_id TEXT NOT NULL,
+    fingerprint_hash TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (question_id) REFERENCES questions(id),
-    UNIQUE(question_id, user_id)
+    UNIQUE(question_id, user_id),
+    UNIQUE(question_id, fingerprint_hash)
 );
 
 CREATE INDEX IF NOT EXISTS idx_questions_campaign ON questions(campaign_id);

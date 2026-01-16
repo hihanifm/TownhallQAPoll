@@ -1,6 +1,6 @@
 {
   "name": "townhall-qa-poll",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Web application to collect and rank employee questions for town hall meetings",
   "scripts": {
     "install:all": "cd backend && npm install && cd ../frontend && npm install",

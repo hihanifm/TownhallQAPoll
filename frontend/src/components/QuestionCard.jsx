@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
+import { getFingerprint } from '../utils/browserFingerprint';
 import { getVerifiedPin, hasVerifiedPin } from '../utils/campaignPin';
 import './QuestionCard.css';
 
@@ -14,9 +15,20 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(question.question_text || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [fingerprintHash, setFingerprintHash] = useState(null);
   const justToggledRef = useRef(false);
   const previousVoteCountRef = useRef(question.vote_count || 0);
   const previousNumberRef = useRef(number);
+
+  // Get browser fingerprint on component mount
+  useEffect(() => {
+    getFingerprint().then(hash => {
+      setFingerprintHash(hash);
+    }).catch(error => {
+      console.error('Error getting fingerprint:', error);
+      // Continue without fingerprint (will fallback to user_id only)
+    });
+  }, []);
 
   const checkVoteStatus = useCallback(async () => {
     // Skip checking if we just toggled (to avoid race condition)
@@ -24,14 +36,18 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
       justToggledRef.current = false;
       return;
     }
+    // Wait for fingerprint if not yet loaded
+    if (!fingerprintHash) {
+      return;
+    }
     try {
       const userId = getUserId();
-      const result = await api.checkVote(question.id, userId);
+      const result = await api.checkVote(question.id, userId, fingerprintHash);
       setHasVoted(result.hasVoted);
     } catch (error) {
       console.error('Error checking vote status:', error);
     }
-  }, [question.id]);
+  }, [question.id, fingerprintHash]);
 
   useEffect(() => {
     const newVoteCount = question.vote_count || 0;
@@ -63,6 +79,12 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
 
   const handleUpvote = async () => {
     if (isVoting) return;
+    
+    // Require fingerprint before voting
+    if (!fingerprintHash) {
+      alert('Error: Browser fingerprint not available. Please refresh the page and try again.');
+      return;
+    }
 
     setIsVoting(true);
     justToggledRef.current = true; // Mark that we just toggled
@@ -74,7 +96,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     try {
       const userId = getUserId();
       console.log('Toggling vote for question:', question.id, 'user:', userId, 'current hasVoted:', hasVoted);
-      const result = await api.upvoteQuestion(question.id, userId);
+      const result = await api.upvoteQuestion(question.id, userId, fingerprintHash);
       console.log('Toggle result:', result);
       // Update state immediately from API response
       setHasVoted(result.hasVoted);

@@ -49,6 +49,30 @@ function initDatabase() {
         }
       });
       
+      // Add fingerprint_hash column to existing votes table if it doesn't exist
+      db.run('ALTER TABLE votes ADD COLUMN fingerprint_hash TEXT', (alterErr) => {
+        // Ignore error if column already exists
+        if (alterErr && !alterErr.message.includes('duplicate column')) {
+          console.warn('Note: fingerprint_hash column may already exist:', alterErr.message);
+        } else {
+          // If column was just added, set a default value for existing rows
+          if (!alterErr) {
+            db.run('UPDATE votes SET fingerprint_hash = user_id WHERE fingerprint_hash IS NULL', (updateErr) => {
+              if (updateErr) {
+                console.warn('Note: Could not set default fingerprint_hash:', updateErr.message);
+              }
+            });
+          }
+        }
+      });
+      
+      // Create unique index on fingerprint_hash if it doesn't exist
+      db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_votes_question_fingerprint ON votes(question_id, fingerprint_hash)', (indexErr) => {
+        if (indexErr && !indexErr.message.includes('already exists')) {
+          console.warn('Note: Could not create fingerprint index:', indexErr.message);
+        }
+      });
+      
       resolve(db);
     });
   });

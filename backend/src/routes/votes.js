@@ -7,10 +7,14 @@ const sseService = require('../services/sseService');
 router.post('/questions/:id/upvote', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { user_id } = req.body;
+    const { user_id, fingerprint_hash } = req.body;
     
     if (!user_id) {
       return res.status(400).json({ error: 'user_id is required' });
+    }
+    
+    if (!fingerprint_hash) {
+      return res.status(400).json({ error: 'fingerprint_hash is required' });
     }
     
     // Check if question exists
@@ -23,37 +27,44 @@ router.post('/questions/:id/upvote', async (req, res, next) => {
       return res.status(404).json({ error: 'Question not found' });
     }
     
-    // Check if user has already voted
-    const existingVote = await getQuery(
+    // Check if this fingerprint has already voted (primary check - prevents incognito abuse)
+    const existingVoteByFingerprint = await getQuery(
+      'SELECT * FROM votes WHERE question_id = ? AND fingerprint_hash = ?',
+      [id, fingerprint_hash]
+    );
+    
+    // Also check by user_id for backwards compatibility and toggle behavior
+    const existingVoteByUserId = await getQuery(
       'SELECT * FROM votes WHERE question_id = ? AND user_id = ?',
       [id, user_id]
     );
     
     let hasVoted = false;
     
-    if (existingVote) {
-      // Remove vote (toggle off)
-      console.log('Removing vote for question:', id, 'user:', user_id);
+    // If vote exists by fingerprint OR user_id, remove it (toggle off)
+    if (existingVoteByFingerprint || existingVoteByUserId) {
+      // Remove vote (toggle off) - delete by fingerprint_hash to prevent incognito abuse
+      console.log('Removing vote for question:', id, 'fingerprint:', fingerprint_hash.substring(0, 8) + '...');
       const deleteResult = await runQuery(
-        'DELETE FROM votes WHERE question_id = ? AND user_id = ?',
-        [id, user_id]
+        'DELETE FROM votes WHERE question_id = ? AND fingerprint_hash = ?',
+        [id, fingerprint_hash]
       );
       console.log('Delete result:', deleteResult);
       hasVoted = false;
     } else {
       // Create vote (toggle on)
-      console.log('Adding vote for question:', id, 'user:', user_id);
+      console.log('Adding vote for question:', id, 'fingerprint:', fingerprint_hash.substring(0, 8) + '...');
       try {
         const insertResult = await runQuery(
-          'INSERT INTO votes (question_id, user_id) VALUES (?, ?)',
-          [id, user_id]
+          'INSERT INTO votes (question_id, user_id, fingerprint_hash) VALUES (?, ?, ?)',
+          [id, user_id, fingerprint_hash]
         );
         console.log('Insert result:', insertResult);
         hasVoted = true;
       } catch (insertError) {
         // If it's a constraint error (duplicate), the vote already exists
         if (insertError.code === 'SQLITE_CONSTRAINT') {
-          console.log('Constraint error - vote already exists, setting hasVoted to true');
+          console.log('Constraint error - vote already exists (fingerprint or user_id), setting hasVoted to true');
           hasVoted = true;
         } else {
           console.error('Error inserting vote:', insertError);
@@ -68,10 +79,10 @@ router.post('/questions/:id/upvote', async (req, res, next) => {
       [id]
     );
     
-    // Double-check the vote status after the operation
+    // Double-check the vote status after the operation (check by fingerprint)
     const finalVoteCheck = await getQuery(
-      'SELECT * FROM votes WHERE question_id = ? AND user_id = ?',
-      [id, user_id]
+      'SELECT * FROM votes WHERE question_id = ? AND fingerprint_hash = ?',
+      [id, fingerprint_hash]
     );
     
     console.log('Final vote check:', { hasVoted, finalVoteCheck: !!finalVoteCheck, voteCount: voteCount.count });
