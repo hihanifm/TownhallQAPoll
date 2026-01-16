@@ -11,7 +11,6 @@ function AppContent() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [selectedCampaignId, setSelectedCampaignId] = useState(id || null);
-  const [overrideRestriction, setOverrideRestriction] = useState(false);
 
   // Sync selectedCampaignId with URL params
   useEffect(() => {
@@ -66,27 +65,32 @@ function AppContent() {
 }
 
 function App() {
-  const [overrideRestriction, setOverrideRestriction] = useState(false);
-
-  const handleOverride = () => {
-    setOverrideRestriction(true);
-  };
-
   // Check if browser restriction is enabled and if current browser is allowed
   const isBrowserAllowed = () => {
-    if (!browserConfig.enabled) {
-      return true; // Restrictions disabled, allow all browsers
+    // Check environment mode
+    const isProduction = import.meta.env.MODE === 'production' || import.meta.env.PROD === true;
+    const enableRestriction = import.meta.env.VITE_ENABLE_BROWSER_RESTRICTION === 'true';
+    
+    // Always allow all browsers in development mode
+    if (!isProduction) {
+      return true;
     }
     
-    // Check if user has overridden the restriction for this session only
-    if (overrideRestriction) {
+    // In production: check if restrictions are enabled via environment variable
+    if (!enableRestriction) {
+      // Restrictions disabled via env var, allow all browsers
       return true;
+    }
+    
+    // Restrictions enabled in production - check if browser is allowed
+    if (!browserConfig.enabled) {
+      return true; // Config says disabled, allow all browsers
     }
     
     const browserName = getBrowserName();
     if (browserConfig.allowedBrowsers.length === 0) {
-      // If no browsers specified, default to Microsoft Edge only
-      return browserName === 'Microsoft Edge' || browserName === 'Microsoft Edge (Legacy)';
+      // If no browsers specified, default to Windows Edge only
+      return browserName === 'Windows Edge';
     }
     
     // Check if current browser is in the allowed list (case-insensitive)
@@ -95,15 +99,19 @@ function App() {
     );
   };
 
-  // Show browser restriction message if needed
-  if (!isBrowserAllowed()) {
+  // Show browser restriction message if needed (only in production when enabled)
+  const isProduction = import.meta.env.MODE === 'production' || import.meta.env.PROD === true;
+  const enableRestriction = import.meta.env.VITE_ENABLE_BROWSER_RESTRICTION === 'true';
+  
+  // Only show restrictions in production when enabled
+  if (isProduction && enableRestriction && !isBrowserAllowed()) {
     const browserName = getBrowserName();
     const allowedBrowsersText = browserConfig.allowedBrowsers.length > 0
       ? browserConfig.allowedBrowsers.join(' or ')
-      : 'Microsoft Edge';
+      : 'Windows Edge';
     
     const restrictionMessage = browserConfig.customMessage || 
-      `This application is only accessible using ${allowedBrowsersText} browser.`;
+      `This application is only accessible using ${allowedBrowsersText} browser on Windows.`;
     
     return (
       <div className="app">
@@ -119,8 +127,9 @@ function App() {
               <div className="browser-restriction-instructions">
                 <p>To access this application:</p>
                 <ol>
+                  <li>Use Windows Edge browser on a Windows computer</li>
                   <li>Download and install <a href="https://www.microsoft.com/edge" target="_blank" rel="noopener noreferrer">Microsoft Edge</a> if you don't have it</li>
-                  <li>Open this application in Microsoft Edge</li>
+                  <li>Open this application in Windows Edge</li>
                   <li>Refresh this page</li>
                 </ol>
               </div>
@@ -128,21 +137,6 @@ function App() {
             <p className="browser-restriction-reason">
               <strong>Why?</strong> This restriction helps ensure fair voting by preventing access from multiple browsers.
             </p>
-            {browserConfig.allowOverride && (
-              <div className="browser-override-section">
-                <button 
-                  className="browser-override-button"
-                  onClick={handleOverride}
-                >
-                  Continue Anyway
-                </button>
-                <p className="browser-override-note">
-                  You can proceed, but please note that using unsupported browsers may affect your experience.
-                  <br />
-                  <strong>Note:</strong> You will be asked again if you refresh the page or use a different browser.
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>

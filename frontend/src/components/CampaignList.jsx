@@ -184,7 +184,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
             <p>No campaigns yet. Create one to get started!</p>
           </div>
         ) : (
-          campaigns.map(campaign => (
+          campaigns.slice(0, 25).map(campaign => (
             <div
               key={campaign.id}
               className={`campaign-item ${selectedCampaignId === campaign.id ? 'selected' : ''}`}
