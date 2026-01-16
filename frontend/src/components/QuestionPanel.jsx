@@ -13,6 +13,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
   const [campaign, setCampaign] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showShareFeedback, setShowShareFeedback] = useState(false);
 
   useEffect(() => {
     if (campaignId) {
@@ -91,8 +92,11 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
     try {
       const data = await api.getCampaign(campaignId);
       setCampaign(data);
+      setError(null); // Clear any previous errors
     } catch (err) {
       console.error('Error loading campaign:', err);
+      setError(err.message || 'Campaign not found');
+      setCampaign(null);
     }
   };
 
@@ -162,6 +166,58 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
     }
   };
 
+  const handleShare = async () => {
+    const url = `${window.location.origin}/campaign/${campaignId}`;
+    const shareText = campaign 
+      ? `Check out this campaign: ${campaign.title}`
+      : 'Check out this campaign';
+
+    // Try Web Share API first (works on mobile and some desktop browsers)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: campaign?.title || 'Townhall Q&A Poll',
+          text: shareText,
+          url: url,
+        });
+        return;
+      } catch (err) {
+        // User cancelled or error occurred, fall back to clipboard
+        if (err.name !== 'AbortError') {
+          console.error('Error sharing:', err);
+        }
+      }
+    }
+
+    // Fall back to clipboard
+    try {
+      await navigator.clipboard.writeText(url);
+      setShowShareFeedback(true);
+      setTimeout(() => {
+        setShowShareFeedback(false);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setShowShareFeedback(true);
+        setTimeout(() => {
+          setShowShareFeedback(false);
+        }, 2000);
+      } catch (err) {
+        alert('Failed to copy URL. Please copy it manually: ' + url);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   if (!campaignId) {
     return (
       <div className="question-panel empty">
@@ -181,7 +237,12 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
   if (error) {
     return (
       <div className="question-panel">
-        <div className="error">Error: {error}</div>
+        <div className="error">
+          <p>Error: {error}</p>
+          {error.includes('not found') || error.includes('Failed to fetch campaign') ? (
+            <p>This campaign may have been deleted or the ID is invalid.</p>
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -191,7 +252,24 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
       <div className="panel-header">
         <div className="panel-header-left">
           {campaign && (
-            <h2 className="campaign-title">{campaign.title}</h2>
+            <div className="campaign-title-container">
+              <h2 className="campaign-title">{campaign.title}</h2>
+              <button
+                className="share-campaign-btn"
+                onClick={handleShare}
+                title="Share campaign"
+                aria-label="Share campaign"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3"></circle>
+                  <circle cx="6" cy="12" r="3"></circle>
+                  <circle cx="18" cy="19" r="3"></circle>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                </svg>
+                Share
+              </button>
+            </div>
           )}
           <p className="panel-subtitle">While it may not be possible to answer every question, priority will be given to those questions with the most votes - so if you see an existing question that closely matches your concern, vote for it!</p>
         </div>
@@ -199,6 +277,12 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
           Total: {questions.length} questions
         </div>
       </div>
+
+      {showShareFeedback && (
+        <div className="share-feedback">
+          <span>✓ URL copied to clipboard!</span>
+        </div>
+      )}
 
       {questions.length > 0 && (
         <div className="questions-section">

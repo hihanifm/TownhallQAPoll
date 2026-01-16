@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Routes, Route, useParams, useNavigate } from 'react-router-dom';
 import CampaignList from './components/CampaignList';
 import QuestionPanel from './components/QuestionPanel';
 import AppFooter from './components/AppFooter';
@@ -6,17 +7,66 @@ import { getBrowserName } from './utils/browserDetection';
 import { browserConfig } from './config/browserConfig';
 import './App.css';
 
-function App() {
-  const [selectedCampaignId, setSelectedCampaignId] = useState(null);
+function AppContent() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [selectedCampaignId, setSelectedCampaignId] = useState(id || null);
   const [overrideRestriction, setOverrideRestriction] = useState(false);
 
+  // Sync selectedCampaignId with URL params
+  useEffect(() => {
+    if (id) {
+      setSelectedCampaignId(id);
+    } else {
+      setSelectedCampaignId(null);
+    }
+  }, [id]);
+
   const handleCampaignSelect = (campaignId) => {
-    setSelectedCampaignId(campaignId);
+    if (campaignId) {
+      navigate(`/campaign/${campaignId}`);
+    } else {
+      navigate('/');
+    }
   };
 
   const handleCampaignCreated = (newCampaign) => {
-    setSelectedCampaignId(newCampaign.id);
+    navigate(`/campaign/${newCampaign.id}`);
   };
+
+  return (
+    <div className="app">
+      <header className="app-header">
+        <h1>Townhall Q&A Poll</h1>
+        <p>Ask. Vote. Be heard.</p>
+      </header>
+      <div className="app-content">
+        <CampaignList
+          selectedCampaignId={selectedCampaignId}
+          onCampaignSelect={handleCampaignSelect}
+          onCampaignCreated={handleCampaignCreated}
+        />
+        <QuestionPanel 
+          campaignId={selectedCampaignId}
+          onCampaignClosed={(campaignId) => {
+            if (selectedCampaignId === campaignId) {
+              navigate('/');
+            }
+          }}
+          onCampaignDeleted={(campaignId) => {
+            if (selectedCampaignId === campaignId) {
+              navigate('/');
+            }
+          }}
+        />
+      </div>
+      <AppFooter selectedCampaignId={selectedCampaignId} />
+    </div>
+  );
+}
+
+function App() {
+  const [overrideRestriction, setOverrideRestriction] = useState(false);
 
   const handleOverride = () => {
     setOverrideRestriction(true);
@@ -100,33 +150,10 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>Townhall Q&A Poll</h1>
-        <p>Ask. Vote. Be heard.</p>
-      </header>
-      <div className="app-content">
-        <CampaignList
-          selectedCampaignId={selectedCampaignId}
-          onCampaignSelect={handleCampaignSelect}
-          onCampaignCreated={handleCampaignCreated}
-        />
-        <QuestionPanel 
-          campaignId={selectedCampaignId}
-          onCampaignClosed={(campaignId) => {
-            if (selectedCampaignId === campaignId) {
-              setSelectedCampaignId(null);
-            }
-          }}
-          onCampaignDeleted={(campaignId) => {
-            if (selectedCampaignId === campaignId) {
-              setSelectedCampaignId(null);
-            }
-          }}
-        />
-      </div>
-      <AppFooter selectedCampaignId={selectedCampaignId} />
-    </div>
+    <Routes>
+      <Route path="/campaign/:id" element={<AppContent />} />
+      <Route path="/" element={<AppContent />} />
+    </Routes>
   );
 }
 
