@@ -99,3 +99,7 @@ coverage/
 # Yarn Integrity file
 .yarn-integrity
 
+# Playwright test results
+test-results/
+playwright-report/
+playwright/.cache/
