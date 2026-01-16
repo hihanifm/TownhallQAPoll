@@ -72,6 +72,50 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
             return updated.sort((a, b) => b.vote_count - a.vote_count);
           });
           break;
+        case 'comment_created':
+          // Add new comment to the appropriate question
+          setQuestions(prevQuestions => {
+            return prevQuestions.map(q => {
+              if (q.id === data.question_id) {
+                return {
+                  ...q,
+                  comments: [...(q.comments || []), data.comment]
+                };
+              }
+              return q;
+            });
+          });
+          break;
+        case 'comment_updated':
+          // Update comment in the appropriate question
+          setQuestions(prevQuestions => {
+            return prevQuestions.map(q => {
+              if (q.id === data.question_id) {
+                return {
+                  ...q,
+                  comments: (q.comments || []).map(c => 
+                    c.id === data.comment.id ? data.comment : c
+                  )
+                };
+              }
+              return q;
+            });
+          });
+          break;
+        case 'comment_deleted':
+          // Remove comment from the appropriate question
+          setQuestions(prevQuestions => {
+            return prevQuestions.map(q => {
+              if (q.id === data.question_id) {
+                return {
+                  ...q,
+                  comments: (q.comments || []).filter(c => c.id !== data.comment_id)
+                };
+              }
+              return q;
+            });
+          });
+          break;
         default:
           // For any other update, refresh the full list
           loadQuestions();

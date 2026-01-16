@@ -27,7 +27,38 @@ router.get('/campaigns/:campaignId/questions', async (req, res, next) => {
       vote_count: q.vote_count || 0
     }));
     
-    res.json(questionsWithVotes);
+    // Fetch comments for all questions
+    const questionIds = questionsWithVotes.map(q => q.id);
+    let commentsMap = {};
+    
+    if (questionIds.length > 0) {
+      const placeholders = questionIds.map(() => '?').join(',');
+      const comments = await allQuery(
+        `SELECT * FROM comments WHERE question_id IN (${placeholders}) ORDER BY created_at ASC`,
+        questionIds
+      );
+      
+      // Group comments by question_id
+      comments.forEach(comment => {
+        if (!commentsMap[comment.question_id]) {
+          commentsMap[comment.question_id] = [];
+        }
+        commentsMap[comment.question_id].push({
+          id: comment.id,
+          comment_text: comment.comment_text,
+          created_at: comment.created_at,
+          updated_at: comment.updated_at
+        });
+      });
+    }
+    
+    // Attach comments to questions
+    const questionsWithComments = questionsWithVotes.map(q => ({
+      ...q,
+      comments: commentsMap[q.id] || []
+    }));
+    
+    res.json(questionsWithComments);
   } catch (error) {
     next(error);
   }
@@ -260,6 +291,225 @@ router.delete('/questions/:id', async (req, res, next) => {
     });
     
     res.json({ success: true, message: 'Question deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/questions/:questionId/comments - Create a new comment
+router.post('/questions/:questionId/comments', async (req, res, next) => {
+  try {
+    const { questionId } = req.params;
+    const { comment_text, creator_id, campaign_pin } = req.body;
+    
+    if (!comment_text || comment_text.trim() === '') {
+      return res.status(400).json({ error: 'Comment text is required' });
+    }
+    
+    if (!creator_id && !campaign_pin) {
+      return res.status(400).json({ error: 'Either creator_id or campaign_pin is required' });
+    }
+    
+    // Get the question
+    const question = await getQuery(
+      'SELECT * FROM questions WHERE id = ?',
+      [questionId]
+    );
+    
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+    
+    // Get the campaign to check authorization
+    const campaign = await getQuery(
+      'SELECT id, creator_id, pin FROM campaigns WHERE id = ?',
+      [question.campaign_id]
+    );
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    // Check authorization: must be campaign creator or have valid PIN
+    const isCampaignCreator = campaign.creator_id && campaign.creator_id === creator_id;
+    const isPinValid = campaign_pin && campaign.pin && campaign.pin === campaign_pin;
+    
+    if (!isCampaignCreator && !isPinValid) {
+      return res.status(403).json({ error: 'Only the campaign creator or someone with a valid PIN can create comments' });
+    }
+    
+    // Create the comment
+    const result = await runQuery(
+      'INSERT INTO comments (question_id, comment_text) VALUES (?, ?)',
+      [questionId, comment_text.trim()]
+    );
+    
+    const comment = await getQuery(
+      'SELECT * FROM comments WHERE id = ?',
+      [result.lastID]
+    );
+    
+    // Broadcast new comment to all clients watching this campaign
+    sseService.broadcast(question.campaign_id.toString(), {
+      type: 'comment_created',
+      question_id: parseInt(questionId),
+      comment: {
+        id: comment.id,
+        comment_text: comment.comment_text,
+        created_at: comment.created_at,
+        updated_at: comment.updated_at
+      }
+    });
+    
+    res.status(201).json(comment);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PATCH /api/questions/:questionId/comments/:commentId - Update a comment
+router.patch('/questions/:questionId/comments/:commentId', async (req, res, next) => {
+  try {
+    const { questionId, commentId } = req.params;
+    const { comment_text, creator_id, campaign_pin } = req.body;
+    
+    if (!comment_text || comment_text.trim() === '') {
+      return res.status(400).json({ error: 'Comment text is required' });
+    }
+    
+    if (!creator_id && !campaign_pin) {
+      return res.status(400).json({ error: 'Either creator_id or campaign_pin is required' });
+    }
+    
+    // Get the comment
+    const comment = await getQuery(
+      'SELECT * FROM comments WHERE id = ? AND question_id = ?',
+      [commentId, questionId]
+    );
+    
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    // Get the question
+    const question = await getQuery(
+      'SELECT * FROM questions WHERE id = ?',
+      [questionId]
+    );
+    
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+    
+    // Get the campaign to check authorization
+    const campaign = await getQuery(
+      'SELECT id, creator_id, pin FROM campaigns WHERE id = ?',
+      [question.campaign_id]
+    );
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    // Check authorization: must be campaign creator or have valid PIN
+    const isCampaignCreator = campaign.creator_id && campaign.creator_id === creator_id;
+    const isPinValid = campaign_pin && campaign.pin && campaign.pin === campaign_pin;
+    
+    if (!isCampaignCreator && !isPinValid) {
+      return res.status(403).json({ error: 'Only the campaign creator or someone with a valid PIN can update comments' });
+    }
+    
+    // Update the comment
+    await runQuery(
+      'UPDATE comments SET comment_text = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [comment_text.trim(), commentId]
+    );
+    
+    const updatedComment = await getQuery(
+      'SELECT * FROM comments WHERE id = ?',
+      [commentId]
+    );
+    
+    // Broadcast update to all clients watching this campaign
+    sseService.broadcast(question.campaign_id.toString(), {
+      type: 'comment_updated',
+      question_id: parseInt(questionId),
+      comment: {
+        id: updatedComment.id,
+        comment_text: updatedComment.comment_text,
+        created_at: updatedComment.created_at,
+        updated_at: updatedComment.updated_at
+      }
+    });
+    
+    res.json(updatedComment);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/questions/:questionId/comments/:commentId - Delete a comment
+router.delete('/questions/:questionId/comments/:commentId', async (req, res, next) => {
+  try {
+    const { questionId, commentId } = req.params;
+    const { creator_id, campaign_pin } = req.body;
+    
+    if (!creator_id && !campaign_pin) {
+      return res.status(400).json({ error: 'Either creator_id or campaign_pin is required' });
+    }
+    
+    // Get the comment
+    const comment = await getQuery(
+      'SELECT * FROM comments WHERE id = ? AND question_id = ?',
+      [commentId, questionId]
+    );
+    
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    // Get the question
+    const question = await getQuery(
+      'SELECT * FROM questions WHERE id = ?',
+      [questionId]
+    );
+    
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+    
+    // Get the campaign to check authorization
+    const campaign = await getQuery(
+      'SELECT id, creator_id, pin FROM campaigns WHERE id = ?',
+      [question.campaign_id]
+    );
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    // Check authorization: must be campaign creator or have valid PIN
+    const isCampaignCreator = campaign.creator_id && campaign.creator_id === creator_id;
+    const isPinValid = campaign_pin && campaign.pin && campaign.pin === campaign_pin;
+    
+    if (!isCampaignCreator && !isPinValid) {
+      return res.status(403).json({ error: 'Only the campaign creator or someone with a valid PIN can delete comments' });
+    }
+    
+    // Delete the comment
+    await runQuery(
+      'DELETE FROM comments WHERE id = ?',
+      [commentId]
+    );
+    
+    // Broadcast deletion to all clients watching this campaign
+    sseService.broadcast(question.campaign_id.toString(), {
+      type: 'comment_deleted',
+      question_id: parseInt(questionId),
+      comment_id: parseInt(commentId)
+    });
+    
+    res.json({ success: true, message: 'Comment deleted successfully' });
   } catch (error) {
     next(error);
   }

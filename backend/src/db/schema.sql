@@ -30,6 +30,16 @@ CREATE TABLE IF NOT EXISTS votes (
     UNIQUE(question_id, fingerprint_hash)
 );
 
+CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question_id INTEGER NOT NULL,
+    comment_text TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_questions_campaign ON questions(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_votes_question ON votes(question_id);
+CREATE INDEX IF NOT EXISTS idx_comments_question ON comments(question_id);
 

@@ -17,6 +17,14 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
   const [editedText, setEditedText] = useState(question.question_text || '');
   const [isUpdating, setIsUpdating] = useState(false);
   const [fingerprintHash, setFingerprintHash] = useState(null);
+  const [comments, setComments] = useState(question.comments || []);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editedCommentText, setEditedCommentText] = useState('');
+  const [showAddComment, setShowAddComment] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isCreatingComment, setIsCreatingComment] = useState(false);
+  const [isUpdatingComment, setIsUpdatingComment] = useState(false);
+  const [isDeletingComment, setIsDeletingComment] = useState(false);
   const justToggledRef = useRef(false);
   const previousVoteCountRef = useRef(question.vote_count || 0);
   const previousNumberRef = useRef(number);
@@ -76,7 +84,12 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     if (question.id) {
       checkVoteStatus();
     }
-  }, [question.id, question.vote_count, question.question_text, number, previousNumber, checkVoteStatus, isEditing]);
+    
+    // Update comments when question changes
+    if (question.comments) {
+      setComments(question.comments);
+    }
+  }, [question.id, question.vote_count, question.question_text, question.comments, number, previousNumber, checkVoteStatus, isEditing]);
 
   const handleUpvote = async () => {
     if (isVoting) return;
@@ -192,94 +205,306 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
   // Determine if user can edit this question
   const canEdit = question.creator_id === getUserId() || hasAdminAccess;
 
+  // Comment handlers
+  const handleAddComment = () => {
+    setShowAddComment(true);
+  };
+
+  const handleCancelAddComment = () => {
+    setShowAddComment(false);
+    setNewCommentText('');
+  };
+
+  const handleSaveComment = async () => {
+    if (!newCommentText.trim()) {
+      alert('Comment text cannot be empty');
+      return;
+    }
+
+    setIsCreatingComment(true);
+    try {
+      const userId = getUserId();
+      const campaignPin = hasVerifiedPin(campaignId) ? getVerifiedPin(campaignId) : undefined;
+      await api.createComment(question.id, newCommentText.trim(), userId, campaignPin);
+      setShowAddComment(false);
+      setNewCommentText('');
+      // Reload questions to get updated comments
+      if (onVoteUpdate) {
+        onVoteUpdate();
+      }
+    } catch (error) {
+      console.error('Error creating comment:', error);
+      alert(error.message || 'Failed to create comment');
+    } finally {
+      setIsCreatingComment(false);
+    }
+  };
+
+  const handleEditComment = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditedCommentText(comment.comment_text);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditedCommentText('');
+  };
+
+  const handleSaveEditComment = async (commentId) => {
+    if (!editedCommentText.trim()) {
+      alert('Comment text cannot be empty');
+      return;
+    }
+
+    setIsUpdatingComment(true);
+    try {
+      const userId = getUserId();
+      const campaignPin = hasVerifiedPin(campaignId) ? getVerifiedPin(campaignId) : undefined;
+      await api.updateComment(question.id, commentId, editedCommentText.trim(), userId, campaignPin);
+      setEditingCommentId(null);
+      setEditedCommentText('');
+      // Reload questions to get updated comments
+      if (onVoteUpdate) {
+        onVoteUpdate();
+      }
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      alert(error.message || 'Failed to update comment');
+    } finally {
+      setIsUpdatingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsDeletingComment(true);
+    try {
+      const userId = getUserId();
+      const campaignPin = hasVerifiedPin(campaignId) ? getVerifiedPin(campaignId) : undefined;
+      await api.deleteComment(question.id, commentId, userId, campaignPin);
+      // Reload questions to get updated comments
+      if (onVoteUpdate) {
+        onVoteUpdate();
+      }
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert(error.message || 'Failed to delete comment');
+    } finally {
+      setIsDeletingComment(false);
+    }
+  };
+
   return (
-    <div className={`question-card ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''}`}>
-      <span className="question-number">{number}</span>
-      <div className="question-content">
-        {isEditing ? (
-          <div className="question-edit-form">
-            <input
-              type="text"
-              className="question-edit-input"
-              value={editedText}
-              onChange={(e) => setEditedText(e.target.value)}
-              disabled={isUpdating}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleSaveEdit(e);
-                } else if (e.key === 'Escape') {
-                  handleCancelEdit(e);
-                }
-              }}
-            />
-            <div className="question-edit-actions">
-              <button
-                className="save-question-btn"
-                onClick={handleSaveEdit}
-                disabled={isUpdating || !editedText.trim()}
-                title="Save changes"
-              >
-                {isUpdating ? '...' : '✓'}
-              </button>
-              <button
-                className="cancel-question-btn"
-                onClick={handleCancelEdit}
+    <div className={`question-card-wrapper ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''}`}>
+      <div className={`question-card ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''}`}>
+        <span className="question-number">{number}</span>
+        <div className="question-content">
+          {isEditing ? (
+            <div className="question-edit-form">
+              <input
+                type="text"
+                className="question-edit-input"
+                value={editedText}
+                onChange={(e) => setEditedText(e.target.value)}
                 disabled={isUpdating}
-                title="Cancel"
-              >
-                ✕
-              </button>
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveEdit(e);
+                  } else if (e.key === 'Escape') {
+                    handleCancelEdit(e);
+                  }
+                }}
+              />
+              <div className="question-edit-actions">
+                <button
+                  className="save-question-btn"
+                  onClick={handleSaveEdit}
+                  disabled={isUpdating || !editedText.trim()}
+                  title="Save changes"
+                >
+                  {isUpdating ? '...' : '✓'}
+                </button>
+                <button
+                  className="cancel-question-btn"
+                  onClick={handleCancelEdit}
+                  disabled={isUpdating}
+                  title="Cancel"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
+          ) : (
+            <>
+              <div className="question-text-container">
+                <span className="question-text">{question.question_text?.trim()}</span>
+                {Boolean(question.is_moderator_created) && (
+                  <span className="moderator-badge">Moderator</span>
+                )}
+                {question.created_at && (
+                  <span className="question-timestamp" title={formatDateTime(question.created_at)}>
+                    {formatRelativeTime(question.created_at)}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {canEdit && !isEditing && (
           <>
-            <div className="question-text-container">
-              <span className="question-text">{question.question_text?.trim()}</span>
-              {Boolean(question.is_moderator_created) && (
-                <span className="moderator-badge">Moderator</span>
-              )}
-              {question.created_at && (
-                <span className="question-timestamp" title={formatDateTime(question.created_at)}>
-                  {formatRelativeTime(question.created_at)}
-                </span>
-              )}
-            </div>
+            <button
+              className="edit-question-btn"
+              onClick={handleEdit}
+              disabled={isDeleting || isUpdating}
+              title="Edit question"
+            >
+              ✎
+            </button>
+            {hasAdminAccess && (
+              <button
+                className="delete-question-btn"
+                onClick={handleDelete}
+                disabled={isDeleting || isUpdating}
+                title="Delete question"
+              >
+                {isDeleting ? '...' : '×'}
+              </button>
+            )}
           </>
         )}
-      </div>
-      {canEdit && !isEditing && (
-        <>
+        {!isEditing && (
           <button
-            className="edit-question-btn"
-            onClick={handleEdit}
-            disabled={isDeleting || isUpdating}
-            title="Edit question"
+            className={`upvote-button ${hasVoted ? 'voted' : ''}`}
+            onClick={handleUpvote}
+            disabled={isVoting || isDeleting || isUpdating}
           >
-            ✎
+            <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
+            <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
+            {voteCount > 0 && <span className="vote-count-inline">{voteCount}</span>}
           </button>
-          {hasAdminAccess && (
-            <button
-              className="delete-question-btn"
-              onClick={handleDelete}
-              disabled={isDeleting || isUpdating}
-              title="Delete question"
-            >
-              {isDeleting ? '...' : '×'}
-            </button>
-          )}
-        </>
-      )}
+        )}
+      </div>
+      
+      {/* Comments Section */}
       {!isEditing && (
-        <button
-          className={`upvote-button ${hasVoted ? 'voted' : ''}`}
-          onClick={handleUpvote}
-          disabled={isVoting || isDeleting || isUpdating}
-        >
-          <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
-          <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
-          {voteCount > 0 && <span className="vote-count-inline">{voteCount}</span>}
-        </button>
+        <div className="comments-section">
+          {comments.length > 0 && (
+            <div className="comments-list">
+              {comments.map((comment) => (
+                <div key={comment.id} className="comment-item">
+                  {editingCommentId === comment.id ? (
+                    <div className="comment-edit-form">
+                      <textarea
+                        className="comment-edit-textarea"
+                        value={editedCommentText}
+                        onChange={(e) => setEditedCommentText(e.target.value)}
+                        disabled={isUpdatingComment}
+                        autoFocus
+                        rows={3}
+                      />
+                      <div className="comment-edit-actions">
+                        <button
+                          className="save-comment-btn"
+                          onClick={() => handleSaveEditComment(comment.id)}
+                          disabled={isUpdatingComment || !editedCommentText.trim()}
+                          title="Save changes"
+                        >
+                          {isUpdatingComment ? '...' : '✓'}
+                        </button>
+                        <button
+                          className="cancel-comment-btn"
+                          onClick={handleCancelEditComment}
+                          disabled={isUpdatingComment}
+                          title="Cancel"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="comment-text">{comment.comment_text}</div>
+                      <div className="comment-meta">
+                        <span className="comment-timestamp" title={formatDateTime(comment.updated_at || comment.created_at)}>
+                          {formatRelativeTime(comment.updated_at || comment.created_at)}
+                        </span>
+                        {hasAdminAccess && (
+                          <div className="comment-actions">
+                            <button
+                              className="edit-comment-btn"
+                              onClick={() => handleEditComment(comment)}
+                              disabled={isDeletingComment || isUpdatingComment || isCreatingComment}
+                              title="Edit comment"
+                            >
+                              ✎
+                            </button>
+                            <button
+                              className="delete-comment-btn"
+                              onClick={() => handleDeleteComment(comment.id)}
+                              disabled={isDeletingComment || isUpdatingComment || isCreatingComment}
+                              title="Delete comment"
+                            >
+                              {isDeletingComment ? '...' : '×'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {hasAdminAccess && (
+            <div className="add-comment-section">
+              {showAddComment ? (
+                <div className="add-comment-form">
+                  <textarea
+                    className="add-comment-textarea"
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    placeholder="Add a comment..."
+                    disabled={isCreatingComment}
+                    autoFocus
+                    rows={3}
+                  />
+                  <div className="add-comment-actions">
+                    <button
+                      className="save-comment-btn"
+                      onClick={handleSaveComment}
+                      disabled={isCreatingComment || !newCommentText.trim()}
+                      title="Save comment"
+                    >
+                      {isCreatingComment ? '...' : '✓ Save'}
+                    </button>
+                    <button
+                      className="cancel-comment-btn"
+                      onClick={handleCancelAddComment}
+                      disabled={isCreatingComment}
+                      title="Cancel"
+                    >
+                      ✕ Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  className="add-comment-btn"
+                  onClick={handleAddComment}
+                  disabled={isDeletingComment || isUpdatingComment || isCreatingComment}
+                  title="Add comment"
+                >
+                  + Add Comment
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

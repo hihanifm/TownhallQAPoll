@@ -179,5 +179,75 @@ export const api = {
     }
     return response.json();
   },
+
+  // Comments
+  createComment: async (questionId, commentText, creatorId, campaignPin) => {
+    const body = { comment_text: commentText };
+    if (creatorId) {
+      body.creator_id = creatorId;
+    }
+    if (campaignPin) {
+      body.campaign_pin = campaignPin;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/questions/${questionId}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create comment');
+    }
+    return response.json();
+  },
+
+  updateComment: async (questionId, commentId, commentText, creatorId, campaignPin) => {
+    const body = { comment_text: commentText };
+    if (creatorId) {
+      body.creator_id = creatorId;
+    }
+    if (campaignPin) {
+      body.campaign_pin = campaignPin;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/questions/${questionId}/comments/${commentId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update comment');
+    }
+    return response.json();
+  },
+
+  deleteComment: async (questionId, commentId, creatorId, campaignPin) => {
+    const body = {};
+    if (creatorId) {
+      body.creator_id = creatorId;
+    }
+    if (campaignPin) {
+      body.campaign_pin = campaignPin;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/questions/${questionId}/comments/${commentId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete comment');
+    }
+    return response.json();
+  },
 };
 
