@@ -204,6 +204,19 @@
   hyphens: auto;
 }
 
+.campaign-status-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.campaign-status-container .pin-icon {
+  color: #3b82f6;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
 .campaign-status {
   text-transform: capitalize;
   padding: 4px 10px;

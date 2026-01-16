@@ -194,10 +194,31 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
                 onClick={() => onCampaignSelect && onCampaignSelect(campaign.id)}
               >
                 <div className="campaign-header">
-                  <div className="campaign-title">{campaign.title}</div>
-                  <span className={`campaign-status ${campaign.status === 'closed' ? 'status-closed' : 'status-active'}`}>
-                    {campaign.status}
-                  </span>
+                  <div className="campaign-title">
+                    {campaign.title}
+                  </div>
+                  <div className="campaign-status-container">
+                    {campaign.has_pin && (
+                      <svg 
+                        className="pin-icon" 
+                        width="16" 
+                        height="16" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                        title="PIN protected"
+                      >
+                        <path d="M12 17v5"></path>
+                        <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a3 3 0 0 0-6 0v3.76"></path>
+                      </svg>
+                    )}
+                    <span className={`campaign-status ${campaign.status === 'closed' ? 'status-closed' : 'status-active'}`}>
+                      {campaign.status}
+                    </span>
+                  </div>
                 </div>
                 <div className="campaign-meta">
                   <span className="campaign-questions">

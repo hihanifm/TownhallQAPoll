@@ -45,6 +45,15 @@
   word-wrap: break-word;
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-header h2.campaign-title .pin-icon {
+  color: #3b82f6;
+  flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .share-campaign-btn {

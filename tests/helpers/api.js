@@ -94,6 +94,25 @@ export async function updateQuestion(request, questionId, questionText, creatorI
 }
 
 /**
+ * Generate a test fingerprint hash for a user ID
+ * In a real browser, this would be generated from browser characteristics,
+ * but for tests we generate a consistent hash from the user ID
+ * @param {string} userId - User ID
+ * @returns {string} Fingerprint hash
+ */
+function generateTestFingerprint(userId) {
+  // Simple hash function for test purposes
+  let hash = 0;
+  const str = `test-fingerprint-${userId}`;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return `test-${Math.abs(hash).toString(36)}`;
+}
+
+/**
  * Upvote a question (toggles vote on/off)
  * @param {Object} request - Playwright request context
  * @param {number} questionId - Question ID
@@ -101,9 +120,14 @@ export async function updateQuestion(request, questionId, questionText, creatorI
  * @returns {Promise<Object>} Vote response with vote_count and hasVoted
  */
 export async function upvoteQuestion(request, questionId, userId) {
+  // Generate a test fingerprint hash for this user
+  // In a real browser, this would be generated from browser characteristics
+  const fingerprintHash = generateTestFingerprint(userId);
+  
   const response = await request.post(`${API_BASE_URL}/questions/${questionId}/upvote`, {
     data: {
       user_id: userId,
+      fingerprint_hash: fingerprintHash,
     },
   });
   

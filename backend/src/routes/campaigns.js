@@ -8,7 +8,8 @@ router.get('/', async (req, res, next) => {
   try {
     const campaigns = await allQuery(
       `SELECT c.id, c.title, c.description, c.created_at, c.status, c.creator_id, c.creator_name,
-       COUNT(DISTINCT q.id) as question_count
+       COUNT(DISTINCT q.id) as question_count,
+       CASE WHEN c.pin IS NOT NULL AND c.pin != '' THEN 1 ELSE 0 END as has_pin
        FROM campaigns c
        LEFT JOIN questions q ON c.id = q.campaign_id
        GROUP BY c.id
@@ -46,7 +47,8 @@ router.get('/', async (req, res, next) => {
       
       return {
         ...campaign,
-        last_updated: lastUpdated
+        last_updated: lastUpdated,
+        has_pin: campaign.has_pin === 1
       };
     }));
     
@@ -60,7 +62,9 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const campaign = await getQuery(
-      'SELECT id, title, description, created_at, status, creator_id, creator_name FROM campaigns WHERE id = ?',
+      `SELECT id, title, description, created_at, status, creator_id, creator_name,
+       CASE WHEN pin IS NOT NULL AND pin != '' THEN 1 ELSE 0 END as has_pin
+       FROM campaigns WHERE id = ?`,
       [req.params.id]
     );
     
@@ -95,7 +99,8 @@ router.get('/:id', async (req, res, next) => {
     
     res.json({
       ...campaign,
-      last_updated: lastUpdated
+      last_updated: lastUpdated,
+      has_pin: campaign.has_pin === 1
     });
   } catch (error) {
     next(error);
@@ -147,17 +152,25 @@ router.post('/', async (req, res, next) => {
     const campaignId = result.lastID;
     
     const campaign = await getQuery(
-      'SELECT id, title, description, created_at, status, creator_id, creator_name FROM campaigns WHERE id = ?',
+      `SELECT id, title, description, created_at, status, creator_id, creator_name,
+       CASE WHEN pin IS NOT NULL AND pin != '' THEN 1 ELSE 0 END as has_pin
+       FROM campaigns WHERE id = ?`,
       [campaignId]
     );
+    
+    // Add has_pin boolean to response
+    const campaignWithPin = {
+      ...campaign,
+      has_pin: campaign.has_pin === 1
+    };
     
     // Broadcast new campaign to all clients (without PIN)
     sseService.broadcast('all', {
       type: 'campaign_created',
-      campaign: campaign
+      campaign: campaignWithPin
     });
     
-    res.status(201).json(campaign);
+    res.status(201).json(campaignWithPin);
   } catch (error) {
     next(error);
   }
@@ -218,17 +231,25 @@ router.patch('/:id/close', async (req, res, next) => {
     );
     
     const updatedCampaign = await getQuery(
-      'SELECT id, title, description, created_at, status, creator_id, creator_name FROM campaigns WHERE id = ?',
+      `SELECT id, title, description, created_at, status, creator_id, creator_name,
+       CASE WHEN pin IS NOT NULL AND pin != '' THEN 1 ELSE 0 END as has_pin
+       FROM campaigns WHERE id = ?`,
       [id]
     );
+    
+    // Add has_pin boolean to response
+    const campaignWithPin = {
+      ...updatedCampaign,
+      has_pin: updatedCampaign.has_pin === 1
+    };
     
     // Broadcast campaign update to all clients
     sseService.broadcast('all', {
       type: 'campaign_updated',
-      campaign: updatedCampaign
+      campaign: campaignWithPin
     });
     
-    res.json(updatedCampaign);
+    res.json(campaignWithPin);
   } catch (error) {
     next(error);
   }

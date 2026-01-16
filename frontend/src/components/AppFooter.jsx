@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getBrowserName } from '../utils/browserDetection';
 import { APP_VERSION } from '../config/version';
 import { hasVerifiedPin } from '../utils/campaignPin';
+import { api } from '../services/api';
 import PinEntryModal from './PinEntryModal';
 import './AppFooter.css';
 
@@ -10,6 +11,7 @@ function AppFooter({ selectedCampaignId }) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
+  const [campaign, setCampaign] = useState(null);
 
   // Get version from config
   const version = APP_VERSION;
@@ -53,12 +55,20 @@ function AppFooter({ selectedCampaignId }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Check PIN verification status when campaign changes
+  // Check PIN verification status and load campaign when campaign changes
   useEffect(() => {
     if (selectedCampaignId) {
       setPinVerified(hasVerifiedPin(selectedCampaignId));
+      // Load campaign to check if it has PIN
+      api.getCampaign(selectedCampaignId)
+        .then(setCampaign)
+        .catch(err => {
+          console.error('Error loading campaign:', err);
+          setCampaign(null);
+        });
     } else {
       setPinVerified(false);
+      setCampaign(null);
     }
   }, [selectedCampaignId]);
 
@@ -136,7 +146,7 @@ function AppFooter({ selectedCampaignId }) {
           <span className="footer-value">{formatTime(currentTime)}</span>
         </div>
         
-        {selectedCampaignId && (
+        {selectedCampaignId && campaign?.has_pin && (
           <div className="footer-section">
             {pinVerified ? (
               <div className="footer-admin-indicator">
