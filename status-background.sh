@@ -6,6 +6,8 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
 LOG_DIR="$SCRIPT_DIR/logs"
+BACKUP_DIR="$SCRIPT_DIR/backend/data/backups"
+METADATA_FILE="$BACKUP_DIR/.last_backup_checksum"
 
 # Function to get local IP address
 get_local_ip() {
@@ -175,6 +177,127 @@ if [ -d "$LOG_DIR" ]; then
     echo "  tail -f $LOG_DIR/frontend.log"
     if [ -f "$LOG_DIR/frontend-build.log" ]; then
         echo "  tail -f $LOG_DIR/frontend-build.log  # (production build log)"
+    fi
+    echo ""
+fi
+
+# Show backup status
+echo "Backup Status:"
+echo "--------------"
+
+# Check if backup service is initialized (look for message in backend log)
+BACKUP_INITIALIZED="Unknown"
+if [ -f "$LOG_DIR/backend.log" ]; then
+    if grep -q "Backup service initialized" "$LOG_DIR/backend.log" 2>/dev/null; then
+        BACKUP_INITIALIZED="✓ Initialized (checking logs)"
+    fi
+fi
+
+# Also check if backend is running (backup service runs with backend)
+if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    if [ "$BACKUP_INITIALIZED" = "Unknown" ]; then
+        BACKUP_INITIALIZED="✓ Backend running (cron should be active)"
+    fi
+else
+    BACKUP_INITIALIZED="✗ Backend not running (cron inactive)"
+fi
+
+echo "  Cron status: $BACKUP_INITIALIZED"
+
+# Check backup directory
+if [ -d "$BACKUP_DIR" ]; then
+    # Count backup files (exclude metadata file)
+    BACKUP_COUNT=$(find "$BACKUP_DIR" -maxdepth 1 -name "townhall-*.db" -type f 2>/dev/null | wc -l | tr -d ' ')
+    
+    # Get last backup timestamp from metadata file
+    if [ -f "$METADATA_FILE" ]; then
+        # Try to parse JSON timestamp (timestamp in milliseconds)
+        LAST_BACKUP_TS=$(grep -o '"timestamp"[[:space:]]*:[[:space:]]*[0-9]*' "$METADATA_FILE" 2>/dev/null | grep -o '[0-9]*' | head -1)
+        
+        if [ -n "$LAST_BACKUP_TS" ]; then
+            # Convert milliseconds to seconds for date command (macOS uses seconds)
+            LAST_BACKUP_SEC=$((LAST_BACKUP_TS / 1000))
+            
+            # Get current time in seconds
+            CURRENT_SEC=$(date +%s)
+            
+            # Calculate age
+            AGE_SEC=$((CURRENT_SEC - LAST_BACKUP_SEC))
+            AGE_DAYS=$((AGE_SEC / 86400))
+            AGE_HOURS=$((AGE_SEC / 3600))
+            AGE_MIN=$((AGE_SEC / 60))
+            
+            # Format last backup time
+            # Try Linux format first (GNU date), then macOS/BSD format
+            if command -v date >/dev/null 2>&1; then
+                LAST_BACKUP_STR=$(date -d "@$LAST_BACKUP_SEC" "+%Y-%m-%d %H:%M:%S" 2>/dev/null)
+                # If that failed (macOS/BSD), try macOS format
+                if [ $? -ne 0 ] || [ -z "$LAST_BACKUP_STR" ]; then
+                    LAST_BACKUP_STR=$(date -j -f "%s" "$LAST_BACKUP_SEC" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "Unknown")
+                fi
+            else
+                LAST_BACKUP_STR="Unknown"
+            fi
+            
+            # Format age
+            if [ $AGE_DAYS -gt 0 ]; then
+                AGE_STR="${AGE_DAYS} day(s) ago"
+            elif [ $AGE_HOURS -gt 0 ]; then
+                AGE_STR="${AGE_HOURS} hour(s) ago"
+            elif [ $AGE_MIN -gt 0 ]; then
+                AGE_STR="${AGE_MIN} minute(s) ago"
+            else
+                AGE_STR="Just now"
+            fi
+            
+            echo "  Last backup:  $LAST_BACKUP_STR ($AGE_STR)"
+        else
+            echo "  Last backup:  No backup metadata found"
+        fi
+    else
+        echo "  Last backup:  No backups created yet"
+    fi
+    
+    echo "  Backup count: $BACKUP_COUNT file(s)"
+    
+    # Calculate total backup size
+    if [ $BACKUP_COUNT -gt 0 ]; then
+        BACKUP_TOTAL_SIZE=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1)
+        echo "  Total size:   $BACKUP_TOTAL_SIZE"
+        
+        # Show oldest and newest backup
+        OLDEST_BACKUP=$(find "$BACKUP_DIR" -maxdepth 1 -name "townhall-*.db" -type f -printf '%T@ %f\n' 2>/dev/null | sort -n | head -1 | awk '{print $2}')
+        NEWEST_BACKUP=$(find "$BACKUP_DIR" -maxdepth 1 -name "townhall-*.db" -type f -printf '%T@ %f\n' 2>/dev/null | sort -rn | head -1 | awk '{print $2}')
+        
+        # macOS compatibility (doesn't support -printf)
+        if [ -z "$OLDEST_BACKUP" ]; then
+            OLDEST_BACKUP=$(find "$BACKUP_DIR" -maxdepth 1 -name "townhall-*.db" -type f -exec stat -f "%B %N" {} \; 2>/dev/null | sort -n | head -1 | cut -d' ' -f2- | xargs basename 2>/dev/null)
+            NEWEST_BACKUP=$(find "$BACKUP_DIR" -maxdepth 1 -name "townhall-*.db" -type f -exec stat -f "%B %N" {} \; 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2- | xargs basename 2>/dev/null)
+        fi
+        
+        if [ -n "$NEWEST_BACKUP" ]; then
+            echo "  Newest:       $NEWEST_BACKUP"
+        fi
+        if [ -n "$OLDEST_BACKUP" ] && [ "$OLDEST_BACKUP" != "$NEWEST_BACKUP" ]; then
+            echo "  Oldest:       $OLDEST_BACKUP"
+        fi
+    fi
+    
+    echo "  Directory:    $BACKUP_DIR"
+else
+    echo "  Status:       Backup directory does not exist yet"
+    echo "  Note:         Will be created on first backup"
+fi
+
+echo ""
+
+# Show recent backup activity in logs
+if [ -f "$LOG_DIR/backend.log" ]; then
+    BACKUP_LOG_LINES=$(grep -i "\[Backup\]" "$LOG_DIR/backend.log" 2>/dev/null | tail -5)
+    if [ -n "$BACKUP_LOG_LINES" ]; then
+        echo "Recent backup activity (from logs):"
+        echo "$BACKUP_LOG_LINES" | sed 's/^/  /'
+        echo ""
     fi
 fi
 

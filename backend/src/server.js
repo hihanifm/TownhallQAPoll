@@ -1,12 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const cron = require('node-cron');
 const errorHandler = require('./middleware/errorHandler');
 const validateOrigin = require('./middleware/validateOrigin');
 const campaignsRouter = require('./routes/campaigns');
 const questionsRouter = require('./routes/questions');
 const votesRouter = require('./routes/votes');
 const sseRouter = require('./routes/sse');
+const { performBackup } = require('./services/backupService');
 
 const app = express();
 const PORT = process.env.PORT || 33001;
@@ -168,6 +170,25 @@ if (!isDevelopment) {
 
 // Error handling
 app.use(errorHandler);
+
+// Initialize backup service - run backup every night at midnight (0 0 * * *)
+// Cron expression: minute hour day month weekday
+// 0 0 * * * = At 00:00 (midnight) every day
+const backupCronSchedule = '0 0 * * *';
+
+if (cron.validate(backupCronSchedule)) {
+  cron.schedule(backupCronSchedule, () => {
+    console.log('[Backup] Scheduled backup job triggered');
+    performBackup();
+  });
+  console.log('[Backup] Backup service initialized - scheduled to run daily at midnight');
+  console.log(`[Backup] Cron schedule: ${backupCronSchedule}`);
+  
+  // Run initial backup on server startup (optional - comment out if not desired)
+  // performBackup();
+} else {
+  console.error('[Backup] Invalid cron schedule:', backupCronSchedule);
+}
 
 // Start server
 // By default, bind to localhost only for security (only accessible from same machine)
