@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import QuestionCard from './QuestionCard';
 import CreateQuestionForm from './CreateQuestionForm';
+import WelcomeCard from './WelcomeCard';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import { getUserId } from '../utils/userId';
 import { hasVerifiedPin, getVerifiedPin } from '../utils/campaignPin';
@@ -265,7 +266,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
   if (!campaignId) {
     return (
       <div className="question-panel empty">
-        <p>Select a campaign to view questions</p>
+        <WelcomeCard />
       </div>
     );
   }
@@ -382,6 +383,8 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
         campaignId={campaignId} 
         onQuestionCreated={handleQuestionCreated}
       />
+
+      <WelcomeCard />
 
       {campaign && (
         <div className="campaign-footer">
