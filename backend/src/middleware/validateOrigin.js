@@ -8,8 +8,8 @@ const getAllowedOrigins = () => {
   const allowedOrigins = [];
   
   // Add localhost origins (development)
-  allowedOrigins.push('http://localhost:3000');
-  allowedOrigins.push('http://127.0.0.1:3000');
+  allowedOrigins.push('http://localhost:33000');
+  allowedOrigins.push('http://127.0.0.1:33000');
   
   // Add environment variable for custom frontend URL (production)
   if (process.env.FRONTEND_URL) {
@@ -38,18 +38,18 @@ const getAllowedOrigins = () => {
 const allowedOrigins = getAllowedOrigins();
 
 /**
- * Check if an origin is on the frontend port (3000)
+ * Check if an origin is on the frontend port (33000)
  * This allows IP addresses to work without explicit configuration
  */
 const isFrontendPort = (urlString) => {
   try {
     const url = new URL(urlString);
     // If no port is specified and it's HTTP, default port is 80, but we check explicitly
-    // If port is specified, check if it's 3000
+    // If port is specified, check if it's 33000
     const port = url.port || (url.protocol === 'https:' ? '443' : '80');
-    // Allow if port is 3000, or if no port specified and it's HTTP (could be port 3000)
-    // But to be safe, we'll only allow explicit port 3000
-    return port === '3000';
+    // Allow if port is 33000, or if no port specified and it's HTTP (could be port 33000)
+    // But to be safe, we'll only allow explicit port 33000
+    return port === '33000';
   } catch (e) {
     return false;
   }
@@ -153,7 +153,7 @@ const isOriginAllowed = (req) => {
       return true;
     }
     
-    // If ALLOW_ANY_FRONTEND_PORT is set (default: true), allow any origin on port 3000
+    // If ALLOW_ANY_FRONTEND_PORT is set (default: true), allow any origin on port 33000
     // This makes IP addresses work automatically without configuration
     if (process.env.ALLOW_ANY_FRONTEND_PORT !== 'false' && isFrontendPort(origin)) {
       return true;
@@ -175,7 +175,7 @@ const isOriginAllowed = (req) => {
         return true;
       }
       
-      // If ALLOW_ANY_FRONTEND_PORT is set (default: true), allow any referer on port 3000
+      // If ALLOW_ANY_FRONTEND_PORT is set (default: true), allow any referer on port 33000
       if (process.env.ALLOW_ANY_FRONTEND_PORT !== 'false' && isFrontendPort(refererOrigin)) {
         return true;
       }

@@ -31,7 +31,7 @@ test.describe('Campaign Voting E2E Test', () => {
     // Optional: Check if backend is running
     const isBackendRunning = await checkBackendHealth(request);
     if (!isBackendRunning) {
-      console.warn('⚠️  Backend may not be running on http://localhost:3001');
+      console.warn('⚠️  Backend may not be running on http://localhost:33001');
       console.warn('   Make sure to start the backend before running tests');
     }
   });
@@ -351,11 +351,12 @@ test.describe('Campaign Voting E2E Test', () => {
     console.log(`✓ Created campaign for share test - ID: ${campaignId}`);
 
     // Step 2: Navigate to the campaign page
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:33000';
     await page.goto(`${frontendUrl}/campaign/${campaignId}`);
     
-    // Wait for the page to load
-    await page.waitForLoadState('networkidle');
+    // Wait for the page to load (use domcontentloaded instead of networkidle 
+    // since SSE connection keeps network active)
+    await page.waitForLoadState('domcontentloaded');
     
     // Wait for the share button to be visible
     const shareButton = page.locator('.share-campaign-btn');

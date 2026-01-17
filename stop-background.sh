@@ -24,11 +24,11 @@ if [ ! -f "$PID_FILE" ]; then
     echo "Checking for running processes..."
     
     # Try to find and kill by port
-    BACKEND_PID=$(lsof -ti:3001 2>/dev/null)
-    FRONTEND_PID=$(lsof -ti:3000 2>/dev/null)
+    BACKEND_PID=$(lsof -ti:33001 2>/dev/null)
+    FRONTEND_PID=$(lsof -ti:33000 2>/dev/null)
     
     if [ -z "$BACKEND_PID" ] && [ -z "$FRONTEND_PID" ]; then
-        echo "No servers found running on ports 3000 or 3001."
+        echo "No servers found running on ports 33000 or 33001."
         exit 0
     fi
 else
@@ -77,16 +77,16 @@ else
 fi
 
 # Clean up any remaining processes on the ports
-BACKEND_PORT_PID=$(lsof -ti:3001 2>/dev/null)
-FRONTEND_PORT_PID=$(lsof -ti:3000 2>/dev/null)
+BACKEND_PORT_PID=$(lsof -ti:33001 2>/dev/null)
+FRONTEND_PORT_PID=$(lsof -ti:33000 2>/dev/null)
 
 if [ -n "$BACKEND_PORT_PID" ]; then
-    echo "Killing process on port 3001 (PID: $BACKEND_PORT_PID)..."
+    echo "Killing process on port 33001 (PID: $BACKEND_PORT_PID)..."
     kill -9 $BACKEND_PORT_PID 2>/dev/null
 fi
 
 if [ -n "$FRONTEND_PORT_PID" ]; then
-    echo "Killing process on port 3000 (PID: $FRONTEND_PORT_PID)..."
+    echo "Killing process on port 33000 (PID: $FRONTEND_PORT_PID)..."
     kill -9 $FRONTEND_PORT_PID 2>/dev/null
 fi
 

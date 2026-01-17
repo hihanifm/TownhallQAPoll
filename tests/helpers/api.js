@@ -2,7 +2,7 @@
  * API helper functions for E2E tests
  */
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = 'http://localhost:33001/api';
 
 /**
  * Generate a test user ID

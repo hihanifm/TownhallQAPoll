@@ -5,10 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0', // Allow remote access
-    port: 3000,
+    port: 33000,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:3001',
+        target: process.env.VITE_API_URL || 'http://localhost:33001',
         changeOrigin: true,
         // Preserve the origin header so backend can validate it
         configure: (proxy, options) => {
@@ -28,7 +28,7 @@ export default defineConfig({
   },
   preview: {
     host: '0.0.0.0', // Allow remote access
-    port: 3000
+    port: 33000
   }
 })
 

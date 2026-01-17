@@ -9,15 +9,15 @@ const votesRouter = require('./routes/votes');
 const sseRouter = require('./routes/sse');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 33001;
 
 // Configure allowed origins for CORS
 const getAllowedOrigins = () => {
   const origins = [];
   
   // Development origins
-  origins.push('http://localhost:3000');
-  origins.push('http://127.0.0.1:3000');
+  origins.push('http://localhost:33000');
+  origins.push('http://127.0.0.1:33000');
   
   // Production frontend URL from environment
   if (process.env.FRONTEND_URL) {
@@ -43,8 +43,8 @@ const isFrontendPort = (origin) => {
   try {
     const url = new URL(origin);
     const port = url.port || (url.protocol === 'https:' ? '443' : '80');
-    // Only allow explicit port 3000
-    return port === '3000';
+    // Only allow explicit port 33000
+    return port === '33000';
   } catch (e) {
     return false;
   }
@@ -61,13 +61,13 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 app.use(cors({
   origin: function (origin, callback) {
     // In production mode when serving static files, allow same-origin requests
-    // Check if origin is on the backend port (3001) - same-origin when serving static files
+    // Check if origin is on the backend port (33001) - same-origin when serving static files
     if (!isDevelopment && origin) {
       try {
         const originUrl = new URL(origin);
         const originPort = originUrl.port || (originUrl.protocol === 'https:' ? '443' : '80');
         // In production, allow origins on the backend port (same-origin requests)
-        if (originPort === PORT.toString() || originPort === '3001') {
+        if (originPort === PORT.toString() || originPort === '33001') {
           return callback(null, true);
         }
       } catch (e) {
@@ -108,8 +108,8 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } 
-    // If ALLOW_ANY_FRONTEND_PORT is not disabled, allow any origin on port 3000
-    // This enables IP addresses to work automatically (e.g., http://192.168.1.100:3000)
+    // If ALLOW_ANY_FRONTEND_PORT is not disabled, allow any origin on port 33000
+    // This enables IP addresses to work automatically (e.g., http://192.168.1.100:33000)
     else if (process.env.ALLOW_ANY_FRONTEND_PORT !== 'false' && isFrontendPort(origin)) {
       callback(null, true);
     } 

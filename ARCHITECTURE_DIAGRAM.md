@@ -28,7 +28,7 @@ The diagram shows the complete architecture of the Townhall Q&A Poll application
 - **localStorage** - Anonymous user ID storage
 
 ### Backend Layer (Express)
-- **server.js** - Express server (Port 3001)
+- **server.js** - Express server (Port 33001)
 - **routes/campaigns.js** - Campaign CRUD operations
 - **routes/questions.js** - Question management
 - **routes/votes.js** - Voting functionality

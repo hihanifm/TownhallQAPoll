@@ -49,11 +49,11 @@ echo "Version: $VERSION"
 echo "================================"
 echo ""
 
-# Detect overall mode by checking frontend process on port 3000
+# Detect overall mode by checking frontend process on port 33000
 MODE="UNKNOWN"
-if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    # Get the first PID listening on port 3000
-    FRONTEND_PORT_PID=$(lsof -ti:3000 | head -1)
+if lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    # Get the first PID listening on port 33000
+    FRONTEND_PORT_PID=$(lsof -ti:33000 | head -1)
     if [ -n "$FRONTEND_PORT_PID" ]; then
         FRONTEND_CMD=$(ps -p $FRONTEND_PORT_PID -o command= 2>/dev/null | tr -d '\n')
         if echo "$FRONTEND_CMD" | grep -q "vite preview"; then
@@ -117,38 +117,38 @@ fi
 
 # Check by port
 echo "Port status:"
-if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
-    PORT_PID=$(lsof -ti:3001)
-    echo "  Port 3001 (backend):  ✓ In use (PID: $PORT_PID)"
+if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
+    PORT_PID=$(lsof -ti:33001)
+    echo "  Port 33001 (backend):  ✓ In use (PID: $PORT_PID)"
 else
-    echo "  Port 3001 (backend):  ✗ Not in use"
+    echo "  Port 33001 (backend):  ✗ Not in use"
 fi
 
-if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
-    PORT_PID=$(lsof -ti:3000)
-    echo "  Port 3000 (frontend): ✓ In use (PID: $PORT_PID)"
+if lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
+    PORT_PID=$(lsof -ti:33000)
+    echo "  Port 33000 (frontend): ✓ In use (PID: $PORT_PID)"
 else
-    echo "  Port 3000 (frontend): ✗ Not in use"
+    echo "  Port 33000 (frontend): ✗ Not in use"
 fi
 
 echo ""
 
 # Show access URLs
 LOCAL_IP=$(get_local_ip)
-if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1 || lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1 || lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1; then
     echo "Access URLs:"
-    if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
         echo "  Backend:"
-        echo "    - Local:  http://localhost:3001"
+        echo "    - Local:  http://localhost:33001"
         if [ -n "$LOCAL_IP" ]; then
-            echo "    - Network: http://$LOCAL_IP:3001"
+            echo "    - Network: http://$LOCAL_IP:33001"
         fi
     fi
-    if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    if lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1; then
         echo "  Frontend:"
-        echo "    - Local:  http://localhost:3000"
+        echo "    - Local:  http://localhost:33000"
         if [ -n "$LOCAL_IP" ]; then
-            echo "    - Network: http://$LOCAL_IP:3000"
+            echo "    - Network: http://$LOCAL_IP:33000"
         fi
     fi
     echo ""
