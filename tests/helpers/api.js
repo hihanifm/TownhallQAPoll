@@ -271,6 +271,97 @@ export async function deleteQuestion(request, questionId, creatorId = null, camp
 }
 
 /**
+ * Create a comment on a question
+ * @param {Object} request - Playwright request context
+ * @param {number} questionId - Question ID
+ * @param {string} commentText - Comment text
+ * @param {string} creatorId - Creator user ID (optional if using PIN)
+ * @param {string} campaignPin - Campaign PIN (optional if using creator_id)
+ * @returns {Promise<Object>} Created comment object
+ */
+export async function createComment(request, questionId, commentText, creatorId = null, campaignPin = null) {
+  const body = { comment_text: commentText };
+  if (creatorId) {
+    body.creator_id = creatorId;
+  }
+  if (campaignPin) {
+    body.campaign_pin = campaignPin;
+  }
+  
+  const response = await request.post(`${API_BASE_URL}/questions/${questionId}/comments`, {
+    data: body,
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to create comment: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Update a comment
+ * @param {Object} request - Playwright request context
+ * @param {number} questionId - Question ID
+ * @param {number} commentId - Comment ID
+ * @param {string} commentText - Updated comment text
+ * @param {string} creatorId - Creator user ID (optional if using PIN)
+ * @param {string} campaignPin - Campaign PIN (optional if using creator_id)
+ * @returns {Promise<Object>} Updated comment object
+ */
+export async function updateComment(request, questionId, commentId, commentText, creatorId = null, campaignPin = null) {
+  const body = { comment_text: commentText };
+  if (creatorId) {
+    body.creator_id = creatorId;
+  }
+  if (campaignPin) {
+    body.campaign_pin = campaignPin;
+  }
+  
+  const response = await request.patch(`${API_BASE_URL}/questions/${questionId}/comments/${commentId}`, {
+    data: body,
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to update comment: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Delete a comment
+ * @param {Object} request - Playwright request context
+ * @param {number} questionId - Question ID
+ * @param {number} commentId - Comment ID
+ * @param {string} creatorId - Creator user ID (optional if using PIN)
+ * @param {string} campaignPin - Campaign PIN (optional if using creator_id)
+ * @returns {Promise<Object>} Deletion result
+ */
+export async function deleteComment(request, questionId, commentId, creatorId = null, campaignPin = null) {
+  const body = {};
+  if (creatorId) {
+    body.creator_id = creatorId;
+  }
+  if (campaignPin) {
+    body.campaign_pin = campaignPin;
+  }
+  
+  const response = await request.delete(`${API_BASE_URL}/questions/${questionId}/comments/${commentId}`, {
+    data: body,
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to delete comment: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
  * Check if backend is running
  * @param {Object} request - Playwright request context
  * @returns {Promise<boolean>} True if backend is running
