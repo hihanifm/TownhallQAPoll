@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to start both backend and frontend servers in the background
-# LINUX/macOS ONLY - For Windows, use the batch scripts or PowerShell scripts
+# LINUX/macOS ONLY
 # Usage: ./start-background.sh [--prod|-p]  (use --prod for production mode)
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -86,10 +86,14 @@ if check_port 3001; then
     echo "⚠️  Error: Port 3001 (backend) is already in use!"
 fi
 
-if check_port 3000; then
-    FRONTEND_PORT_IN_USE=true
-    PORTS_IN_USE=true
-    echo "⚠️  Error: Port 3000 (frontend) is already in use!"
+# In production mode, backend serves static files, so we only need port 3001
+# In development mode, we need both ports
+if [ "$PROD_MODE" = false ]; then
+    if check_port 3000; then
+        FRONTEND_PORT_IN_USE=true
+        PORTS_IN_USE=true
+        echo "⚠️  Error: Port 3000 (frontend) is already in use!"
+    fi
 fi
 
 # If ports are in use, exit unless user explicitly overrides
@@ -109,12 +113,26 @@ if [ "$PORTS_IN_USE" = true ]; then
 fi
 
 if [ "$PROD_MODE" = true ]; then
-    echo "Starting Townhall Q&A Poll servers in PRODUCTION mode..."
+    echo "Starting Townhall Q&A Poll in PRODUCTION mode (single process)..."
 else
     echo "Starting Townhall Q&A Poll servers in DEVELOPMENT mode..."
 fi
 echo "Version: $VERSION"
 echo ""
+
+# In production mode, build frontend first, then start backend (which serves static files)
+# In development mode, start backend first, then frontend dev server
+if [ "$PROD_MODE" = true ]; then
+    echo "Building frontend for production..."
+    cd "$SCRIPT_DIR/frontend"
+    npm run build > "$LOG_DIR/frontend-build.log" 2>&1
+    if [ $? -ne 0 ]; then
+        echo "❌ Error: Frontend build failed! Check $LOG_DIR/frontend-build.log"
+        exit 1
+    fi
+    echo "✓ Frontend built successfully"
+    echo ""
+fi
 
 # Start backend server
 echo "Starting backend server..."
@@ -123,13 +141,15 @@ cd "$SCRIPT_DIR/backend"
 # Set NODE_ENV based on mode
 if [ "$PROD_MODE" = true ]; then
     export NODE_ENV=production
+    export HOST=0.0.0.0  # Bind to all interfaces so it's accessible from network
     echo "  Setting NODE_ENV=production"
+    echo "  Setting HOST=0.0.0.0 (accessible from network)"
 else
     export NODE_ENV=development
     echo "  Setting NODE_ENV=development"
 fi
 
-nohup env NODE_ENV=$NODE_ENV npm start > "$LOG_DIR/backend.log" 2>&1 &
+nohup env NODE_ENV=$NODE_ENV HOST=${HOST:-} npm start > "$LOG_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 # Disown the process to fully detach it from the shell
 disown $BACKEND_PID 2>/dev/null || true
@@ -154,85 +174,88 @@ fi
 
 echo "✓ Backend started successfully with PID: $BACKEND_PID"
 
-# Start frontend server
-echo "Starting frontend server..."
-cd "$SCRIPT_DIR/frontend"
+# Save backend PID to file
+echo "$BACKEND_PID" > "$PID_FILE"
 
-if [ "$PROD_MODE" = true ]; then
-    echo "Building frontend for production..."
-    npm run build > "$LOG_DIR/frontend-build.log" 2>&1
-    if [ $? -ne 0 ]; then
-        echo "❌ Error: Frontend build failed! Check $LOG_DIR/frontend-build.log"
-        # Clean up: kill backend if it was started
-        kill $BACKEND_PID 2>/dev/null || true
-        exit 1
-    fi
-    echo "Starting frontend production server..."
-    nohup npm run preview > "$LOG_DIR/frontend.log" 2>&1 &
-else
+# Only start frontend server in development mode
+# In production mode, backend serves static files, so no separate frontend server needed
+if [ "$PROD_MODE" = false ]; then
+    # Start frontend server
+    echo "Starting frontend server..."
+    cd "$SCRIPT_DIR/frontend"
     echo "Starting frontend development server..."
     nohup npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
-fi
-
-FRONTEND_PID=$!
-# Disown the process to fully detach it from the shell
-disown $FRONTEND_PID 2>/dev/null || true
-
-# Wait a moment and verify frontend started successfully
-sleep 3
-if ! ps -p $FRONTEND_PID > /dev/null 2>&1; then
-    echo "❌ Error: Frontend server failed to start! Check $LOG_DIR/frontend.log"
-    # Clean up: kill backend if frontend failed
-    kill $BACKEND_PID 2>/dev/null || true
-    # Check if it's a port conflict
-    if grep -q "EADDRINUSE" "$LOG_DIR/frontend.log" 2>/dev/null; then
-        echo "   Port 3000 is already in use. Please stop the existing server first."
+    
+    FRONTEND_PID=$!
+    # Disown the process to fully detach it from the shell
+    disown $FRONTEND_PID 2>/dev/null || true
+    
+    # Wait a moment and verify frontend started successfully
+    sleep 3
+    if ! ps -p $FRONTEND_PID > /dev/null 2>&1; then
+        echo "❌ Error: Frontend server failed to start! Check $LOG_DIR/frontend.log"
+        # Clean up: kill backend if frontend failed
+        kill $BACKEND_PID 2>/dev/null || true
+        # Check if it's a port conflict
+        if grep -q "EADDRINUSE" "$LOG_DIR/frontend.log" 2>/dev/null; then
+            echo "   Port 3000 is already in use. Please stop the existing server first."
+        fi
+        exit 1
     fi
-    exit 1
+    
+    if ! check_port 3000; then
+        echo "❌ Error: Frontend server process started but port 3000 is not listening!"
+        echo "   Check $LOG_DIR/frontend.log for errors"
+        kill $BACKEND_PID 2>/dev/null || true
+        kill $FRONTEND_PID 2>/dev/null || true
+        exit 1
+    fi
+    
+    echo "✓ Frontend started successfully with PID: $FRONTEND_PID"
+    
+    # Add frontend PID to file
+    echo "$FRONTEND_PID" >> "$PID_FILE"
 fi
-
-if ! check_port 3000; then
-    echo "❌ Error: Frontend server process started but port 3000 is not listening!"
-    echo "   Check $LOG_DIR/frontend.log for errors"
-    kill $BACKEND_PID 2>/dev/null || true
-    kill $FRONTEND_PID 2>/dev/null || true
-    exit 1
-fi
-
-echo "✓ Frontend started successfully with PID: $FRONTEND_PID"
-
-# Save PIDs to file
-echo "$BACKEND_PID" > "$PID_FILE"
-echo "$FRONTEND_PID" >> "$PID_FILE"
 
 # Get local IP address
 LOCAL_IP=$(get_local_ip)
 
 echo ""
-echo "✓ Servers started in background!"
 if [ "$PROD_MODE" = true ]; then
-    echo "  Mode: PRODUCTION (optimized build)"
+    echo "✓ Server started in background!"
+    echo "  Mode: PRODUCTION (single process - backend serves static frontend)"
 else
+    echo "✓ Servers started in background!"
     echo "  Mode: DEVELOPMENT (hot reload enabled)"
 fi
 echo ""
 echo "Access URLs:"
-echo "  Backend:"
-echo "    - Local:  http://localhost:3001"
-if [ -n "$LOCAL_IP" ]; then
-    echo "    - Network: http://$LOCAL_IP:3001"
-fi
-echo "  Frontend:"
-echo "    - Local:  http://localhost:3000"
-if [ -n "$LOCAL_IP" ]; then
-    echo "    - Network: http://$LOCAL_IP:3000"
+if [ "$PROD_MODE" = true ]; then
+    echo "  Application:"
+    echo "    - Local:  http://localhost:3001"
+    if [ -n "$LOCAL_IP" ]; then
+        echo "    - Network: http://$LOCAL_IP:3001"
+    fi
+    echo "    (Backend serves both API and frontend)"
+else
+    echo "  Backend:"
+    echo "    - Local:  http://localhost:3001"
+    if [ -n "$LOCAL_IP" ]; then
+        echo "    - Network: http://$LOCAL_IP:3001"
+    fi
+    echo "  Frontend:"
+    echo "    - Local:  http://localhost:3000"
+    if [ -n "$LOCAL_IP" ]; then
+        echo "    - Network: http://$LOCAL_IP:3000"
+    fi
 fi
 echo ""
 echo "Logs are available in: $LOG_DIR/"
 echo "  - Backend:  $LOG_DIR/backend.log"
-echo "  - Frontend: $LOG_DIR/frontend.log"
 if [ "$PROD_MODE" = true ]; then
     echo "  - Build:    $LOG_DIR/frontend-build.log"
+else
+    echo "  - Frontend: $LOG_DIR/frontend.log"
 fi
 echo ""
 echo "To stop the servers, run: ./stop-background.sh"

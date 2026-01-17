@@ -11,6 +11,7 @@
     "dev:frontend": "cd frontend && npm run dev",
     "build:frontend": "cd frontend && npm run build",
     "start:frontend:prod": "cd frontend && npm run build && npm run preview",
+    "start:prod": "npm run build:frontend && cd backend && NODE_ENV=production HOST=0.0.0.0 node src/server.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

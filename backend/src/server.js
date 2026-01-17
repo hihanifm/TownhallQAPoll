@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const errorHandler = require('./middleware/errorHandler');
 const validateOrigin = require('./middleware/validateOrigin');
 const campaignsRouter = require('./routes/campaigns');
@@ -53,9 +54,32 @@ const allowedOrigins = getAllowedOrigins();
 
 // CORS configuration - only allow requests from frontend
 const isDevelopment = process.env.NODE_ENV !== 'production';
+// Note: In production mode with static file serving, requests are same-origin,
+// so CORS checks are less relevant, but we keep this for compatibility and
+// in case frontend is served from a different origin via environment config
 
 app.use(cors({
   origin: function (origin, callback) {
+    // In production mode when serving static files, allow same-origin requests
+    // Check if origin is on the backend port (3001) - same-origin when serving static files
+    if (!isDevelopment && origin) {
+      try {
+        const originUrl = new URL(origin);
+        const originPort = originUrl.port || (originUrl.protocol === 'https:' ? '443' : '80');
+        // In production, allow origins on the backend port (same-origin requests)
+        if (originPort === PORT.toString() || originPort === '3001') {
+          return callback(null, true);
+        }
+      } catch (e) {
+        // Invalid origin URL
+      }
+    }
+    
+    // In production mode, allow requests without origin (same-origin requests often don't send it)
+    if (!isDevelopment && !origin) {
+      return callback(null, true);
+    }
+    
     // In development mode, be more liberal
     if (isDevelopment) {
       // Allow requests with no origin in dev (for curl, Postman, etc.)
@@ -78,12 +102,6 @@ app.use(cors({
       } catch (e) {
         // Invalid origin URL
       }
-    }
-    
-    // Allow requests with no origin (like mobile apps, Postman, or same-origin requests)
-    // But we'll validate these in the validateOrigin middleware
-    if (!origin) {
-      return callback(null, true);
     }
     
     // Check if origin is in explicitly allowed list
@@ -128,6 +146,25 @@ app.use('/api/sse', sseRouter); // SSE endpoint for real-time updates
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+// Serve static files from frontend build in production mode
+if (!isDevelopment) {
+  const staticDir = path.join(__dirname, '../../frontend/dist');
+  console.log(`Serving static files from: ${staticDir}`);
+  app.use(express.static(staticDir));
+  
+  // Fallback to index.html for all non-API routes (required for React Router)
+  // express.static handles actual files first, then calls next() if file doesn't exist
+  // This catch-all route serves index.html for client-side routing
+  app.get('*', (req, res) => {
+    // Skip API routes (should already be handled, but being safe)
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    // Serve index.html for all other routes (React Router will handle routing)
+    res.sendFile(path.join(staticDir, 'index.html'));
+  });
+}
 
 // Error handling
 app.use(errorHandler);

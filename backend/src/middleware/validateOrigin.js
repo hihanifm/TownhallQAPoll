@@ -56,11 +56,89 @@ const isFrontendPort = (urlString) => {
 };
 
 /**
+ * Check if request is same-origin (when serving static files from backend)
+ */
+const isSameOrigin = (req) => {
+  const origin = req.headers.origin;
+  const referer = req.headers.referer;
+  const host = req.headers.host;
+  
+  if (!host) return false;
+  
+  // Determine protocol (handle proxy scenarios)
+  // req.protocol might be undefined, so we default to http unless secure
+  const protocol = req.protocol || (req.secure ? 'https' : 'http');
+  const requestHost = `${protocol}://${host}`;
+  
+  // Check if origin matches host (same-origin request)
+  // Note: Same-origin requests typically don't send Origin header, but check anyway
+  if (origin) {
+    try {
+      const originUrl = new URL(origin);
+      const originHost = `${originUrl.protocol}//${originUrl.host}`;
+      
+      if (originHost === requestHost) {
+        return true; // Same-origin request
+      }
+    } catch (e) {
+      // Invalid origin URL
+    }
+  }
+  
+  // Check if referer matches host (same-origin request)
+  // Same-origin requests from JavaScript often only have referer, not origin
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer);
+      const refererHost = `${refererUrl.protocol}//${refererUrl.host}`;
+      
+      // Normalize for comparison (remove trailing slashes, handle case)
+      const normalizedReferer = refererHost.toLowerCase().replace(/\/$/, '');
+      const normalizedRequest = requestHost.toLowerCase().replace(/\/$/, '');
+      
+      if (normalizedReferer === normalizedRequest) {
+        return true; // Same-origin request
+      }
+    } catch (e) {
+      // Invalid referer URL
+    }
+  }
+  
+  // If no origin (same-origin requests don't send it) and referer matches hostname
+  // This is a fallback for same-origin requests
+  if (!origin && referer) {
+    try {
+      const refererUrl = new URL(referer);
+      // Just compare hostnames (IP or domain) without protocol
+      if (refererUrl.hostname && host) {
+        const refererHostname = refererUrl.hostname.toLowerCase();
+        const requestHostname = host.split(':')[0].toLowerCase(); // Remove port
+        if (refererHostname === requestHostname) {
+          return true;
+        }
+      }
+    } catch (e) {
+      // Invalid referer URL
+    }
+  }
+  
+  return false;
+};
+
+/**
  * Check if the request origin/referer is allowed
  */
 const isOriginAllowed = (req) => {
   const origin = req.headers.origin;
   const referer = req.headers.referer;
+  
+  // In production mode when serving static files, allow same-origin requests
+  // (frontend and backend are on the same origin/port)
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction && isSameOrigin(req)) {
+    return true;
+  }
   
   // Check origin header
   if (origin) {
@@ -108,9 +186,6 @@ const isOriginAllowed = (req) => {
   
   // If no origin and no referer, this is likely a direct API call (curl, Postman, etc.)
   if (!origin && !referer) {
-    // Explicitly check for production mode - be very strict
-    const isProduction = process.env.NODE_ENV === 'production';
-    
     // In production, ALWAYS block requests without origin/referer
     if (isProduction) {
       console.warn('🔒 Production: Blocking request without origin/referer (direct API call)');
@@ -137,8 +212,6 @@ const isOriginAllowed = (req) => {
   
   // If we got here, we had origin or referer but neither matched allowed origins
   // In production, be strict - block everything that doesn't match
-  const isProduction = process.env.NODE_ENV === 'production';
-  
   if (isProduction) {
     // In production, only allow explicitly configured origins
     return false;
@@ -181,17 +254,29 @@ const validateOrigin = (req, res, next) => {
     return next();
   }
   
+  // In production mode when serving static files, skip origin validation for non-API routes
+  // These are requests for static files (HTML, JS, CSS, etc.) which should be publicly accessible
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction && !req.path.startsWith('/api')) {
+    return next(); // Allow access to static files without origin validation
+  }
+  
   // Check if origin is allowed
   if (!isOriginAllowed(req)) {
     const isProduction = process.env.NODE_ENV === 'production';
     
     if (isProduction) {
+      const host = req.headers.host || '(none)';
+      const protocol = req.protocol || (req.secure ? 'https' : 'http');
       console.warn(`🔒 Production: Blocked request from unauthorized origin:`, {
         origin: req.headers.origin || '(none)',
         referer: req.headers.referer || '(none)',
+        host: host,
+        requestHost: `${protocol}://${host}`,
         path: req.path,
         ip: req.ip || req.connection.remoteAddress,
-        nodeEnv: process.env.NODE_ENV || '(not set)'
+        nodeEnv: process.env.NODE_ENV || '(not set)',
+        isSameOrigin: isSameOrigin(req)
       });
     } else {
       console.warn(`⚠️  Dev mode: Blocked request from unauthorized origin:`, {

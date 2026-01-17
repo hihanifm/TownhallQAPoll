@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to stop both backend and frontend servers
-# LINUX/macOS ONLY - For Windows, use Task Manager or kill processes manually
+# LINUX/macOS ONLY
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
