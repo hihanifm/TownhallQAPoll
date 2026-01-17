@@ -22,6 +22,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
     
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log('CampaignList received SSE event:', data.type, data);
       
       switch (data.type) {
         case 'connected':
@@ -32,6 +33,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
           setCampaigns(prevCampaigns => [data.campaign, ...prevCampaigns]);
           break;
         case 'campaign_updated':
+          console.log('Updating campaign in list:', data.campaign.id, 'question_count:', data.campaign.question_count);
           // Update existing campaign
           setCampaigns(prevCampaigns =>
             prevCampaigns.map(c => c.id === data.campaign.id ? data.campaign : c)
@@ -44,6 +46,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
           );
           break;
         default:
+          console.log('Unknown SSE event type, refreshing campaigns');
           // For any other update, refresh the full list
           loadCampaigns();
       }

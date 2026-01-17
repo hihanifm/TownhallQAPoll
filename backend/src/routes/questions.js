@@ -49,6 +49,7 @@ async function getCampaignWithStats(campaignId) {
   
   return {
     ...campaign,
+    question_count: parseInt(campaign.question_count) || 0,
     last_updated: lastUpdated,
     has_pin: campaign.has_pin === 1
   };
@@ -170,10 +171,13 @@ router.post('/campaigns/:campaignId/questions', async (req, res, next) => {
     try {
       const updatedCampaign = await getCampaignWithStats(campaignId);
       if (updatedCampaign) {
+        console.log('Broadcasting campaign_updated for campaign:', campaignId, 'question_count:', updatedCampaign.question_count);
         sseService.broadcast('all', {
           type: 'campaign_updated',
           campaign: updatedCampaign
         });
+      } else {
+        console.warn('getCampaignWithStats returned null for campaign:', campaignId);
       }
     } catch (err) {
       console.error('Error broadcasting campaign update:', err);
@@ -359,10 +363,13 @@ router.delete('/questions/:id', async (req, res, next) => {
     try {
       const updatedCampaign = await getCampaignWithStats(question.campaign_id);
       if (updatedCampaign) {
+        console.log('Broadcasting campaign_updated for campaign (delete):', question.campaign_id, 'question_count:', updatedCampaign.question_count);
         sseService.broadcast('all', {
           type: 'campaign_updated',
           campaign: updatedCampaign
         });
+      } else {
+        console.warn('getCampaignWithStats returned null for campaign (delete):', question.campaign_id);
       }
     } catch (err) {
       console.error('Error broadcasting campaign update:', err);

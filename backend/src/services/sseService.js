@@ -11,6 +11,8 @@ class SSEService {
     }
     
     this.clients.get(campaignId).add(res);
+    const clientCount = this.clients.get(campaignId).size;
+    console.log(`Client subscribed to channel '${campaignId}' (${clientCount} total client(s))`);
     
     // Set up SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -25,6 +27,7 @@ class SSEService {
     // Handle client disconnect
     res.on('close', () => {
       this.unsubscribe(campaignId, res);
+      console.log(`Client unsubscribed from channel '${campaignId}'`);
     });
   }
 
@@ -41,11 +44,15 @@ class SSEService {
   // Broadcast an event to all clients subscribed to a campaign
   broadcast(campaignId, event) {
     if (!this.clients.has(campaignId)) {
+      console.log(`No clients subscribed to channel '${campaignId}' for event type '${event.type}'`);
       return;
     }
 
     const message = `data: ${JSON.stringify(event)}\n\n`;
     const clients = this.clients.get(campaignId);
+    const clientCount = clients.size;
+    
+    console.log(`Broadcasting ${event.type} to ${clientCount} client(s) on channel '${campaignId}'`);
     
     // Send to all clients and remove dead connections
     const deadClients = [];
