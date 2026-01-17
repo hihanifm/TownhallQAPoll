@@ -169,18 +169,26 @@ router.post('/campaigns/:campaignId/questions', async (req, res, next) => {
     
     // Broadcast campaign update to campaign list (for question_count update)
     try {
+      console.log('Getting campaign stats for campaign:', campaignId);
       const updatedCampaign = await getCampaignWithStats(campaignId);
       if (updatedCampaign) {
+        console.log('Campaign stats retrieved:', {
+          id: updatedCampaign.id,
+          question_count: updatedCampaign.question_count,
+          title: updatedCampaign.title
+        });
         console.log('Broadcasting campaign_updated for campaign:', campaignId, 'question_count:', updatedCampaign.question_count);
         sseService.broadcast('all', {
           type: 'campaign_updated',
           campaign: updatedCampaign
         });
+        console.log('Broadcast complete for campaign:', campaignId);
       } else {
         console.warn('getCampaignWithStats returned null for campaign:', campaignId);
       }
     } catch (err) {
       console.error('Error broadcasting campaign update:', err);
+      console.error('Error stack:', err.stack);
       // Don't fail the request if broadcast fails
     }
     

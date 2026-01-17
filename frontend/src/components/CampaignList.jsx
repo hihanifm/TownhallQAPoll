@@ -34,10 +34,19 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
           break;
         case 'campaign_updated':
           console.log('Updating campaign in list:', data.campaign.id, 'question_count:', data.campaign.question_count);
+          console.log('Current campaigns before update:', campaigns.map(c => ({ id: c.id, question_count: c.question_count })));
           // Update existing campaign
-          setCampaigns(prevCampaigns =>
-            prevCampaigns.map(c => c.id === data.campaign.id ? data.campaign : c)
-          );
+          setCampaigns(prevCampaigns => {
+            const updated = prevCampaigns.map(c => {
+              if (c.id === data.campaign.id) {
+                console.log('Found matching campaign, updating:', c.id);
+                return data.campaign;
+              }
+              return c;
+            });
+            console.log('Campaigns after update:', updated.map(c => ({ id: c.id, question_count: c.question_count })));
+            return updated;
+          });
           break;
         case 'campaign_deleted':
           // Remove deleted campaign from the list
