@@ -35,7 +35,7 @@ function AppContent() {
 
   return (
     <div className="app">
-      <header className="app-header">
+      <header className="app-header" onClick={() => navigate('/')}>
         <h1>Townhall Q&A Poll</h1>
         <p>Ask. Vote. Be heard.</p>
       </header>

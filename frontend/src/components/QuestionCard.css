@@ -328,11 +328,11 @@
 
 .save-question-btn,
 .cancel-question-btn {
-  padding: 6px 10px;
+  padding: 6px 14px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1;
   min-width: 32px;
@@ -563,7 +563,7 @@
 
 .save-comment-btn,
 .cancel-comment-btn {
-  padding: 4px 8px;
+  padding: 6px 14px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -617,7 +617,7 @@
 }
 
 .add-comment-btn {
-  padding: 6px 12px;
+  padding: 6px 14px;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   border: none;

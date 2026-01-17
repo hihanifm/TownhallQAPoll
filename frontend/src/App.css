@@ -41,6 +41,12 @@ body {
   box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
   flex-shrink: 0;
   text-align: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.app-header:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
 }
 
 .app-header h1 {

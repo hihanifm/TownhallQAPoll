@@ -336,9 +336,6 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
           )}
           <p className="panel-subtitle">While it may not be possible to answer every question, priority will be given to those questions with the most votes - so if you see an existing question that closely matches your concern, vote for it!</p>
         </div>
-        <div className="question-stats">
-          Total: {questions.length} questions
-        </div>
       </div>
 
       {showShareFeedback && (
