@@ -168,7 +168,7 @@ test.describe('Campaign Voting E2E Test', () => {
   test('should create campaign with PIN, verify PIN, and use PIN for admin operations', async () => {
     const creatorId = testUserId;
     const adminUserId = generateUserId(); // Different user who will use PIN
-    const campaignPin = 'test-pin-1234';
+    const campaignPin = '1234';
     
     // Step 1: Create a campaign with a PIN
     const campaignData = {
@@ -261,7 +261,7 @@ test.describe('Campaign Voting E2E Test', () => {
 
   test('should test comment functionality (create, update, delete) with PIN', async ({ page }) => {
     const creatorId = testUserId;
-    const campaignPin = 'comment-test-pin-1234';
+    const campaignPin = '1234';
     
     // Step 1: Create a campaign with a PIN
     const campaign = await createCampaign(

@@ -3,6 +3,57 @@ const router = express.Router();
 const { allQuery, getQuery, runQuery } = require('../db/database');
 const sseService = require('../services/sseService');
 
+// Helper function to get campaign with question_count and last_updated
+async function getCampaignWithStats(campaignId) {
+  const campaign = await getQuery(
+    `SELECT c.id, c.title, c.description, c.created_at, c.status, c.creator_id, c.creator_name,
+     COUNT(DISTINCT q.id) as question_count,
+     CASE WHEN c.pin IS NOT NULL AND c.pin != '' THEN 1 ELSE 0 END as has_pin
+     FROM campaigns c
+     LEFT JOIN questions q ON c.id = q.campaign_id
+     WHERE c.id = ?
+     GROUP BY c.id`,
+    [campaignId]
+  );
+  
+  if (!campaign) {
+    return null;
+  }
+  
+  // Get latest question creation time
+  const latestQuestion = await getQuery(
+    'SELECT MAX(created_at) as max_time FROM questions WHERE campaign_id = ?',
+    [campaignId]
+  );
+  
+  // Get latest vote time for questions in this campaign
+  const latestVote = await getQuery(
+    `SELECT MAX(v.created_at) as max_time 
+     FROM votes v
+     INNER JOIN questions q ON v.question_id = q.id
+     WHERE q.campaign_id = ?`,
+    [campaignId]
+  );
+  
+  // Determine the most recent activity
+  const questionTime = latestQuestion?.max_time || null;
+  const voteTime = latestVote?.max_time || null;
+  
+  let lastUpdated = campaign.created_at;
+  if (questionTime && (!lastUpdated || new Date(questionTime) > new Date(lastUpdated))) {
+    lastUpdated = questionTime;
+  }
+  if (voteTime && (!lastUpdated || new Date(voteTime) > new Date(lastUpdated))) {
+    lastUpdated = voteTime;
+  }
+  
+  return {
+    ...campaign,
+    last_updated: lastUpdated,
+    has_pin: campaign.has_pin === 1
+  };
+}
+
 // GET /api/campaigns/:id/questions - Get questions for a campaign
 router.get('/campaigns/:campaignId/questions', async (req, res, next) => {
   try {
@@ -114,6 +165,20 @@ router.post('/campaigns/:campaignId/questions', async (req, res, next) => {
       type: 'question_created',
       question: newQuestion
     });
+    
+    // Broadcast campaign update to campaign list (for question_count update)
+    try {
+      const updatedCampaign = await getCampaignWithStats(campaignId);
+      if (updatedCampaign) {
+        sseService.broadcast('all', {
+          type: 'campaign_updated',
+          campaign: updatedCampaign
+        });
+      }
+    } catch (err) {
+      console.error('Error broadcasting campaign update:', err);
+      // Don't fail the request if broadcast fails
+    }
     
     res.status(201).json(newQuestion);
   } catch (error) {
@@ -289,6 +354,20 @@ router.delete('/questions/:id', async (req, res, next) => {
       type: 'question_deleted',
       question_id: parseInt(id)
     });
+    
+    // Broadcast campaign update to campaign list (for question_count update)
+    try {
+      const updatedCampaign = await getCampaignWithStats(question.campaign_id);
+      if (updatedCampaign) {
+        sseService.broadcast('all', {
+          type: 'campaign_updated',
+          campaign: updatedCampaign
+        });
+      }
+    } catch (err) {
+      console.error('Error broadcasting campaign update:', err);
+      // Don't fail the request if broadcast fails
+    }
     
     res.json({ success: true, message: 'Question deleted successfully' });
   } catch (error) {

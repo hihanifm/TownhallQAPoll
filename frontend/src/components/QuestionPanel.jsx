@@ -15,12 +15,44 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showShareFeedback, setShowShareFeedback] = useState(false);
+  const [pinVerified, setPinVerified] = useState(false);
 
   useEffect(() => {
     if (campaignId) {
       loadCampaign();
       loadQuestions();
+      // Initialize PIN verification status
+      setPinVerified(hasVerifiedPin(campaignId));
+    } else {
+      setPinVerified(false);
     }
+  }, [campaignId]);
+
+  // Monitor PIN verification status changes
+  useEffect(() => {
+    if (!campaignId) return;
+
+    const checkPinStatus = () => {
+      const currentStatus = hasVerifiedPin(campaignId);
+      setPinVerified(currentStatus);
+    };
+
+    // Check immediately
+    checkPinStatus();
+
+    // Check on window focus (when user returns to tab)
+    const handleFocus = () => {
+      checkPinStatus();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // Periodic check as fallback (every 500ms)
+    const interval = setInterval(checkPinStatus, 500);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
   }, [campaignId]);
 
   // SSE connection for real-time updates
@@ -183,7 +215,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
 
     try {
       const userId = getUserId();
-      const campaignPin = hasVerifiedPin(campaignId) ? getVerifiedPin(campaignId) : undefined;
+      const campaignPin = pinVerified ? getVerifiedPin(campaignId) : undefined;
       const updatedCampaign = await api.closeCampaign(campaignId, userId, campaignPin);
       setCampaign(updatedCampaign);
       if (onCampaignClosed) {
@@ -201,7 +233,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
 
     try {
       const userId = getUserId();
-      const campaignPin = hasVerifiedPin(campaignId) ? getVerifiedPin(campaignId) : undefined;
+      const campaignPin = pinVerified ? getVerifiedPin(campaignId) : undefined;
       await api.deleteCampaign(campaignId, userId, campaignPin);
       if (onCampaignDeleted) {
         onCampaignDeleted(campaignId);
@@ -354,7 +386,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
             
             const hasAdminAccess = campaign && (
               (campaign.creator_id && campaign.creator_id === getUserId()) ||
-              hasVerifiedPin(campaignId)
+              pinVerified
             );
             
             return (
@@ -401,9 +433,9 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
               • Updated {formatRelativeTime(campaign.last_updated || campaign.created_at)}
             </span>
           </div>
-          {((campaign.creator_id && campaign.creator_id === getUserId()) || hasVerifiedPin(campaignId)) && (
+          {((campaign.creator_id && campaign.creator_id === getUserId()) || pinVerified) && (
             <div className="campaign-actions-footer">
-              {campaign.status === 'active' && (
+              {(!campaign.status || campaign.status === 'active') && (
                 <button
                   className="close-campaign-btn"
                   onClick={handleCloseCampaign}
