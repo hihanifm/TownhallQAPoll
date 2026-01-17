@@ -425,12 +425,39 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.comment-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .comment-text {
   color: #1a1a1a;
   line-height: 1.6;
   font-size: 14px;
-  margin-bottom: 8px;
   word-wrap: break-word;
+  flex: 1;
+  min-width: 0;
+  transition: all 0.2s ease;
+}
+
+.comment-text.collapsed {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comment-text.expanded {
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.comment-timestamp-inline {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .comment-meta {
@@ -449,6 +476,9 @@
 .comment-actions {
   display: flex;
   gap: 6px;
+  flex-shrink: 0;
+  align-items: flex-start;
+  padding-top: 2px;
 }
 
 .edit-comment-btn,

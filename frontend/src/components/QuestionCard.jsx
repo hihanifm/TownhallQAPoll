@@ -25,6 +25,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
   const [isCreatingComment, setIsCreatingComment] = useState(false);
   const [isUpdatingComment, setIsUpdatingComment] = useState(false);
   const [isDeletingComment, setIsDeletingComment] = useState(false);
+  const [expandedComments, setExpandedComments] = useState(new Set());
   const justToggledRef = useRef(false);
   const previousVoteCountRef = useRef(question.vote_count || 0);
   const previousNumberRef = useRef(number);
@@ -297,6 +298,22 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     }
   };
 
+  const toggleCommentExpand = (commentId, e) => {
+    // Don't expand if clicking on buttons
+    if (e.target.closest('.comment-actions')) {
+      return;
+    }
+    setExpandedComments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(commentId)) {
+        newSet.delete(commentId);
+      } else {
+        newSet.add(commentId);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className={`question-card-wrapper ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''}`}>
       <div className={`question-card ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''}`}>
@@ -426,34 +443,38 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <div className="comment-text">{comment.comment_text}</div>
-                      <div className="comment-meta">
-                        <span className="comment-timestamp" title={formatDateTime(comment.updated_at || comment.created_at)}>
-                          {formatRelativeTime(comment.updated_at || comment.created_at)}
+                    <div className="comment-content">
+                      <div 
+                        className={`comment-text ${expandedComments.has(comment.id) ? 'expanded' : 'collapsed'}`}
+                        onClick={(e) => toggleCommentExpand(comment.id, e)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {comment.comment_text}
+                        <span className="comment-timestamp-inline" title={formatDateTime(comment.updated_at || comment.created_at)}>
+                          {' '}{formatRelativeTime(comment.updated_at || comment.created_at)}
                         </span>
-                        {hasAdminAccess && (
-                          <div className="comment-actions">
-                            <button
-                              className="edit-comment-btn"
-                              onClick={() => handleEditComment(comment)}
-                              disabled={isDeletingComment || isUpdatingComment || isCreatingComment}
-                              title="Edit comment"
-                            >
-                              ✎
-                            </button>
-                            <button
-                              className="delete-comment-btn"
-                              onClick={() => handleDeleteComment(comment.id)}
-                              disabled={isDeletingComment || isUpdatingComment || isCreatingComment}
-                              title="Delete comment"
-                            >
-                              {isDeletingComment ? '...' : '×'}
-                            </button>
-                          </div>
-                        )}
                       </div>
-                    </>
+                      {hasAdminAccess && (
+                        <div className="comment-actions">
+                          <button
+                            className="edit-comment-btn"
+                            onClick={() => handleEditComment(comment)}
+                            disabled={isDeletingComment || isUpdatingComment || isCreatingComment}
+                            title="Edit comment"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            className="delete-comment-btn"
+                            onClick={() => handleDeleteComment(comment.id)}
+                            disabled={isDeletingComment || isUpdatingComment || isCreatingComment}
+                            title="Delete comment"
+                          >
+                            {isDeletingComment ? '...' : '×'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}

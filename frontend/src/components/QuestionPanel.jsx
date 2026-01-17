@@ -409,7 +409,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
                   onClick={handleCloseCampaign}
                   title="Close campaign"
                 >
-                  Close Campaign
+                  Close
                 </button>
               )}
               <button
@@ -417,7 +417,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
                 onClick={handleDeleteCampaign}
                 title="Delete campaign"
               >
-                Delete Campaign
+                Delete
               </button>
             </div>
           )}
