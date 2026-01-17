@@ -19,6 +19,31 @@ get_version() {
 
 VERSION=$(get_version)
 
+echo "Stopping Townhall Q&A Poll servers..."
+echo "Version: $VERSION"
+echo ""
+
+# Check if PM2 process is running
+PM2_RUNNING=false
+if command -v pm2 >/dev/null 2>&1; then
+    if pm2 list 2>/dev/null | grep -q "townhall-backend"; then
+        PM2_RUNNING=true
+    fi
+fi
+
+# If PM2 process is running, stop it
+if [ "$PM2_RUNNING" = true ]; then
+    echo "Detected PM2 process (production PM2 mode)"
+    echo "Stopping PM2 process..."
+    pm2 stop townhall-backend 2>/dev/null || true
+    pm2 delete townhall-backend 2>/dev/null || true
+    echo "✓ PM2 process stopped"
+    echo ""
+    echo "All servers stopped."
+    exit 0
+fi
+
+# Otherwise, handle nohup processes (dev or prod-nohup mode)
 if [ ! -f "$PID_FILE" ]; then
     echo "No PID file found. Servers may not be running."
     echo "Checking for running processes..."
@@ -44,8 +69,7 @@ else
     FRONTEND_PID=${PIDS[1]}
 fi
 
-echo "Stopping Townhall Q&A Poll servers..."
-echo "Version: $VERSION"
+echo "Detected nohup processes (dev or production nohup mode)"
 echo ""
 
 # Stop backend

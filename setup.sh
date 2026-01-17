@@ -114,6 +114,23 @@ echo ""
 echo "✓ Frontend dependencies installed"
 echo ""
 
+# Check for PM2 (optional - only needed for production PM2 mode)
+echo "Checking for PM2 (optional - needed for production PM2 mode)..."
+if ! command_exists pm2; then
+    echo "PM2 not found. Installing PM2 globally..."
+    npm install -g pm2
+    if [ $? -ne 0 ]; then
+        echo "⚠️  Warning: PM2 installation failed!"
+        echo "   You can install it manually later with: npm install -g pm2"
+        echo "   PM2 is only needed if you plan to use production PM2 mode (-pm2 flag)"
+    else
+        echo "✓ PM2 installed successfully"
+    fi
+else
+    echo "✓ PM2 found: $(pm2 --version 2>/dev/null || echo 'installed')"
+fi
+echo ""
+
 # Return to script directory
 cd "$SCRIPT_DIR"
 
@@ -159,7 +176,8 @@ echo "For more information, see README.md"
 echo ""
 echo "To run both servers in the background:"
 echo "   ./start-background.sh          (development mode)"
-echo "   ./start-background.sh --prod   (production mode)"
+echo "   ./start-background.sh -p       (production mode - nohup)"
+echo "   ./start-background.sh -pm2     (production mode - PM2 with auto-restart)"
 echo ""
 echo "To check server status:"
 echo "   ./status-background.sh"

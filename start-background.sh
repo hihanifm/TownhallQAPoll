@@ -2,7 +2,10 @@
 
 # Script to start both backend and frontend servers in the background
 # LINUX/macOS ONLY
-# Usage: ./start-background.sh [--prod|-p]  (use --prod for production mode)
+# Usage: 
+#   ./start-background.sh           (development mode - nohup)
+#   ./start-background.sh -p        (production mode - nohup)
+#   ./start-background.sh -pm2      (production mode - PM2 with auto-restart)
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
@@ -21,10 +24,12 @@ get_version() {
 
 VERSION=$(get_version)
 
-# Check for production mode
-PROD_MODE=false
+# Check for mode
+MODE="dev"
 if [[ "$1" == "--prod" ]] || [[ "$1" == "-p" ]]; then
-    PROD_MODE=true
+    MODE="prod-nohup"
+elif [[ "$1" == "--pm2" ]] || [[ "$1" == "-pm2" ]]; then
+    MODE="prod-pm2"
 fi
 
 # Create logs directory if it doesn't exist
@@ -86,13 +91,25 @@ if check_port 33001; then
     echo "⚠️  Error: Port 33001 (backend) is already in use!"
 fi
 
-# In production mode, backend serves static files, so we only need port 33001
+# In production modes, backend serves static files, so we only need port 33001
 # In development mode, we need both ports
-if [ "$PROD_MODE" = false ]; then
+if [ "$MODE" = "dev" ]; then
     if check_port 33000; then
         FRONTEND_PORT_IN_USE=true
         PORTS_IN_USE=true
         echo "⚠️  Error: Port 33000 (frontend) is already in use!"
+    fi
+fi
+
+# Check for PM2 mode specific requirements
+if [ "$MODE" = "prod-pm2" ]; then
+    if ! command -v pm2 >/dev/null 2>&1; then
+        echo "❌ Error: PM2 is not installed!"
+        echo ""
+        echo "PM2 is required for production PM2 mode (-pm2 flag)."
+        echo "Install PM2 by running: npm install -g pm2"
+        echo "Or run ./setup.sh which will install PM2 automatically."
+        exit 1
     fi
 fi
 
@@ -112,17 +129,23 @@ if [ "$PORTS_IN_USE" = true ]; then
     echo "⚠️  Warning: Forcing start - this may cause conflicts!"
 fi
 
-if [ "$PROD_MODE" = true ]; then
-    echo "Starting Townhall Q&A Poll in PRODUCTION mode (single process)..."
-else
-    echo "Starting Townhall Q&A Poll servers in DEVELOPMENT mode..."
-fi
+case "$MODE" in
+    "dev")
+        echo "Starting Townhall Q&A Poll servers in DEVELOPMENT mode..."
+        ;;
+    "prod-nohup")
+        echo "Starting Townhall Q&A Poll in PRODUCTION mode (nohup)..."
+        ;;
+    "prod-pm2")
+        echo "Starting Townhall Q&A Poll in PRODUCTION mode (PM2)..."
+        ;;
+esac
 echo "Version: $VERSION"
 echo ""
 
-# In production mode, build frontend first, then start backend (which serves static files)
+# In production modes, build frontend first, then start backend (which serves static files)
 # In development mode, start backend first, then frontend dev server
-if [ "$PROD_MODE" = true ]; then
+if [ "$MODE" != "dev" ]; then
     echo "Building frontend for production..."
     cd "$SCRIPT_DIR/frontend"
     npm run build > "$LOG_DIR/frontend-build.log" 2>&1
@@ -134,52 +157,80 @@ if [ "$PROD_MODE" = true ]; then
     echo ""
 fi
 
-# Start backend server
-echo "Starting backend server..."
-cd "$SCRIPT_DIR/backend"
-
-# Set NODE_ENV based on mode
-if [ "$PROD_MODE" = true ]; then
-    export NODE_ENV=production
-    export HOST=0.0.0.0  # Bind to all interfaces so it's accessible from network
-    echo "  Setting NODE_ENV=production"
-    echo "  Setting HOST=0.0.0.0 (accessible from network)"
-else
-    export NODE_ENV=development
-    echo "  Setting NODE_ENV=development"
-fi
-
-nohup env NODE_ENV=$NODE_ENV HOST=${HOST:-} npm start > "$LOG_DIR/backend.log" 2>&1 &
-BACKEND_PID=$!
-# Disown the process to fully detach it from the shell
-disown $BACKEND_PID 2>/dev/null || true
-
-# Wait a moment and verify backend started successfully
-sleep 3
-if ! ps -p $BACKEND_PID > /dev/null 2>&1; then
-    echo "❌ Error: Backend server failed to start! Check $LOG_DIR/backend.log"
-    # Check if it's a port conflict
-    if grep -q "EADDRINUSE" "$LOG_DIR/backend.log" 2>/dev/null; then
-        echo "   Port 33001 is already in use. Please stop the existing server first."
+# Handle PM2 mode separately
+if [ "$MODE" = "prod-pm2" ]; then
+    echo "Starting backend server with PM2..."
+    cd "$SCRIPT_DIR"
+    
+    # Start PM2 process
+    pm2 start ecosystem.config.js --env production
+    if [ $? -ne 0 ]; then
+        echo "❌ Error: Failed to start PM2 process!"
+        exit 1
     fi
-    exit 1
+    
+    # Wait a moment and verify backend started successfully
+    sleep 3
+    if ! check_port 33001; then
+        echo "❌ Error: Backend server process started but port 33001 is not listening!"
+        echo "   Check PM2 logs with: pm2 logs townhall-backend"
+        pm2 stop townhall-backend 2>/dev/null || true
+        pm2 delete townhall-backend 2>/dev/null || true
+        exit 1
+    fi
+    
+    echo "✓ Backend started successfully with PM2"
+    echo ""
+    echo "PM2 Status:"
+    pm2 list | grep townhall-backend || true
+else
+    # Start backend server with nohup (dev or prod-nohup mode)
+    echo "Starting backend server..."
+    cd "$SCRIPT_DIR/backend"
+    
+    # Set NODE_ENV based on mode
+    if [ "$MODE" != "dev" ]; then
+        export NODE_ENV=production
+        export HOST=0.0.0.0  # Bind to all interfaces so it's accessible from network
+        echo "  Setting NODE_ENV=production"
+        echo "  Setting HOST=0.0.0.0 (accessible from network)"
+    else
+        export NODE_ENV=development
+        echo "  Setting NODE_ENV=development"
+    fi
+    
+    nohup env NODE_ENV=$NODE_ENV HOST=${HOST:-} npm start > "$LOG_DIR/backend.log" 2>&1 &
+    BACKEND_PID=$!
+    # Disown the process to fully detach it from the shell
+    disown $BACKEND_PID 2>/dev/null || true
+    
+    # Wait a moment and verify backend started successfully
+    sleep 3
+    if ! ps -p $BACKEND_PID > /dev/null 2>&1; then
+        echo "❌ Error: Backend server failed to start! Check $LOG_DIR/backend.log"
+        # Check if it's a port conflict
+        if grep -q "EADDRINUSE" "$LOG_DIR/backend.log" 2>/dev/null; then
+            echo "   Port 33001 is already in use. Please stop the existing server first."
+        fi
+        exit 1
+    fi
+    
+    if ! check_port 33001; then
+        echo "❌ Error: Backend server process started but port 33001 is not listening!"
+        echo "   Check $LOG_DIR/backend.log for errors"
+        kill $BACKEND_PID 2>/dev/null || true
+        exit 1
+    fi
+    
+    echo "✓ Backend started successfully with PID: $BACKEND_PID"
+    
+    # Save backend PID to file
+    echo "$BACKEND_PID" > "$PID_FILE"
 fi
-
-if ! check_port 33001; then
-    echo "❌ Error: Backend server process started but port 33001 is not listening!"
-    echo "   Check $LOG_DIR/backend.log for errors"
-    kill $BACKEND_PID 2>/dev/null || true
-    exit 1
-fi
-
-echo "✓ Backend started successfully with PID: $BACKEND_PID"
-
-# Save backend PID to file
-echo "$BACKEND_PID" > "$PID_FILE"
 
 # Only start frontend server in development mode
-# In production mode, backend serves static files, so no separate frontend server needed
-if [ "$PROD_MODE" = false ]; then
+# In production modes, backend serves static files, so no separate frontend server needed
+if [ "$MODE" = "dev" ]; then
     # Start frontend server
     echo "Starting frontend server..."
     cd "$SCRIPT_DIR/frontend"
@@ -221,16 +272,23 @@ fi
 LOCAL_IP=$(get_local_ip)
 
 echo ""
-if [ "$PROD_MODE" = true ]; then
-    echo "✓ Server started in background!"
-    echo "  Mode: PRODUCTION (single process - backend serves static frontend)"
-else
-    echo "✓ Servers started in background!"
-    echo "  Mode: DEVELOPMENT (hot reload enabled)"
-fi
+case "$MODE" in
+    "dev")
+        echo "✓ Servers started in background!"
+        echo "  Mode: DEVELOPMENT (hot reload enabled)"
+        ;;
+    "prod-nohup")
+        echo "✓ Server started in background!"
+        echo "  Mode: PRODUCTION (nohup - single process)"
+        ;;
+    "prod-pm2")
+        echo "✓ Server started with PM2!"
+        echo "  Mode: PRODUCTION (PM2 - auto-restart enabled)"
+        ;;
+esac
 echo ""
 echo "Access URLs:"
-if [ "$PROD_MODE" = true ]; then
+if [ "$MODE" != "dev" ]; then
     echo "  Application:"
     echo "    - Local:  http://localhost:33001"
     if [ -n "$LOCAL_IP" ]; then
@@ -251,18 +309,36 @@ else
 fi
 echo ""
 echo "Logs are available in: $LOG_DIR/"
-echo "  - Backend:  $LOG_DIR/backend.log"
-if [ "$PROD_MODE" = true ]; then
-    echo "  - Build:    $LOG_DIR/frontend-build.log"
+if [ "$MODE" = "prod-pm2" ]; then
+    echo "  - PM2 logs: pm2 logs townhall-backend"
+    echo "  - PM2 monitor: pm2 monit"
 else
-    echo "  - Frontend: $LOG_DIR/frontend.log"
+    echo "  - Backend:  $LOG_DIR/backend.log"
+    if [ "$MODE" != "dev" ]; then
+        echo "  - Build:    $LOG_DIR/frontend-build.log"
+    else
+        echo "  - Frontend: $LOG_DIR/frontend.log"
+    fi
 fi
 echo ""
 echo "To stop the servers, run: ./stop-background.sh"
 echo "To check status, run: ./status-background.sh"
 echo ""
-if [ "$PROD_MODE" = false ]; then
-    echo "To start in production mode, run: ./start-background.sh --prod"
+if [ "$MODE" = "dev" ]; then
+    echo "To start in production mode:"
+    echo "   ./start-background.sh -p      (production with nohup)"
+    echo "   ./start-background.sh -pm2    (production with PM2)"
+    echo ""
+fi
+if [ "$MODE" = "prod-pm2" ]; then
+    echo "PM2 commands:"
+    echo "   pm2 logs townhall-backend    (view logs)"
+    echo "   pm2 monit                    (monitor)"
+    echo "   pm2 restart townhall-backend (restart)"
+    echo ""
+    echo "To enable boot startup, run:"
+    echo "   pm2 startup"
+    echo "   pm2 save"
     echo ""
 fi
 echo "Note: Processes are running in the background and will continue"

@@ -51,18 +51,47 @@ echo "Version: $VERSION"
 echo "================================"
 echo ""
 
-# Detect overall mode by checking frontend process on port 33000
+# Check if PM2 process is running
+PM2_RUNNING=false
+if command -v pm2 >/dev/null 2>&1; then
+    if pm2 list 2>/dev/null | grep -q "townhall-backend"; then
+        PM2_RUNNING=true
+    fi
+fi
+
+# If PM2 process is running, show PM2 status
+if [ "$PM2_RUNNING" = true ]; then
+    echo "Mode: PRODUCTION (PM2)"
+    echo ""
+    echo "PM2 Status:"
+    pm2 list | head -n 5
+    echo ""
+    pm2 describe townhall-backend 2>/dev/null | grep -E "(status|uptime|restarts|memory|cpu|pid)" || true
+    echo ""
+    echo "PM2 Logs location: ~/.pm2/logs/"
+    echo "  - View logs: pm2 logs townhall-backend"
+    echo "  - Monitor: pm2 monit"
+    echo ""
+    LOCAL_IP=$(get_local_ip)
+    if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        echo "Access URLs:"
+        echo "  Application:"
+        echo "    - Local:  http://localhost:33001"
+        if [ -n "$LOCAL_IP" ]; then
+            echo "    - Network: http://$LOCAL_IP:33001"
+        fi
+        echo ""
+    fi
+    exit 0
+fi
+
+# Otherwise, show nohup status (dev or prod-nohup mode)
 MODE="UNKNOWN"
 if lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    # Get the first PID listening on port 33000
-    FRONTEND_PORT_PID=$(lsof -ti:33000 | head -1)
-    if [ -n "$FRONTEND_PORT_PID" ]; then
-        FRONTEND_CMD=$(ps -p $FRONTEND_PORT_PID -o command= 2>/dev/null | tr -d '\n')
-        if echo "$FRONTEND_CMD" | grep -q "vite preview"; then
-            MODE="PRODUCTION"
-        elif echo "$FRONTEND_CMD" | grep -q "vite"; then
-            MODE="DEVELOPMENT"
-        fi
+    MODE="DEVELOPMENT"
+else
+    if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        MODE="PRODUCTION (nohup)"
     fi
 fi
 
