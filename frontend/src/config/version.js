@@ -1,3 +1,3 @@
 // Application version
 // This should match the version in package.json and VERSION file
-export const APP_VERSION = '1.15.0';
+export const APP_VERSION = '1.16.0';
