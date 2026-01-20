@@ -39,17 +39,18 @@ export function formatRelativeTime(timestamp) {
   return `${diffInYears} year${diffInYears !== 1 ? 's' : ''} ago`;
 }
 
-// Format timestamp to readable date (e.g., "Dec 10, 2024 at 3:45 PM")
+// Format timestamp to readable date (e.g., "Dec 10, 2024 at 3:45 PM PST")
 export function formatDateTime(timestamp) {
   if (!timestamp) return '';
   
   const date = new Date(timestamp);
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true
+    hour12: true,
+    timeZoneName: 'short'
   });
 }

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { allQuery, getQuery, runQuery } = require('../db/database');
+const { allQuery, getQuery, runQuery, formatDatetime } = require('../db/database');
 const sseService = require('../services/sseService');
 
 // Helper function to get campaign with question_count and last_updated
@@ -49,8 +49,9 @@ async function getCampaignWithStats(campaignId) {
   
   return {
     ...campaign,
+    created_at: formatDatetime(campaign.created_at),
     question_count: parseInt(campaign.question_count) || 0,
-    last_updated: lastUpdated,
+    last_updated: formatDatetime(lastUpdated),
     has_pin: campaign.has_pin === 1
   };
 }
@@ -72,9 +73,10 @@ router.get('/campaigns/:campaignId/questions', async (req, res, next) => {
       [campaignId]
     );
     
-    // Parse voters string to array for easier checking
+    // Parse voters string to array for easier checking and format timestamps
     const questionsWithVotes = questions.map(q => ({
       ...q,
+      created_at: formatDatetime(q.created_at),
       voters: q.voters ? q.voters.split(',') : [],
       vote_count: q.vote_count || 0
     }));
@@ -98,8 +100,8 @@ router.get('/campaigns/:campaignId/questions', async (req, res, next) => {
         commentsMap[comment.question_id].push({
           id: comment.id,
           comment_text: comment.comment_text,
-          created_at: comment.created_at,
-          updated_at: comment.updated_at
+          created_at: formatDatetime(comment.created_at),
+          updated_at: formatDatetime(comment.updated_at)
         });
       });
     }
@@ -157,6 +159,7 @@ router.post('/campaigns/:campaignId/questions', async (req, res, next) => {
     
     const newQuestion = {
       ...question,
+      created_at: formatDatetime(question.created_at),
       vote_count: question.vote_count || 0,
       voters: []
     };
@@ -260,6 +263,7 @@ router.patch('/questions/:id', async (req, res, next) => {
     
     const questionWithVotes = {
       ...updatedQuestion,
+      created_at: formatDatetime(updatedQuestion.created_at),
       vote_count: updatedQuestion.vote_count || 0,
       voters: []
     };
@@ -444,18 +448,20 @@ router.post('/questions/:questionId/comments', async (req, res, next) => {
     );
     
     // Broadcast new comment to all clients watching this campaign
+    const formattedComment = {
+      id: comment.id,
+      comment_text: comment.comment_text,
+      created_at: formatDatetime(comment.created_at),
+      updated_at: formatDatetime(comment.updated_at)
+    };
+    
     sseService.broadcast(question.campaign_id.toString(), {
       type: 'comment_created',
       question_id: parseInt(questionId),
-      comment: {
-        id: comment.id,
-        comment_text: comment.comment_text,
-        created_at: comment.created_at,
-        updated_at: comment.updated_at
-      }
+      comment: formattedComment
     });
     
-    res.status(201).json(comment);
+    res.status(201).json(formattedComment);
   } catch (error) {
     next(error);
   }
@@ -525,18 +531,20 @@ router.patch('/questions/:questionId/comments/:commentId', async (req, res, next
     );
     
     // Broadcast update to all clients watching this campaign
+    const formattedUpdatedComment = {
+      id: updatedComment.id,
+      comment_text: updatedComment.comment_text,
+      created_at: formatDatetime(updatedComment.created_at),
+      updated_at: formatDatetime(updatedComment.updated_at)
+    };
+    
     sseService.broadcast(question.campaign_id.toString(), {
       type: 'comment_updated',
       question_id: parseInt(questionId),
-      comment: {
-        id: updatedComment.id,
-        comment_text: updatedComment.comment_text,
-        created_at: updatedComment.created_at,
-        updated_at: updatedComment.updated_at
-      }
+      comment: formattedUpdatedComment
     });
     
-    res.json(updatedComment);
+    res.json(formattedUpdatedComment);
   } catch (error) {
     next(error);
   }

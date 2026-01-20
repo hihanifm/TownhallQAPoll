@@ -150,10 +150,32 @@ function allQuery(query, params = []) {
   });
 }
 
+// Helper function to convert SQLite datetime string to ISO 8601 format (UTC)
+// SQLite CURRENT_TIMESTAMP returns UTC time but without timezone info
+// This ensures JavaScript interprets it as UTC
+function formatDatetime(datetime) {
+  if (!datetime) return null;
+  // If already in ISO format or has timezone info, return as-is
+  if (typeof datetime === 'string' && (datetime.includes('T') || datetime.includes('Z') || datetime.includes('+'))) {
+    return datetime;
+  }
+  // SQLite format: "YYYY-MM-DD HH:MM:SS" - treat as UTC
+  // Convert to ISO 8601 format with Z (UTC)
+  // Replace space with T and append Z to indicate UTC
+  const dtString = datetime.toString().trim();
+  if (dtString.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
+    // SQLite datetime format - treat as UTC
+    return dtString.replace(' ', 'T') + 'Z';
+  }
+  // If format doesn't match, try to parse it
+  return new Date(dtString).toISOString();
+}
+
 module.exports = {
   getDatabase,
   runQuery,
   getQuery,
-  allQuery
+  allQuery,
+  formatDatetime
 };
 

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { allQuery, getQuery, runQuery } = require('../db/database');
+const { allQuery, getQuery, runQuery, formatDatetime } = require('../db/database');
 
 // Hardcoded PIN for feedback management
 const FEEDBACK_PIN = 'townhall12#';
@@ -35,9 +35,10 @@ router.get('/feedback', async (req, res, next) => {
        LIMIT 50`
     );
     
-    // Parse voters string to array for easier checking
+    // Parse voters string to array for easier checking and format timestamps
     const feedbackWithVotes = feedback.map(f => ({
       ...f,
+      created_at: formatDatetime(f.created_at),
       voters: f.voters ? f.voters.split(',') : [],
       vote_count: f.vote_count || 0,
       status: f.status || 'open' // Default to 'open' for backward compatibility
@@ -79,6 +80,7 @@ router.post('/feedback', async (req, res, next) => {
     
     const newFeedback = {
       ...feedback,
+      created_at: formatDatetime(feedback.created_at),
       vote_count: feedback.vote_count || 0,
       voters: []
     };
@@ -294,6 +296,7 @@ router.patch('/feedback/:id', async (req, res, next) => {
     
     const feedbackWithVotes = {
       ...updatedFeedback,
+      created_at: formatDatetime(updatedFeedback.created_at),
       vote_count: updatedFeedback.vote_count || 0,
       voters: updatedFeedback.voters ? updatedFeedback.voters.split(',') : [],
       status: updatedFeedback.status || 'open'
@@ -348,6 +351,7 @@ router.patch('/feedback/:id/close', async (req, res, next) => {
     
     const feedbackWithVotes = {
       ...updatedFeedback,
+      created_at: formatDatetime(updatedFeedback.created_at),
       vote_count: updatedFeedback.vote_count || 0,
       voters: [],
       status: updatedFeedback.status || 'closed'

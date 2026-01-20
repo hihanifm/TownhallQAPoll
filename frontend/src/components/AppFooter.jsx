@@ -101,10 +101,11 @@ function AppFooter({ selectedCampaignId }) {
   };
 
   const formatTime = (date) => {
-    return date.toLocaleTimeString('en-US', { 
+    return date.toLocaleTimeString(undefined, { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: true 
+      hour12: true,
+      timeZoneName: 'short'
     });
   };
 

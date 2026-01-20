@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { allQuery, getQuery, runQuery } = require('../db/database');
+const { allQuery, getQuery, runQuery, formatDatetime } = require('../db/database');
 const sseService = require('../services/sseService');
 
 // GET /api/campaigns - List all campaigns
@@ -47,7 +47,8 @@ router.get('/', async (req, res, next) => {
       
       return {
         ...campaign,
-        last_updated: lastUpdated,
+        created_at: formatDatetime(campaign.created_at),
+        last_updated: formatDatetime(lastUpdated),
         has_pin: campaign.has_pin === 1
       };
     }));
@@ -99,7 +100,8 @@ router.get('/:id', async (req, res, next) => {
     
     res.json({
       ...campaign,
-      last_updated: lastUpdated,
+      created_at: formatDatetime(campaign.created_at),
+      last_updated: formatDatetime(lastUpdated),
       has_pin: campaign.has_pin === 1
     });
   } catch (error) {
@@ -158,9 +160,10 @@ router.post('/', async (req, res, next) => {
       [campaignId]
     );
     
-    // Add has_pin boolean to response
+    // Add has_pin boolean to response and format datetime
     const campaignWithPin = {
       ...campaign,
+      created_at: formatDatetime(campaign.created_at),
       has_pin: campaign.has_pin === 1
     };
     
@@ -237,9 +240,10 @@ router.patch('/:id/close', async (req, res, next) => {
       [id]
     );
     
-    // Add has_pin boolean to response
+    // Add has_pin boolean to response and format datetime
     const campaignWithPin = {
       ...updatedCampaign,
+      created_at: formatDatetime(updatedCampaign.created_at),
       has_pin: updatedCampaign.has_pin === 1
     };
     
