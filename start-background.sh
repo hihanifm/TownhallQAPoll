@@ -132,9 +132,9 @@ check_firewall_status() {
     
     if [ "$os" = "linux" ]; then
         # Check ufw status (Linux)
+        echo ""
+        echo "🔒 Firewall Check (Linux - ufw):"
         if check_ufw_active; then
-            echo ""
-            echo "🔒 Firewall Check (Linux - ufw):"
             for port in "${ports_to_check[@]}"; do
                 if ! check_ufw_port_allowed "$port"; then
                     needs_warning=true
@@ -151,18 +151,26 @@ check_firewall_status() {
                 echo "      the firewall may be blocking the ports."
                 echo "      Run the commands above to allow access."
             fi
+        else
+            echo "   ℹ️  ufw is not active (no firewall restrictions detected)"
         fi
     elif [ "$os" = "macos" ]; then
         # Check macOS firewall status
+        echo ""
+        echo "🔒 Firewall Check (macOS):"
         if check_macos_firewall_active; then
-            echo ""
-            echo "🔒 Firewall Check (macOS):"
             echo "   ℹ️  macOS firewall is enabled"
             echo "   Note: macOS firewall typically allows incoming connections by default"
             echo "   If you can't access the server from other devices, check:"
             echo "   System Settings → Network → Firewall → Options"
             echo "   Make sure 'Block all incoming connections' is NOT enabled"
+        else
+            echo "   ℹ️  macOS firewall is not enabled (no firewall restrictions detected)"
         fi
+    else
+        echo ""
+        echo "🔒 Firewall Check:"
+        echo "   ℹ️  Unable to detect firewall status (OS: $os)"
     fi
 }
 
