@@ -1,0 +1,11 @@
+langchain@omadm-HP-Z620-Workstation:~/townhall-new/TownhallQAPoll$ tail -f logs/backend.log
+[Backup] Cron schedule: 0 0 * * *
+✓ Backend bound to localhost only - not accessible from network
+   Set HOST=0.0.0.0 to allow remote access (less secure)
+🔓 Development mode: Origin validation is more permissive
+   - Allows localhost requests without origin (curl, Postman, etc.)
+   - Allows any localhost/private IP origins
+   - NODE_ENV: development
+Server running on http://127.0.0.1:33001
+Local access: http://localhost:33001
+Allowed frontend origins: http://localhost:33000, http://127.0.0.1:33000
