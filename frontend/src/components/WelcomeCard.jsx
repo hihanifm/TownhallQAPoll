@@ -40,19 +40,21 @@ function WelcomeCard() {
     return parts.length > 0 ? parts : text;
   };
 
-  // Convert newlines to line breaks and parse bold text
-  const lines = welcomeText.split('\n');
-  const formattedText = lines.map((line, index) => (
-    <span key={index}>
-      {parseTextWithBold(line)}
-      {index < lines.length - 1 && <br />}
-    </span>
-  ));
+  // Convert newlines to paragraphs and parse bold text
+  const lines = welcomeText.split('\n').filter(line => line.trim() !== '');
+  const formattedText = lines.map((line, index) => {
+    const isFeatureHeader = /^[A-Z][^:]+:/.test(line.trim());
+    return (
+      <p key={index} className={isFeatureHeader ? 'welcome-feature-header' : 'welcome-paragraph'}>
+        {parseTextWithBold(line)}
+      </p>
+    );
+  });
 
   return (
     <div className="welcome-card">
       <div className="welcome-card-content">
-        <p className="welcome-description">{formattedText}</p>
+        <div className="welcome-description">{formattedText}</div>
       </div>
     </div>
   );
