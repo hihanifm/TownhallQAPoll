@@ -1,10 +1,6 @@
 name: Build and Release Offline Package
 
 on:
-  push:
-    tags:
-      - 'v*-offline'
-      - 'v*-offline.*'
   workflow_dispatch:
     inputs:
       tag_name:
@@ -15,6 +11,8 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout code
@@ -32,11 +30,7 @@ jobs:
       - name: Get version
         id: version
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.tag_name }}"
-          else
-            VERSION="${GITHUB_REF#refs/tags/}"
-          fi
+          VERSION="${{ github.event.inputs.tag_name }}"
           # Extract version number (e.g., v1.12.0-offline -> 1.12.0)
           VERSION_NUM=$(echo "$VERSION" | sed 's/^v//' | sed 's/-offline.*//')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -74,14 +68,11 @@ jobs:
           echo "package_file=$PACKAGE_FILE" >> $GITHUB_OUTPUT
           echo "Package file: $PACKAGE_FILE"
       
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.version }}
-          release_name: "Offline Package ${{ steps.version.outputs.version_num }}"
+          name: "Offline Package ${{ steps.version.outputs.version_num }}"
           body: |
             Offline deployment package for Linux PC.
             
@@ -102,18 +93,9 @@ jobs:
             - `wget --no-check-certificate <download-url>`
             - `curl -k -L -O <download-url>`
             - Download via browser from Releases page
+          files: ${{ steps.package_file.outputs.package_file }}
           draft: false
           prerelease: false
-      
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ steps.package_file.outputs.package_file }}
-          asset_name: ${{ steps.package_file.outputs.package_file }}
-          asset_content_type: application/gzip
       
       - name: Release Summary
         run: |
