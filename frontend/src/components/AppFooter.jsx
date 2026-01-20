@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getBrowserName } from '../utils/browserDetection';
 import { APP_VERSION } from '../config/version';
 import { hasVerifiedPin } from '../utils/campaignPin';
 import { api } from '../services/api';
@@ -11,7 +10,6 @@ function AppFooter({ selectedCampaignId }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [apiStatus, setApiStatus] = useState('checking');
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
   const [campaign, setCampaign] = useState(null);
@@ -25,9 +23,6 @@ function AppFooter({ selectedCampaignId }) {
   // Detect mode
   const mode = import.meta.env.MODE || 'development';
   const isDev = mode === 'development';
-  
-  // Get browser info
-  const browserName = getBrowserName();
 
   // Check API status
   useEffect(() => {
@@ -50,14 +45,6 @@ function AppFooter({ selectedCampaignId }) {
     checkApiStatus();
     // Check API status every 30 seconds
     const interval = setInterval(checkApiStatus, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Update time every minute
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -98,15 +85,6 @@ function AppFooter({ selectedCampaignId }) {
 
   const handlePinVerified = () => {
     setPinVerified(true);
-  };
-
-  const formatTime = (date) => {
-    return date.toLocaleTimeString(undefined, { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true,
-      timeZoneName: 'short'
-    });
   };
 
   const getApiStatusColor = () => {
@@ -202,11 +180,6 @@ function AppFooter({ selectedCampaignId }) {
         </div>
         
         <div className="footer-section">
-          <span className="footer-label">Browser:</span>
-          <span className="footer-value">{browserName}</span>
-        </div>
-        
-        <div className="footer-section">
           <span className="footer-label">API:</span>
           <span 
             className="footer-value footer-api-status"
@@ -215,11 +188,6 @@ function AppFooter({ selectedCampaignId }) {
             <span className="status-dot" style={{ backgroundColor: getApiStatusColor() }}></span>
             {getApiStatusText()}
           </span>
-        </div>
-        
-        <div className="footer-section">
-          <span className="footer-label">Time:</span>
-          <span className="footer-value">{formatTime(currentTime)}</span>
         </div>
         
         {systemStatus && (
