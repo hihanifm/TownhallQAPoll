@@ -179,7 +179,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
             />
             <input
               type="password"
-              placeholder="Admin PIN (optional - share with others to grant admin access)"
+              placeholder="PIN (optional - share with others to grant access)"
               value={formData.pin}
               onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
               disabled={isSubmitting}

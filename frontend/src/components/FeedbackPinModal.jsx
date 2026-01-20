@@ -44,11 +44,11 @@ function FeedbackPinModal({ onClose, onVerified }) {
     <div className="pin-modal-backdrop" onClick={handleBackdropClick}>
       <div className="pin-modal-content">
         <div className="pin-modal-header">
-          <h2>Request Admin Access</h2>
+          <h2>Request Access</h2>
           <button className="pin-modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="pin-modal-body">
-          <p>Enter the admin PIN to gain admin privileges for feedback management (close feedback items).</p>
+          <p>Enter the PIN to gain privileges for feedback management (close feedback items).</p>
           <form onSubmit={handleSubmit}>
             <input
               type="password"

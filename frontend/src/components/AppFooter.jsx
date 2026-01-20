@@ -234,13 +234,13 @@ function AppFooter({ selectedCampaignId }) {
             <div className="footer-section">
               {pinVerified ? (
                 <div className="footer-admin-indicator">
-                  <span className="admin-badge">✓ Admin Access</span>
+                  <span className="admin-badge">✓ Access</span>
                 </div>
               ) : (
                 <button
                   className="footer-admin-button"
                   onClick={() => setShowPinModal(true)}
-                  title="Request admin privileges for this campaign"
+                  title="Request privileges for this campaign"
                 >
                   Request PIN
                 </button>

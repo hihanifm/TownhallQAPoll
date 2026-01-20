@@ -188,7 +188,7 @@ function FeedbackPanel() {
           <button
             className="feedback-admin-button"
             onClick={() => setShowPinModal(true)}
-            title="Request admin privileges for feedback management"
+            title="Request privileges for feedback management"
           >
             Request PIN
           </button>
@@ -198,7 +198,7 @@ function FeedbackPanel() {
       {pinVerified && (
         <div className="feedback-admin-section">
           <div className="feedback-admin-indicator">
-            <span className="feedback-admin-badge">✓ Admin Access</span>
+            <span className="feedback-admin-badge">✓ Access</span>
           </div>
         </div>
       )}
