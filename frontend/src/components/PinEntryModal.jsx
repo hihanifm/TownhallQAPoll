@@ -48,7 +48,7 @@ function PinEntryModal({ campaignId, onClose, onVerified }) {
           <button className="pin-modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="pin-modal-body">
-          <p>Enter the admin PIN for this campaign to gain admin privileges (close/delete campaigns, delete questions).</p>
+          <p>Enter the admin PIN for this campaign to gain admin privileges (close/delete campaigns, delete questions, answer questions).</p>
           <form onSubmit={handleSubmit}>
             <input
               type="password"
