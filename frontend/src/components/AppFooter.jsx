@@ -167,69 +167,89 @@ function AppFooter({ selectedCampaignId }) {
   return (
     <footer className="app-footer">
       <div className="footer-content">
-        <div className="footer-section">
-          <span className="footer-label">Version:</span>
-          <span className="footer-value">{version}</span>
-        </div>
-        
-        <div className="footer-section">
-          <span className="footer-label">Mode:</span>
-          <span className={`footer-value footer-mode ${isDev ? 'dev' : 'prod'}`}>
-            {isDev ? 'Development' : 'Production'}
-          </span>
-        </div>
-        
-        <div className="footer-section">
-          <span className="footer-label">Server:</span>
-          <span 
-            className="footer-value footer-api-status"
-            style={{ color: getApiStatusColor() }}
-          >
-            <span className="status-dot" style={{ backgroundColor: getApiStatusColor() }}></span>
-            {getApiStatusText()}
-          </span>
-        </div>
-        
-        {systemStatus && (
-          <>
-            {isDev && (
-              <>
-                <div className="footer-section">
-                  <span className="footer-label">PM2:</span>
-                  <span 
-                    className="footer-value footer-status"
-                    style={{ color: getPm2StatusColor() }}
-                  >
-                    <span className="status-dot" style={{ backgroundColor: getPm2StatusColor() }}></span>
-                    {systemStatus.pm2.enabled ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                
-                <div className="footer-section">
-                  <span className="footer-label">Backup:</span>
-                  <span 
-                    className="footer-value footer-status"
-                    style={{ color: getBackupStatusColor() }}
-                    title={systemStatus.backup.lastBackup ? `Last backup: ${formatLastBackup(systemStatus.backup.lastBackup)}` : 'No backup yet'}
-                  >
-                    <span className="status-dot" style={{ backgroundColor: getBackupStatusColor() }}></span>
-                    {systemStatus.backup.running ? 'Running' : 'Idle'}
-                    {systemStatus.backup.lastBackup && !systemStatus.backup.running && (
-                      <span className="footer-status-detail"> ({formatLastBackup(systemStatus.backup.lastBackup)})</span>
-                    )}
-                  </span>
-                </div>
-              </>
-            )}
-            
+        <div className="footer-content-main">
+          <div className="footer-section">
+            <span className="footer-label">Version:</span>
+            <span className="footer-value">{version}</span>
+          </div>
+          
+          <div className="footer-section">
+            <span className="footer-label">Mode:</span>
+            <span className={`footer-value footer-mode ${isDev ? 'dev' : 'prod'}`}>
+              {isDev ? 'Development' : 'Production'}
+            </span>
+          </div>
+          
+          <div className="footer-section">
+            <span className="footer-label">Server:</span>
+            <span 
+              className="footer-value footer-api-status"
+              style={{ color: getApiStatusColor() }}
+            >
+              <span className="status-dot" style={{ backgroundColor: getApiStatusColor() }}></span>
+              {getApiStatusText()}
+            </span>
+          </div>
+          
+          {systemStatus && (
+            <>
+              {isDev && (
+                <>
+                  <div className="footer-section">
+                    <span className="footer-label">PM2:</span>
+                    <span 
+                      className="footer-value footer-status"
+                      style={{ color: getPm2StatusColor() }}
+                    >
+                      <span className="status-dot" style={{ backgroundColor: getPm2StatusColor() }}></span>
+                      {systemStatus.pm2.enabled ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  
+                  <div className="footer-section">
+                    <span className="footer-label">Backup:</span>
+                    <span 
+                      className="footer-value footer-status"
+                      style={{ color: getBackupStatusColor() }}
+                      title={systemStatus.backup.lastBackup ? `Last backup: ${formatLastBackup(systemStatus.backup.lastBackup)}` : 'No backup yet'}
+                    >
+                      <span className="status-dot" style={{ backgroundColor: getBackupStatusColor() }}></span>
+                      {systemStatus.backup.running ? 'Running' : 'Idle'}
+                      {systemStatus.backup.lastBackup && !systemStatus.backup.running && (
+                        <span className="footer-status-detail"> ({formatLastBackup(systemStatus.backup.lastBackup)})</span>
+                      )}
+                    </span>
+                  </div>
+                </>
+              )}
+              
+              <div className="footer-section">
+                <span className="footer-label">Uptime:</span>
+                <span className="footer-value">{formatUptime(systemStatus.uptime)}</span>
+              </div>
+            </>
+          )}
+          
+          {selectedCampaignId && campaign?.has_pin && (
             <div className="footer-section">
-              <span className="footer-label">Uptime:</span>
-              <span className="footer-value">{formatUptime(systemStatus.uptime)}</span>
+              {pinVerified ? (
+                <div className="footer-admin-indicator">
+                  <span className="admin-badge">✓ Admin Access</span>
+                </div>
+              ) : (
+                <button
+                  className="footer-admin-button"
+                  onClick={() => setShowPinModal(true)}
+                  title="Request admin privileges for this campaign"
+                >
+                  Request PIN
+                </button>
+              )}
             </div>
-          </>
-        )}
+          )}
+        </div>
         
-        <div className="footer-section">
+        <div className="footer-section footer-feedback-section">
           <button
             className="footer-feedback-button"
             onClick={() => navigate('/feedback')}
@@ -239,24 +259,6 @@ function AppFooter({ selectedCampaignId }) {
             {isFeedbackPage ? '✓ Feedback' : 'Feedback'}
           </button>
         </div>
-        
-        {selectedCampaignId && campaign?.has_pin && (
-          <div className="footer-section">
-            {pinVerified ? (
-              <div className="footer-admin-indicator">
-                <span className="admin-badge">✓ Admin Access</span>
-              </div>
-            ) : (
-              <button
-                className="footer-admin-button"
-                onClick={() => setShowPinModal(true)}
-                title="Request admin privileges for this campaign"
-              >
-                Request Admin Access
-              </button>
-            )}
-          </div>
-        )}
       </div>
       
       {showPinModal && selectedCampaignId && (

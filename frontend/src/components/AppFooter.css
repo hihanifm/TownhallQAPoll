@@ -14,6 +14,22 @@
   align-items: center;
   gap: 24px;
   flex-wrap: wrap;
+  position: relative;
+}
+
+.footer-content-main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.footer-feedback-section {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .footer-section {
@@ -93,6 +109,10 @@
   .footer-section {
     gap: 4px;
   }
+  
+  .footer-feedback-section {
+    right: 12px;
+  }
 }
 
 .footer-feedback-button {
@@ -157,6 +177,10 @@
   .footer-content {
     gap: 8px;
     font-size: 10px;
+  }
+  
+  .footer-feedback-section {
+    right: 12px;
   }
   
   .footer-label {

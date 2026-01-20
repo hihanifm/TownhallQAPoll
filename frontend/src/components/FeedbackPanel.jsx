@@ -190,7 +190,7 @@ function FeedbackPanel() {
             onClick={() => setShowPinModal(true)}
             title="Request admin privileges for feedback management"
           >
-            Request Admin Access
+            Request PIN
           </button>
         </div>
       )}
