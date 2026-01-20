@@ -5,12 +5,26 @@ import QuestionPanel from './components/QuestionPanel';
 import AppFooter from './components/AppFooter';
 import { getBrowserName } from './utils/browserDetection';
 import { browserConfig } from './config/browserConfig';
+import { getConfig } from './services/configService';
 import './App.css';
 
 function AppContent() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [selectedCampaignId, setSelectedCampaignId] = useState(id || null);
+  const [appConfig, setAppConfig] = useState({
+    title: 'Townhall Q&A Poll',
+    subtitle: 'Ask. Vote. Be heard.'
+  });
+
+  // Load configuration on mount
+  useEffect(() => {
+    getConfig().then(config => {
+      setAppConfig(config);
+      // Update document title
+      document.title = config.title;
+    });
+  }, []);
 
   // Sync selectedCampaignId with URL params
   useEffect(() => {
@@ -36,8 +50,8 @@ function AppContent() {
   return (
     <div className="app">
       <header className="app-header" onClick={() => navigate('/')}>
-        <h1>Townhall Q&A Poll</h1>
-        <p>Ask. Vote. Be heard.</p>
+        <h1>{appConfig.title}</h1>
+        <p>{appConfig.subtitle}</p>
       </header>
       <div className="app-content">
         <CampaignList
