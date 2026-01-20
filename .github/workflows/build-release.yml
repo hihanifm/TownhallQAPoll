@@ -1,0 +1,110 @@
+name: Build and Release Offline Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag (e.g., v1.12.0-offline)'
+        required: true
+        type: string
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      
+      - name: Get version
+        id: version
+        run: |
+          VERSION="${{ github.event.inputs.tag_name }}"
+          # Extract version number (e.g., v1.12.0-offline -> 1.12.0)
+          VERSION_NUM=$(echo "$VERSION" | sed 's/^v//' | sed 's/-offline.*//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_num=$VERSION_NUM" >> $GITHUB_OUTPUT
+          echo "Tag: $VERSION"
+          echo "Version: $VERSION_NUM"
+      
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci
+      
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+      
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+      
+      - name: Make pack script executable
+        run: chmod +x pack-offline.sh
+      
+      - name: Build offline package
+        run: |
+          ./pack-offline.sh
+          ls -lh townhall-qa-poll-*-offline.tar.gz
+      
+      - name: Get package filename
+        id: package_file
+        run: |
+          PACKAGE_FILE=$(ls townhall-qa-poll-*-offline.tar.gz | head -1)
+          echo "package_file=$PACKAGE_FILE" >> $GITHUB_OUTPUT
+          echo "Package file: $PACKAGE_FILE"
+      
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "Offline Package ${{ steps.version.outputs.version_num }}"
+          body: |
+            Offline deployment package for Linux PC.
+            
+            ## Package Contents
+            - Pre-installed `node_modules` (all dependencies included)
+            - Pre-built frontend (`frontend/dist`)
+            - Startup scripts and documentation
+            
+            ## Installation
+            1. Download the tarball below
+            2. Extract: `tar -xzf townhall-qa-poll-*-offline.tar.gz`
+            3. Run: `cd townhall-qa-poll-*-offline && ./run-offline.sh`
+            
+            See [DEPLOYMENT.md](https://github.com/${{ github.repository }}/blob/main/DEPLOYMENT.md) for detailed instructions.
+            
+            ## Download
+            Use one of these methods if your Linux PC has certificate issues:
+            - `wget --no-check-certificate <download-url>`
+            - `curl -k -L -O <download-url>`
+            - Download via browser from Releases page
+          files: ${{ steps.package_file.outputs.package_file }}
+          draft: false
+          prerelease: false
+      
+      - name: Release Summary
+        run: |
+          echo "========================================="
+          echo "✓ Release created successfully!"
+          echo "========================================="
+          echo ""
+          echo "Release: ${{ steps.version.outputs.version }}"
+          echo "Package: ${{ steps.package_file.outputs.package_file }}"
+          echo ""
+          echo "Download from:"
+          echo "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}"
