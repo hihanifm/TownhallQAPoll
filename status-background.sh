@@ -33,6 +33,108 @@ get_local_ip() {
     echo "$ip"
 }
 
+# Function to detect OS
+detect_os() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "macos"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "linux"* ]]; then
+        echo "linux"
+    else
+        echo "unknown"
+    fi
+}
+
+# Function to check if ufw is active (Linux)
+check_ufw_active() {
+    if command -v ufw >/dev/null 2>&1; then
+        local status=$(sudo ufw status 2>/dev/null | head -1)
+        if echo "$status" | grep -q "Status: active"; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Function to check if a port is allowed in ufw (Linux)
+check_ufw_port_allowed() {
+    local port=$1
+    if ! check_ufw_active; then
+        return 0  # ufw not active, consider port as "allowed"
+    fi
+    
+    # Check if port is explicitly allowed in ufw rules
+    if sudo ufw status 2>/dev/null | grep -qE "^[[:space:]]*${port}/tcp[[:space:]]+ALLOW"; then
+        return 0
+    fi
+    
+    return 1
+}
+
+# Function to check if macOS firewall is active
+check_macos_firewall_active() {
+    if [ -f "/usr/libexec/ApplicationFirewall/socketfilterfw" ]; then
+        local status=$(/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate 2>/dev/null)
+        if echo "$status" | grep -q "enabled"; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Function to check firewall status and warn if ports might be blocked
+check_firewall_status() {
+    local os=$(detect_os)
+    local ports_to_check=()
+    local needs_warning=false
+    
+    # Determine which ports to check based on what's running
+    if lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        # Development mode - check both ports
+        ports_to_check=(33000 33001)
+    elif lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        # Production mode - only backend port
+        ports_to_check=(33001)
+    else
+        # No servers running, check both ports anyway
+        ports_to_check=(33000 33001)
+    fi
+    
+    if [ "$os" = "linux" ]; then
+        # Check ufw status (Linux)
+        if check_ufw_active; then
+            echo "Firewall Status (Linux - ufw):"
+            for port in "${ports_to_check[@]}"; do
+                if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+                    # Port is in use, check if it's allowed
+                    if ! check_ufw_port_allowed "$port"; then
+                        needs_warning=true
+                        echo "  Port $port: ⚠️  May be blocked by firewall"
+                        echo "    To allow: sudo ufw allow $port/tcp"
+                    else
+                        echo "  Port $port: ✓ Allowed in firewall"
+                    fi
+                fi
+            done
+            
+            if [ "$needs_warning" = true ]; then
+                echo ""
+                echo "  💡 Tip: If you can't access the server from other devices,"
+                echo "     the firewall may be blocking the ports."
+            fi
+        fi
+    elif [ "$os" = "macos" ]; then
+        # Check macOS firewall status
+        if check_macos_firewall_active; then
+            echo "Firewall Status (macOS):"
+            echo "  ℹ️  macOS firewall is enabled"
+            echo "  Note: macOS firewall typically allows incoming connections by default"
+            echo "  If you can't access the server from other devices, check:"
+            echo "  System Settings → Network → Firewall → Options"
+            echo "  Make sure 'Block all incoming connections' is NOT enabled"
+        fi
+    fi
+}
+
 # Function to get version
 get_version() {
     if [ -f "$SCRIPT_DIR/VERSION" ]; then
@@ -80,6 +182,10 @@ if [ "$PM2_RUNNING" = true ]; then
         if [ -n "$LOCAL_IP" ]; then
             echo "    - Network: http://$LOCAL_IP:33001"
         fi
+        echo ""
+        echo "Firewall Status:"
+        echo "----------------"
+        check_firewall_status
         echo ""
     fi
     exit 0
@@ -182,6 +288,14 @@ if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1 || lsof -Pi :33000 -sTCP:LIST
             echo "    - Network: http://$LOCAL_IP:33000"
         fi
     fi
+    echo ""
+fi
+
+# Check firewall status
+if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1 || lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "Firewall Status:"
+    echo "----------------"
+    check_firewall_status
     echo ""
 fi
 
