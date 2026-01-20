@@ -253,6 +253,16 @@ echo ""
 if [ "$MODE" != "dev" ]; then
     echo "Building frontend for production..."
     cd "$SCRIPT_DIR/frontend"
+    
+    # Load environment variables from .env file if it exists (for build-time vars like VITE_*)
+    if [ -f "$SCRIPT_DIR/.env" ]; then
+        echo "  Loading environment variables from .env file..."
+        set -a
+        source "$SCRIPT_DIR/.env"
+        set +a
+    fi
+    
+    # Build with environment variables
     npm run build > "$LOG_DIR/frontend-build.log" 2>&1
     if [ $? -ne 0 ]; then
         echo "❌ Error: Frontend build failed! Check $LOG_DIR/frontend-build.log"

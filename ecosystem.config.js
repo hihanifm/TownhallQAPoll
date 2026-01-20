@@ -21,11 +21,15 @@ module.exports = {
       restart_delay: 60000, // 60 seconds
       exp_backoff_restart_delay: 60000, // 60 seconds
       
-      // Environment variables
+      // Environment variables (runtime only)
+      // Note: VITE_* variables are build-time only and must be set during frontend build
+      // Set them in .env file or export before running start-background.sh
       env_production: {
         NODE_ENV: 'production',
         HOST: '0.0.0.0', // Bind to all interfaces
-        PORT: 33001
+        PORT: 33001,
+        // Add other runtime environment variables here as needed
+        // Example: FRONTEND_URL: 'http://localhost:33000'
       },
       
       // Logging
