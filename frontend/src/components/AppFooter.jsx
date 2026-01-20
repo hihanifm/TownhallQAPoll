@@ -103,13 +103,13 @@ function AppFooter({ selectedCampaignId }) {
   const getApiStatusText = () => {
     switch (apiStatus) {
       case 'connected':
-        return 'API Connected';
+        return 'Healthy';
       case 'disconnected':
-        return 'API Disconnected';
+        return 'Server Disconnected';
       case 'error':
-        return 'API Error';
+        return 'Server Error';
       default:
-        return 'Checking API...';
+        return 'Checking Server...';
     }
   };
 
@@ -180,7 +180,7 @@ function AppFooter({ selectedCampaignId }) {
         </div>
         
         <div className="footer-section">
-          <span className="footer-label">API:</span>
+          <span className="footer-label">Server:</span>
           <span 
             className="footer-value footer-api-status"
             style={{ color: getApiStatusColor() }}
@@ -192,31 +192,35 @@ function AppFooter({ selectedCampaignId }) {
         
         {systemStatus && (
           <>
-            <div className="footer-section">
-              <span className="footer-label">PM2:</span>
-              <span 
-                className="footer-value footer-status"
-                style={{ color: getPm2StatusColor() }}
-              >
-                <span className="status-dot" style={{ backgroundColor: getPm2StatusColor() }}></span>
-                {systemStatus.pm2.enabled ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-            
-            <div className="footer-section">
-              <span className="footer-label">Backup:</span>
-              <span 
-                className="footer-value footer-status"
-                style={{ color: getBackupStatusColor() }}
-                title={systemStatus.backup.lastBackup ? `Last backup: ${formatLastBackup(systemStatus.backup.lastBackup)}` : 'No backup yet'}
-              >
-                <span className="status-dot" style={{ backgroundColor: getBackupStatusColor() }}></span>
-                {systemStatus.backup.running ? 'Running' : 'Idle'}
-                {systemStatus.backup.lastBackup && !systemStatus.backup.running && (
-                  <span className="footer-status-detail"> ({formatLastBackup(systemStatus.backup.lastBackup)})</span>
-                )}
-              </span>
-            </div>
+            {isDev && (
+              <>
+                <div className="footer-section">
+                  <span className="footer-label">PM2:</span>
+                  <span 
+                    className="footer-value footer-status"
+                    style={{ color: getPm2StatusColor() }}
+                  >
+                    <span className="status-dot" style={{ backgroundColor: getPm2StatusColor() }}></span>
+                    {systemStatus.pm2.enabled ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                
+                <div className="footer-section">
+                  <span className="footer-label">Backup:</span>
+                  <span 
+                    className="footer-value footer-status"
+                    style={{ color: getBackupStatusColor() }}
+                    title={systemStatus.backup.lastBackup ? `Last backup: ${formatLastBackup(systemStatus.backup.lastBackup)}` : 'No backup yet'}
+                  >
+                    <span className="status-dot" style={{ backgroundColor: getBackupStatusColor() }}></span>
+                    {systemStatus.backup.running ? 'Running' : 'Idle'}
+                    {systemStatus.backup.lastBackup && !systemStatus.backup.running && (
+                      <span className="footer-status-detail"> ({formatLastBackup(systemStatus.backup.lastBackup)})</span>
+                    )}
+                  </span>
+                </div>
+              </>
+            )}
             
             <div className="footer-section">
               <span className="footer-label">Uptime:</span>
