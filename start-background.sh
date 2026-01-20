@@ -69,6 +69,103 @@ get_local_ip() {
     echo "$ip"
 }
 
+# Function to detect OS
+detect_os() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "macos"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "linux"* ]]; then
+        echo "linux"
+    else
+        echo "unknown"
+    fi
+}
+
+# Function to check if ufw is active (Linux)
+check_ufw_active() {
+    if command -v ufw >/dev/null 2>&1; then
+        local status=$(sudo ufw status 2>/dev/null | head -1)
+        if echo "$status" | grep -q "Status: active"; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Function to check if a port is allowed in ufw (Linux)
+check_ufw_port_allowed() {
+    local port=$1
+    if ! check_ufw_active; then
+        return 0  # ufw not active, consider port as "allowed"
+    fi
+    
+    # Check if port is explicitly allowed in ufw rules
+    if sudo ufw status 2>/dev/null | grep -qE "^[[:space:]]*${port}/tcp[[:space:]]+ALLOW"; then
+        return 0
+    fi
+    
+    return 1
+}
+
+# Function to check if macOS firewall is active
+check_macos_firewall_active() {
+    if [ -f "/usr/libexec/ApplicationFirewall/socketfilterfw" ]; then
+        local status=$(/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate 2>/dev/null)
+        if echo "$status" | grep -q "enabled"; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Function to check firewall status and warn if ports might be blocked
+check_firewall_status() {
+    local os=$(detect_os)
+    local ports_to_check=()
+    local needs_warning=false
+    
+    # Determine which ports to check based on mode
+    if [ "$MODE" = "dev" ]; then
+        ports_to_check=(33000 33001)
+    else
+        ports_to_check=(33001)
+    fi
+    
+    if [ "$os" = "linux" ]; then
+        # Check ufw status (Linux)
+        if check_ufw_active; then
+            echo ""
+            echo "🔒 Firewall Check (Linux - ufw):"
+            for port in "${ports_to_check[@]}"; do
+                if ! check_ufw_port_allowed "$port"; then
+                    needs_warning=true
+                    echo "   ⚠️  Port $port may be blocked by firewall (ufw)"
+                    echo "      To allow access, run: sudo ufw allow $port/tcp"
+                else
+                    echo "   ✓ Port $port is allowed in firewall"
+                fi
+            done
+            
+            if [ "$needs_warning" = true ]; then
+                echo ""
+                echo "   💡 Tip: If you can't access the server from other devices,"
+                echo "      the firewall may be blocking the ports."
+                echo "      Run the commands above to allow access."
+            fi
+        fi
+    elif [ "$os" = "macos" ]; then
+        # Check macOS firewall status
+        if check_macos_firewall_active; then
+            echo ""
+            echo "🔒 Firewall Check (macOS):"
+            echo "   ℹ️  macOS firewall is enabled"
+            echo "   Note: macOS firewall typically allows incoming connections by default"
+            echo "   If you can't access the server from other devices, check:"
+            echo "   System Settings → Network → Firewall → Options"
+            echo "   Make sure 'Block all incoming connections' is NOT enabled"
+        fi
+    fi
+}
+
 # Check if servers are already running
 PORTS_IN_USE=false
 if [ -f "$PID_FILE" ]; then
@@ -307,6 +404,10 @@ else
         echo "    - Network: http://$LOCAL_IP:33000"
     fi
 fi
+
+# Check firewall status
+check_firewall_status
+
 echo ""
 echo "Logs are available in: $LOG_DIR/"
 if [ "$MODE" = "prod-pm2" ]; then
