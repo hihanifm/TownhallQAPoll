@@ -364,10 +364,12 @@ export async function deleteComment(request, questionId, commentId, creatorId = 
 /**
  * Get all feedback
  * @param {Object} request - Playwright request context
+ * @param {string} sortBy - Sort by 'votes' or 'time' (optional, defaults to 'votes')
  * @returns {Promise<Array>} Array of feedback objects
  */
-export async function getFeedback(request) {
-  const response = await request.get(`${API_BASE_URL}/feedback`);
+export async function getFeedback(request, sortBy = 'votes') {
+  const params = sortBy ? `?sort=${sortBy}` : '';
+  const response = await request.get(`${API_BASE_URL}/feedback${params}`);
   
   if (!response.ok()) {
     const error = await response.json();
@@ -422,6 +424,73 @@ export async function upvoteFeedback(request, feedbackId, userId) {
   if (!response.ok()) {
     const error = await response.json();
     throw new Error(`Failed to upvote feedback: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Update feedback (only by creator)
+ * @param {Object} request - Playwright request context
+ * @param {number} feedbackId - Feedback ID
+ * @param {string} feedbackText - Updated feedback text
+ * @param {string} creatorId - Creator user ID (required)
+ * @returns {Promise<Object>} Updated feedback object
+ */
+export async function updateFeedback(request, feedbackId, feedbackText, creatorId) {
+  const response = await request.patch(`${API_BASE_URL}/feedback/${feedbackId}`, {
+    data: {
+      feedback_text: feedbackText,
+      creator_id: creatorId,
+    },
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to update feedback: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Verify feedback PIN for admin access
+ * @param {Object} request - Playwright request context
+ * @param {string} pin - PIN to verify
+ * @returns {Promise<Object>} Verification result
+ */
+export async function verifyFeedbackPin(request, pin) {
+  const response = await request.post(`${API_BASE_URL}/feedback/verify-pin`, {
+    data: {
+      pin,
+    },
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to verify feedback PIN: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Close feedback (requires admin PIN)
+ * @param {Object} request - Playwright request context
+ * @param {number} feedbackId - Feedback ID
+ * @param {string} pin - Admin PIN
+ * @returns {Promise<Object>} Updated feedback object
+ */
+export async function closeFeedback(request, feedbackId, pin) {
+  const response = await request.patch(`${API_BASE_URL}/feedback/${feedbackId}/close`, {
+    data: {
+      feedback_pin: pin,
+    },
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to close feedback: ${error.error || response.statusText()}`);
   }
   
   return await response.json();
