@@ -8,6 +8,9 @@ const METADATA_FILE = path.join(BACKUP_DIR, '.last_backup_checksum');
 const RETENTION_DAYS = 30;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
+// Track if backup is currently running
+let isBackupRunning = false;
+
 // Ensure backup directory exists
 if (!fs.existsSync(BACKUP_DIR)) {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
@@ -212,10 +215,35 @@ function cleanupOldBackups() {
 }
 
 /**
+ * Gets the current backup status
+ * @returns {Promise<{running: boolean, lastBackup: number | null}>}
+ */
+async function getBackupStatus() {
+  let lastBackup = null;
+  try {
+    const metadata = await getLastBackupMetadata();
+    if (metadata) {
+      lastBackup = metadata.timestamp;
+    }
+  } catch (error) {
+    // If we can't read metadata, just return null for lastBackup
+    console.error('[Backup] Error reading backup metadata:', error.message);
+  }
+  
+  return {
+    running: isBackupRunning,
+    lastBackup
+  };
+}
+
+/**
  * Main backup function that orchestrates the backup process
  * @returns {Promise<void>}
  */
 async function performBackup() {
+  // Set running flag at the start
+  isBackupRunning = true;
+  
   try {
     console.log('[Backup] Starting backup check...');
 
@@ -271,9 +299,13 @@ async function performBackup() {
   } catch (error) {
     console.error('[Backup] Error during backup process:', error.message);
     // Don't throw - we don't want backup failures to crash the server
+  } finally {
+    // Always clear the running flag when done
+    isBackupRunning = false;
   }
 }
 
 module.exports = {
-  performBackup
+  performBackup,
+  getBackupStatus
 };

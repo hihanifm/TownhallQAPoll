@@ -12,6 +12,7 @@ function AppFooter({ selectedCampaignId }) {
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
   const [campaign, setCampaign] = useState(null);
+  const [systemStatus, setSystemStatus] = useState(null);
 
   // Get version from config
   const version = APP_VERSION;
@@ -52,6 +53,24 @@ function AppFooter({ selectedCampaignId }) {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch system status (PM2, backup, uptime)
+  useEffect(() => {
+    const fetchSystemStatus = async () => {
+      try {
+        const status = await api.getSystemStatus();
+        setSystemStatus(status);
+      } catch (error) {
+        console.error('Error fetching system status:', error);
+        // Don't set status on error, keep previous state
+      }
+    };
+
+    fetchSystemStatus();
+    // Fetch system status every 5 minutes
+    const interval = setInterval(fetchSystemStatus, 300000);
     return () => clearInterval(interval);
   }, []);
 
@@ -110,6 +129,57 @@ function AppFooter({ selectedCampaignId }) {
     }
   };
 
+  // Format uptime in human-readable format
+  const formatUptime = (seconds) => {
+    if (!seconds && seconds !== 0) return 'N/A';
+    
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+
+  // Format last backup time
+  const formatLastBackup = (timestamp) => {
+    if (!timestamp) return 'Never';
+    
+    const now = Date.now();
+    const diff = now - timestamp;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (days > 0) {
+      return `${days}d ago`;
+    } else if (hours > 0) {
+      return `${hours}h ago`;
+    } else if (minutes > 0) {
+      return `${minutes}m ago`;
+    } else {
+      return 'Just now';
+    }
+  };
+
+  // Get PM2 status color
+  const getPm2StatusColor = () => {
+    if (!systemStatus) return '#6b7280'; // gray
+    return systemStatus.pm2.enabled ? '#10b981' : '#6b7280'; // green or gray
+  };
+
+  // Get backup status color
+  const getBackupStatusColor = () => {
+    if (!systemStatus) return '#6b7280'; // gray
+    if (systemStatus.backup.running) return '#f59e0b'; // yellow
+    return '#10b981'; // green
+  };
+
   return (
     <footer className="app-footer">
       <div className="footer-content">
@@ -145,6 +215,41 @@ function AppFooter({ selectedCampaignId }) {
           <span className="footer-label">Time:</span>
           <span className="footer-value">{formatTime(currentTime)}</span>
         </div>
+        
+        {systemStatus && (
+          <>
+            <div className="footer-section">
+              <span className="footer-label">PM2:</span>
+              <span 
+                className="footer-value footer-status"
+                style={{ color: getPm2StatusColor() }}
+              >
+                <span className="status-dot" style={{ backgroundColor: getPm2StatusColor() }}></span>
+                {systemStatus.pm2.enabled ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            
+            <div className="footer-section">
+              <span className="footer-label">Backup:</span>
+              <span 
+                className="footer-value footer-status"
+                style={{ color: getBackupStatusColor() }}
+                title={systemStatus.backup.lastBackup ? `Last backup: ${formatLastBackup(systemStatus.backup.lastBackup)}` : 'No backup yet'}
+              >
+                <span className="status-dot" style={{ backgroundColor: getBackupStatusColor() }}></span>
+                {systemStatus.backup.running ? 'Running' : 'Idle'}
+                {systemStatus.backup.lastBackup && !systemStatus.backup.running && (
+                  <span className="footer-status-detail"> ({formatLastBackup(systemStatus.backup.lastBackup)})</span>
+                )}
+              </span>
+            </div>
+            
+            <div className="footer-section">
+              <span className="footer-label">Uptime:</span>
+              <span className="footer-value">{formatUptime(systemStatus.uptime)}</span>
+            </div>
+          </>
+        )}
         
         {selectedCampaignId && campaign?.has_pin && (
           <div className="footer-section">

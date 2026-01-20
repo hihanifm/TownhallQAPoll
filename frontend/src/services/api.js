@@ -249,5 +249,12 @@ export const api = {
     }
     return response.json();
   },
+
+  // System status
+  getSystemStatus: async () => {
+    const response = await fetch(`${API_BASE_URL}/status`);
+    if (!response.ok) throw new Error('Failed to fetch system status');
+    return response.json();
+  },
 };
 

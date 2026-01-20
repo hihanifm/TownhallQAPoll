@@ -9,25 +9,7 @@
 const defaultConfig = {
   title: 'Townhall Q&A Poll',
   subtitle: 'Ask. Vote. Be heard.',
-  welcome: {
-    icon: '👋',
-    title: 'Welcome to Townhall Q&A Poll',
-    description: 'Ask questions, vote on what matters most, and have your voice heard. Questions with the most votes get priority attention.',
-    features: [
-      {
-        icon: '❓',
-        text: 'Ask questions about topics that matter to you'
-      },
-      {
-        icon: '↑',
-        text: 'Vote for questions you want answered'
-      },
-      {
-        icon: '💬',
-        text: 'Engage with comments and discussions'
-      }
-    ]
-  }
+  welcome: 'Welcome to Townhall Q&A Poll\n\nAsk questions, vote on what matters most, and have your voice heard. Questions with the most votes get priority attention.'
 };
 
 // Cache for loaded config
@@ -62,12 +44,7 @@ async function loadConfig() {
       const mergedConfig = {
         title: config.title || defaultConfig.title,
         subtitle: config.subtitle || defaultConfig.subtitle,
-        welcome: {
-          icon: config.welcome?.icon || defaultConfig.welcome.icon,
-          title: config.welcome?.title || defaultConfig.welcome.title,
-          description: config.welcome?.description || defaultConfig.welcome.description,
-          features: config.welcome?.features || defaultConfig.welcome.features
-        }
+        welcome: config.welcome || defaultConfig.welcome
       };
       
       cachedConfig = mergedConfig;

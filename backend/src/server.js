@@ -8,10 +8,13 @@ const campaignsRouter = require('./routes/campaigns');
 const questionsRouter = require('./routes/questions');
 const votesRouter = require('./routes/votes');
 const sseRouter = require('./routes/sse');
-const { performBackup } = require('./services/backupService');
+const { performBackup, getBackupStatus } = require('./services/backupService');
 
 const app = express();
 const PORT = process.env.PORT || 33001;
+
+// Track server start time for uptime calculation
+const serverStartTime = Date.now();
 
 // Configure allowed origins for CORS
 const getAllowedOrigins = () => {
@@ -147,6 +150,38 @@ app.use('/api/sse', sseRouter); // SSE endpoint for real-time updates
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// System status endpoint
+app.get('/api/status', async (req, res) => {
+  try {
+    // Check PM2 status
+    const pm2Enabled = !!(process.env.pm_id || process.env.name);
+    const pm2Name = process.env.name || null;
+    
+    // Get backup status
+    const backupStatus = await getBackupStatus();
+    
+    // Calculate uptime
+    const uptimeSeconds = process.uptime();
+    const startTime = serverStartTime;
+    
+    res.json({
+      pm2: {
+        enabled: pm2Enabled,
+        name: pm2Name
+      },
+      backup: {
+        running: backupStatus.running,
+        lastBackup: backupStatus.lastBackup
+      },
+      uptime: uptimeSeconds,
+      startTime: startTime
+    });
+  } catch (error) {
+    console.error('[Status] Error getting system status:', error);
+    res.status(500).json({ error: 'Failed to get system status' });
+  }
 });
 
 // Serve static files from frontend build in production mode

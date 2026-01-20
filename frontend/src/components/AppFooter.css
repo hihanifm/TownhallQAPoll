@@ -54,6 +54,18 @@
   gap: 6px;
 }
 
+.footer-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-status-detail {
+  opacity: 0.7;
+  font-size: 0.9em;
+  margin-left: 2px;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;

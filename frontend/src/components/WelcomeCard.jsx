@@ -3,49 +3,56 @@ import { getConfig } from '../services/configService';
 import './WelcomeCard.css';
 
 function WelcomeCard() {
-  const [welcomeConfig, setWelcomeConfig] = useState({
-    icon: '👋',
-    title: 'Welcome to Townhall Q&A Poll',
-    description: 'Ask questions, vote on what matters most, and have your voice heard. Questions with the most votes get priority attention.',
-    features: [
-      {
-        icon: '❓',
-        text: 'Ask questions about topics that matter to you'
-      },
-      {
-        icon: '↑',
-        text: 'Vote for questions you want answered'
-      },
-      {
-        icon: '💬',
-        text: 'Engage with comments and discussions'
-      }
-    ]
-  });
+  const [welcomeText, setWelcomeText] = useState('Welcome to Townhall Q&A Poll\n\nAsk questions, vote on what matters most, and have your voice heard. Questions with the most votes get priority attention.');
 
   // Load configuration on mount
   useEffect(() => {
     getConfig().then(config => {
       if (config.welcome) {
-        setWelcomeConfig(config.welcome);
+        setWelcomeText(config.welcome);
       }
     });
   }, []);
 
+  // Parse text with markdown-style bold syntax (**text**)
+  const parseTextWithBold = (text) => {
+    const parts = [];
+    const regex = /\*\*(.*?)\*\*/g;
+    let lastIndex = 0;
+    let match;
+    let key = 0;
+
+    while ((match = regex.exec(text)) !== null) {
+      // Add text before the bold section
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      // Add bold text with blue color
+      parts.push(<strong key={key++} className="welcome-bold">{match[1]}</strong>);
+      lastIndex = regex.lastIndex;
+    }
+
+    // Add remaining text after the last bold section
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : text;
+  };
+
+  // Convert newlines to line breaks and parse bold text
+  const lines = welcomeText.split('\n');
+  const formattedText = lines.map((line, index) => (
+    <span key={index}>
+      {parseTextWithBold(line)}
+      {index < lines.length - 1 && <br />}
+    </span>
+  ));
+
   return (
     <div className="welcome-card">
       <div className="welcome-card-content">
-        <div className="welcome-icon">{welcomeConfig.icon}</div>
-        <h3 className="welcome-title">{welcomeConfig.title}</h3>
-        <p className="welcome-description">{welcomeConfig.description}</p>
-        <div className="welcome-features">
-          {welcomeConfig.features && welcomeConfig.features.map((feature, index) => (
-            <div key={index} className="welcome-feature">
-              <span className="feature-icon">{feature.icon}</span>
-              <span className="feature-text">{feature.text}</span>
-            </div>
-          ))}
-        </div>
+        <p className="welcome-description">{formattedText}</p>
       </div>
     </div>
   );
