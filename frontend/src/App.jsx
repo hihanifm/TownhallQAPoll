@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, useParams, useNavigate } from 'react-router-dom';
+import { Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
 import CampaignList from './components/CampaignList';
 import QuestionPanel from './components/QuestionPanel';
+import FeedbackPanel from './components/FeedbackPanel';
 import AppFooter from './components/AppFooter';
 import { getBrowserName } from './utils/browserDetection';
 import { browserConfig } from './config/browserConfig';
@@ -11,11 +12,15 @@ import './App.css';
 function AppContent() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedCampaignId, setSelectedCampaignId] = useState(id || null);
   const [appConfig, setAppConfig] = useState({
     title: 'Townhall Q&A Poll',
     subtitle: 'Ask. Vote. Be heard.'
   });
+
+  // Check if we're on the feedback page
+  const isFeedbackPage = location.pathname === '/feedback';
 
   // Load configuration on mount
   useEffect(() => {
@@ -54,24 +59,31 @@ function AppContent() {
         <p>{appConfig.subtitle}</p>
       </header>
       <div className="app-content">
-        <CampaignList
-          selectedCampaignId={selectedCampaignId}
-          onCampaignSelect={handleCampaignSelect}
-          onCampaignCreated={handleCampaignCreated}
-        />
-        <QuestionPanel 
-          campaignId={selectedCampaignId}
-          onCampaignClosed={(campaignId) => {
-            if (selectedCampaignId === campaignId) {
-              navigate('/');
-            }
-          }}
-          onCampaignDeleted={(campaignId) => {
-            if (selectedCampaignId === campaignId) {
-              navigate('/');
-            }
-          }}
-        />
+        {!isFeedbackPage && (
+          <>
+            <CampaignList
+              selectedCampaignId={selectedCampaignId}
+              onCampaignSelect={handleCampaignSelect}
+              onCampaignCreated={handleCampaignCreated}
+            />
+            <QuestionPanel 
+              campaignId={selectedCampaignId}
+              onCampaignClosed={(campaignId) => {
+                if (selectedCampaignId === campaignId) {
+                  navigate('/');
+                }
+              }}
+              onCampaignDeleted={(campaignId) => {
+                if (selectedCampaignId === campaignId) {
+                  navigate('/');
+                }
+              }}
+            />
+          </>
+        )}
+        {isFeedbackPage && (
+          <FeedbackPanel />
+        )}
       </div>
       <AppFooter selectedCampaignId={selectedCampaignId} />
     </div>
@@ -160,6 +172,7 @@ function App() {
   return (
     <Routes>
       <Route path="/campaign/:id" element={<AppContent />} />
+      <Route path="/feedback" element={<AppContent />} />
       <Route path="/" element={<AppContent />} />
     </Routes>
   );

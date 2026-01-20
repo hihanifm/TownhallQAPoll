@@ -1,0 +1,180 @@
+.feedback-panel {
+  width: 100%;
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(239, 246, 255, 0.8) 100%);
+  backdrop-filter: blur(10px);
+  min-width: 0;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.panel-header-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-header-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.sort-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 8px;
+  padding: 6px 8px;
+  backdrop-filter: blur(5px);
+}
+
+.sort-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.sort-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.sort-button:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.sort-button.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.sort-button.active:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+.panel-header h2.panel-title {
+  margin: 0 0 8px 0;
+  color: #2563eb;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  word-wrap: break-word;
+}
+
+.panel-header h3.panel-subtitle,
+.panel-header p.panel-subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.5;
+  max-width: 100%;
+}
+
+.feedback-section {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(239, 246, 255, 0.9) 100%);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  backdrop-filter: blur(10px);
+  margin-bottom: 24px;
+  position: relative;
+  /* Enable smooth transitions for child elements */
+  overflow: visible;
+}
+
+/* Smooth transitions for feedback cards when they reorder */
+.feedback-section > * {
+  transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.error {
+  color: #d32f2f;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.empty-state p {
+  font-size: 16px;
+}
+
+.feedback-admin-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(59, 130, 246, 0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.feedback-admin-button {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.feedback-admin-button:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+}
+
+.feedback-admin-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.feedback-admin-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}

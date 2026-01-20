@@ -250,6 +250,115 @@ export const api = {
     return response.json();
   },
 
+  // Feedback
+  getFeedback: async (sortBy = 'votes') => {
+    const params = new URLSearchParams();
+    if (sortBy) {
+      params.append('sort', sortBy);
+    }
+    const url = `${API_BASE_URL}/feedback${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch feedback');
+    return response.json();
+  },
+
+  createFeedback: async (feedbackText, creatorId) => {
+    const response = await fetch(`${API_BASE_URL}/feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ feedback_text: feedbackText, creator_id: creatorId }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create feedback');
+    }
+    return response.json();
+  },
+
+  checkFeedbackVote: async (feedbackId, userId, fingerprintHash) => {
+    const params = new URLSearchParams({ user_id: userId });
+    if (fingerprintHash) {
+      params.append('fingerprint_hash', fingerprintHash);
+    }
+    const response = await fetch(`${API_BASE_URL}/feedback/${feedbackId}/votes?${params}`);
+    if (!response.ok) throw new Error('Failed to check vote');
+    return response.json();
+  },
+
+  upvoteFeedback: async (feedbackId, userId, fingerprintHash) => {
+    if (!fingerprintHash) {
+      throw new Error('fingerprint_hash is required');
+    }
+    const response = await fetch(`${API_BASE_URL}/feedback/${feedbackId}/upvote`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        user_id: userId,
+        fingerprint_hash: fingerprintHash 
+      }),
+    });
+    if (!response.ok) {
+      let errorMessage = 'Failed to upvote';
+      try {
+        const error = await response.json();
+        errorMessage = error.error || errorMessage;
+      } catch (e) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+    return response.json();
+  },
+
+  verifyFeedbackPin: async (pin) => {
+    const response = await fetch(`${API_BASE_URL}/feedback/verify-pin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ pin }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to verify PIN');
+    }
+    return response.json();
+  },
+
+  updateFeedback: async (feedbackId, feedbackText, creatorId) => {
+    const response = await fetch(`${API_BASE_URL}/feedback/${feedbackId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ feedback_text: feedbackText, creator_id: creatorId }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update feedback');
+    }
+    return response.json();
+  },
+
+  closeFeedback: async (feedbackId, pin) => {
+    const response = await fetch(`${API_BASE_URL}/feedback/${feedbackId}/close`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ feedback_pin: pin }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to close feedback');
+    }
+    return response.json();
+  },
+
   // System status
   getSystemStatus: async () => {
     const response = await fetch(`${API_BASE_URL}/status`);

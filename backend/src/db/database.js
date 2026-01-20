@@ -73,6 +73,23 @@ function initDatabase() {
         }
       });
       
+      // Add status column to existing feedback table if it doesn't exist
+      db.run('ALTER TABLE feedback ADD COLUMN status TEXT DEFAULT \'open\'', (alterErr) => {
+        // Ignore error if column already exists
+        if (alterErr && !alterErr.message.includes('duplicate column')) {
+          console.warn('Note: status column may already exist:', alterErr.message);
+        } else {
+          // If column was just added, set default value for existing rows
+          if (!alterErr) {
+            db.run('UPDATE feedback SET status = \'open\' WHERE status IS NULL', (updateErr) => {
+              if (updateErr) {
+                console.warn('Note: Could not set default status:', updateErr.message);
+              }
+            });
+          }
+        }
+      });
+      
       resolve(db);
     });
   });

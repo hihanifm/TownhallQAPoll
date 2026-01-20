@@ -7,6 +7,7 @@ const validateOrigin = require('./middleware/validateOrigin');
 const campaignsRouter = require('./routes/campaigns');
 const questionsRouter = require('./routes/questions');
 const votesRouter = require('./routes/votes');
+const feedbackRouter = require('./routes/feedback');
 const sseRouter = require('./routes/sse');
 const { performBackup, getBackupStatus } = require('./services/backupService');
 
@@ -145,6 +146,7 @@ app.use(validateOrigin);
 app.use('/api/campaigns', campaignsRouter);
 app.use('/api', questionsRouter); // Handles /api/campaigns/:id/questions and /api/questions/:id/votes
 app.use('/api', votesRouter);
+app.use('/api', feedbackRouter); // Handles /api/feedback routes
 app.use('/api/sse', sseRouter); // SSE endpoint for real-time updates
 
 // Health check

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getBrowserName } from '../utils/browserDetection';
 import { APP_VERSION } from '../config/version';
 import { hasVerifiedPin } from '../utils/campaignPin';
@@ -7,12 +8,16 @@ import PinEntryModal from './PinEntryModal';
 import './AppFooter.css';
 
 function AppFooter({ selectedCampaignId }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [apiStatus, setApiStatus] = useState('checking');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
   const [campaign, setCampaign] = useState(null);
   const [systemStatus, setSystemStatus] = useState(null);
+  
+  const isFeedbackPage = location.pathname === '/feedback';
 
   // Get version from config
   const version = APP_VERSION;
@@ -250,6 +255,17 @@ function AppFooter({ selectedCampaignId }) {
             </div>
           </>
         )}
+        
+        <div className="footer-section">
+          <button
+            className="footer-feedback-button"
+            onClick={() => navigate('/feedback')}
+            title="View and submit feedback"
+            style={{ fontWeight: isFeedbackPage ? '700' : 'normal' }}
+          >
+            {isFeedbackPage ? '✓ Feedback' : 'Feedback'}
+          </button>
+        </div>
         
         {selectedCampaignId && campaign?.has_pin && (
           <div className="footer-section">

@@ -39,7 +39,27 @@ CREATE TABLE IF NOT EXISTS comments (
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    feedback_text TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    creator_id TEXT,
+    status TEXT DEFAULT 'open'
+);
+
+CREATE TABLE IF NOT EXISTS feedback_votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    feedback_id INTEGER NOT NULL,
+    user_id TEXT NOT NULL,
+    fingerprint_hash TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (feedback_id) REFERENCES feedback(id),
+    UNIQUE(feedback_id, user_id),
+    UNIQUE(feedback_id, fingerprint_hash)
+);
+
 CREATE INDEX IF NOT EXISTS idx_questions_campaign ON questions(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_votes_question ON votes(question_id);
 CREATE INDEX IF NOT EXISTS idx_comments_question ON comments(question_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_votes_feedback ON feedback_votes(feedback_id);
 

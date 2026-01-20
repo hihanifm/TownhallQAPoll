@@ -362,6 +362,72 @@ export async function deleteComment(request, questionId, commentId, creatorId = 
 }
 
 /**
+ * Get all feedback
+ * @param {Object} request - Playwright request context
+ * @returns {Promise<Array>} Array of feedback objects
+ */
+export async function getFeedback(request) {
+  const response = await request.get(`${API_BASE_URL}/feedback`);
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to get feedback: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Create feedback
+ * @param {Object} request - Playwright request context
+ * @param {string} feedbackText - Feedback text
+ * @param {string} creatorId - Creator user ID
+ * @returns {Promise<Object>} Created feedback object
+ */
+export async function createFeedback(request, feedbackText, creatorId) {
+  const response = await request.post(`${API_BASE_URL}/feedback`, {
+    data: {
+      feedback_text: feedbackText,
+      creator_id: creatorId,
+    },
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to create feedback: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Upvote feedback (toggles vote on/off)
+ * @param {Object} request - Playwright request context
+ * @param {number} feedbackId - Feedback ID
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} Vote response with vote_count and hasVoted
+ */
+export async function upvoteFeedback(request, feedbackId, userId) {
+  // Generate a test fingerprint hash for this user
+  // In a real browser, this would be generated from browser characteristics
+  const fingerprintHash = generateTestFingerprint(userId);
+  
+  const response = await request.post(`${API_BASE_URL}/feedback/${feedbackId}/upvote`, {
+    data: {
+      user_id: userId,
+      fingerprint_hash: fingerprintHash,
+    },
+  });
+  
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to upvote feedback: ${error.error || response.statusText()}`);
+  }
+  
+  return await response.json();
+}
+
+/**
  * Check if backend is running
  * @param {Object} request - Playwright request context
  * @returns {Promise<boolean>} True if backend is running
