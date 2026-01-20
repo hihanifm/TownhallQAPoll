@@ -97,6 +97,10 @@ coverage/
 # Output of 'npm pack'
 *.tgz
 
+# Offline package tarballs (use GitHub Releases instead)
+townhall-qa-poll-*-offline.tar.gz
+townhall-qa-poll-*-offline/
+
 # Yarn Integrity file
 .yarn-integrity
 
