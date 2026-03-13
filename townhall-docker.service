@@ -1,0 +1,17 @@
+[Unit]
+Description=Townhall Q&A Poll Docker Container
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/path/to/townhall-qa-poll
+ExecStart=/usr/bin/docker-compose -f /path/to/townhall-qa-poll/docker-compose.yml up -d
+ExecStop=/usr/bin/docker-compose -f /path/to/townhall-qa-poll/docker-compose.yml down
+TimeoutStartSec=0
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

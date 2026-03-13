@@ -1,0 +1,76 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Git
+.git/
+.gitignore
+
+# Logs
+logs/
+*.log
+
+# Database (will be mounted as volume)
+backend/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Build outputs (will be built in container)
+frontend/dist/
+frontend/build/
+dist/
+build/
+
+# Test files
+tests/
+test-results/
+playwright.config.mjs
+
+# Development files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+Desktop.ini
+
+# Documentation (not needed in container)
+*.md
+!README.md
+
+# Scripts (not needed in container, but keep for reference)
+*.sh
+
+# PM2 config (not needed in Docker)
+ecosystem.config.js
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.temp/
+tmp/
+temp/
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Package files
+*.tgz
+package-lock.json

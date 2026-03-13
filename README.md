@@ -224,12 +224,17 @@ Create a `.env` file in the backend directory:
 PORT=33001
 HOST=0.0.0.0
 NODE_ENV=production
+FEEDBACK_MASTER_PIN=change-this-to-a-strong-pin
 ```
 
 For the frontend, set:
 ```env
 VITE_API_URL=https://your-backend-url.com
 ```
+
+`FEEDBACK_MASTER_PIN` is used by feedback moderation endpoints:
+- `POST /api/feedback/verify-pin`
+- `PATCH /api/feedback/:id/close`
 
 ### Option 4: Self-Hosted with Port Forwarding
 

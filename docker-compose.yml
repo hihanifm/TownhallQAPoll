@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  townhall-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_ENABLE_BROWSER_RESTRICTION: true
+    container_name: townhall-qa-poll
+    ports:
+      - "33001:33001"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=33001
+      - FRONTEND_URL=${FRONTEND_URL:-}
+      - FEEDBACK_MASTER_PIN=${FEEDBACK_MASTER_PIN}
+    volumes:
+      # Safe directory for database and backups
+      - /var/lib/townhall/data:/app/backend/data
+      # Optional: Safe directory for log files (if needed)
+      - /var/log/townhall:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:33001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - townhall-network
+
+networks:
+  townhall-network:
+    driver: bridge

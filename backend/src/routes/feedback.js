@@ -2,8 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { allQuery, getQuery, runQuery, formatDatetime } = require('../db/database');
 
-// Hardcoded PIN for feedback management
-const FEEDBACK_PIN = 'townhall12#';
+// Feedback moderation PIN loaded from environment
+const FEEDBACK_MASTER_PIN = process.env.FEEDBACK_MASTER_PIN;
+
+function isFeedbackMasterPinConfigured() {
+  return !!(FEEDBACK_MASTER_PIN && FEEDBACK_MASTER_PIN.trim());
+}
 
 // GET /api/feedback - Get top 50 feedback sorted by status (open first), then by sort parameter (votes or time)
 // Query params: sort='votes' (default) or sort='time'
@@ -100,8 +104,12 @@ router.post('/feedback/verify-pin', async (req, res, next) => {
     if (!pin) {
       return res.status(400).json({ error: 'PIN is required' });
     }
+
+    if (!isFeedbackMasterPinConfigured()) {
+      return res.status(503).json({ error: 'Feedback master PIN is not configured on server' });
+    }
     
-    if (pin !== FEEDBACK_PIN) {
+    if (pin !== FEEDBACK_MASTER_PIN) {
       return res.status(403).json({ error: 'Invalid PIN' });
     }
     
@@ -317,8 +325,12 @@ router.patch('/feedback/:id/close', async (req, res, next) => {
     if (!feedback_pin) {
       return res.status(400).json({ error: 'feedback_pin is required' });
     }
+
+    if (!isFeedbackMasterPinConfigured()) {
+      return res.status(503).json({ error: 'Feedback master PIN is not configured on server' });
+    }
     
-    if (feedback_pin !== FEEDBACK_PIN) {
+    if (feedback_pin !== FEEDBACK_MASTER_PIN) {
       return res.status(403).json({ error: 'Invalid PIN' });
     }
     

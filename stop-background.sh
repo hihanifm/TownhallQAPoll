@@ -23,6 +23,30 @@ echo "Stopping Townhall Q&A Poll servers..."
 echo "Version: $VERSION"
 echo ""
 
+# Check if Docker container is running
+DOCKER_RUNNING=false
+if command -v docker >/dev/null 2>&1; then
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "townhall-qa-poll"; then
+        DOCKER_RUNNING=true
+    fi
+fi
+
+# If Docker container is running, stop it
+if [ "$DOCKER_RUNNING" = true ]; then
+    echo "Detected Docker container (production Docker mode)"
+    echo "Stopping Docker container..."
+    cd "$SCRIPT_DIR"
+    if docker compose version >/dev/null 2>&1; then
+        docker compose down
+    else
+        docker-compose down
+    fi
+    echo "✓ Docker container stopped"
+    echo ""
+    echo "All servers stopped."
+    exit 0
+fi
+
 # Check if PM2 process is running
 PM2_RUNNING=false
 if command -v pm2 >/dev/null 2>&1; then

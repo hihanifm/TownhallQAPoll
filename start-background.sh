@@ -6,6 +6,7 @@
 #   ./start-background.sh           (development mode - nohup)
 #   ./start-background.sh -p        (production mode - nohup)
 #   ./start-background.sh -pm2      (production mode - PM2 with auto-restart)
+#   ./start-background.sh --docker  (production mode - Docker)
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
@@ -30,6 +31,8 @@ if [[ "$1" == "--prod" ]] || [[ "$1" == "-p" ]]; then
     MODE="prod-nohup"
 elif [[ "$1" == "--pm2" ]] || [[ "$1" == "-pm2" ]]; then
     MODE="prod-pm2"
+elif [[ "$1" == "--docker" ]] || [[ "$1" == "-d" ]]; then
+    MODE="prod-docker"
 fi
 
 # Create logs directory if it doesn't exist
@@ -244,13 +247,17 @@ case "$MODE" in
     "prod-pm2")
         echo "Starting Townhall Q&A Poll in PRODUCTION mode (PM2)..."
         ;;
+    "prod-docker")
+        echo "Starting Townhall Q&A Poll in PRODUCTION mode (Docker)..."
+        ;;
 esac
 echo "Version: $VERSION"
 echo ""
 
-# In production modes, build frontend first, then start backend (which serves static files)
+# In production modes (except Docker), build frontend first, then start backend (which serves static files)
+# Docker mode handles building in the container
 # In development mode, start backend first, then frontend dev server
-if [ "$MODE" != "dev" ]; then
+if [ "$MODE" != "dev" ] && [ "$MODE" != "prod-docker" ]; then
     echo "Building frontend for production..."
     cd "$SCRIPT_DIR/frontend"
     
@@ -270,6 +277,71 @@ if [ "$MODE" != "dev" ]; then
     fi
     echo "✓ Frontend built successfully"
     echo ""
+fi
+
+# Handle Docker mode separately
+if [ "$MODE" = "prod-docker" ]; then
+    # Check if Docker is installed
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "❌ Error: Docker is not installed!"
+        echo "   Install Docker from: https://docs.docker.com/get-docker/"
+        exit 1
+    fi
+    
+    # Check if docker-compose is installed
+    if ! command -v docker-compose >/dev/null 2>&1 && ! docker compose version >/dev/null 2>&1; then
+        echo "❌ Error: docker-compose is not installed!"
+        echo "   Install docker-compose or use Docker with compose plugin"
+        exit 1
+    fi
+    
+    # Check if docker-compose.yml exists
+    if [ ! -f "$SCRIPT_DIR/docker-compose.yml" ]; then
+        echo "❌ Error: docker-compose.yml not found!"
+        echo "   Make sure you're in the project root directory"
+        exit 1
+    fi
+    
+    echo "Starting backend server with Docker..."
+    cd "$SCRIPT_DIR"
+    
+    # Use docker compose (newer) or docker-compose (older)
+    if docker compose version >/dev/null 2>&1; then
+        COMPOSE_CMD="docker compose"
+    else
+        COMPOSE_CMD="docker-compose"
+    fi
+    
+    # Build and start
+    $COMPOSE_CMD build
+    if [ $? -ne 0 ]; then
+        echo "❌ Error: Docker build failed!"
+        exit 1
+    fi
+    
+    $COMPOSE_CMD up -d
+    if [ $? -ne 0 ]; then
+        echo "❌ Error: Failed to start Docker container!"
+        exit 1
+    fi
+    
+    # Wait a moment and verify backend started successfully
+    sleep 5
+    if ! check_port 33001; then
+        echo "❌ Error: Docker container started but port 33001 is not listening!"
+        echo "   Check Docker logs with: $COMPOSE_CMD logs"
+        $COMPOSE_CMD down 2>/dev/null || true
+        exit 1
+    fi
+    
+    echo "✓ Backend started successfully with Docker"
+    echo ""
+    echo "Docker Status:"
+    $COMPOSE_CMD ps
+    echo ""
+    echo "To view logs: $COMPOSE_CMD logs -f"
+    echo "To stop: $COMPOSE_CMD down"
+    exit 0
 fi
 
 # Handle PM2 mode separately

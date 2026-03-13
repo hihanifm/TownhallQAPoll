@@ -63,6 +63,39 @@ echo "✓ Node.js found: $(node -v)"
 echo "✓ npm found: $(npm -v)"
 echo ""
 
+# Check for Docker (optional)
+DOCKER_AVAILABLE=false
+if command -v docker >/dev/null 2>&1; then
+    DOCKER_AVAILABLE=true
+    echo "✓ Docker found: $(docker --version)"
+    
+    # Check for docker-compose
+    if docker compose version >/dev/null 2>&1; then
+        echo "✓ Docker Compose (plugin) found"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        echo "✓ docker-compose found: $(docker-compose --version)"
+    else
+        echo "⚠️  docker-compose not found (optional for Docker mode)"
+    fi
+    
+    # Create safe directories for Docker
+    echo ""
+    echo "Creating safe directories for Docker..."
+    if [ "$EUID" -eq 0 ]; then
+        mkdir -p /var/lib/townhall/data/backups
+        mkdir -p /var/log/townhall
+        echo "✓ Created /var/lib/townhall/data/"
+        echo "✓ Created /var/log/townhall/"
+    else
+        echo "  Note: Safe directories (/var/lib/townhall/data, /var/log/townhall)"
+        echo "        will be created during Docker migration (migrate-to-docker.sh)"
+        echo "        or on first Docker start"
+    fi
+else
+    echo "ℹ️  Docker not found (optional - for Docker deployment mode)"
+fi
+echo ""
+
 # Create necessary directories
 echo "Creating necessary directories..."
 mkdir -p "$SCRIPT_DIR/logs"

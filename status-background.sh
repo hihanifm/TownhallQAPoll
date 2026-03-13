@@ -160,6 +160,69 @@ echo "Version: $VERSION"
 echo "================================"
 echo ""
 
+# Check if Docker container is running
+DOCKER_RUNNING=false
+if command -v docker >/dev/null 2>&1; then
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "townhall-qa-poll"; then
+        DOCKER_RUNNING=true
+    fi
+fi
+
+# If Docker container is running, show Docker status
+if [ "$DOCKER_RUNNING" = true ]; then
+    echo "Mode: PRODUCTION (Docker)"
+    echo ""
+    cd "$SCRIPT_DIR"
+    if docker compose version >/dev/null 2>&1; then
+        COMPOSE_CMD="docker compose"
+    else
+        COMPOSE_CMD="docker-compose"
+    fi
+    
+    echo "Docker Container Status:"
+    $COMPOSE_CMD ps
+    echo ""
+    
+    # Get container stats
+    CONTAINER_ID=$(docker ps --filter "name=townhall-qa-poll" --format "{{.ID}}" 2>/dev/null | head -1)
+    if [ -n "$CONTAINER_ID" ]; then
+        echo "Container Stats:"
+        docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" $CONTAINER_ID 2>/dev/null || true
+        echo ""
+        
+        # Show health status
+        HEALTH=$(docker inspect --format='{{.State.Health.Status}}' $CONTAINER_ID 2>/dev/null || echo "N/A")
+        if [ "$HEALTH" != "N/A" ]; then
+            echo "Health Status: $HEALTH"
+            echo ""
+        fi
+    fi
+    
+    echo "Docker Logs:"
+    echo "  - View logs: $COMPOSE_CMD logs -f"
+    echo "  - Last 50 lines: $COMPOSE_CMD logs --tail=50"
+    echo ""
+    
+    LOCAL_IP=$(get_local_ip)
+    if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        echo "Access URLs:"
+        echo "  Application:"
+        echo "    - Local:  http://localhost:33001"
+        if [ -n "$LOCAL_IP" ]; then
+            echo "    - Network: http://$LOCAL_IP:33001"
+        fi
+        echo ""
+        echo "Database Location: /var/lib/townhall/data/"
+        echo "Logs Location: /var/log/townhall/"
+        echo ""
+        echo "Firewall Status:"
+        echo "----------------"
+        check_firewall_status
+        echo ""
+    fi
+    exit 0
+fi
+
 # Check if PM2 process is running
 PM2_RUNNING=false
 if command -v pm2 >/dev/null 2>&1; then

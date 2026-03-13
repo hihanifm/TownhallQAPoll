@@ -116,6 +116,9 @@ HOST=127.0.0.1 ./run-offline.sh
 
 # Combined
 PORT=8080 HOST=0.0.0.0 ./run-offline.sh
+
+# Feedback moderation PIN (required for feedback admin actions)
+FEEDBACK_MASTER_PIN=change-this-to-a-strong-pin ./run-offline.sh
 ```
 
 ## Package Contents
