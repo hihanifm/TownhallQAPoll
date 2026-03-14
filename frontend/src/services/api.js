@@ -45,9 +45,13 @@ export const api = {
   },
 
   closeCampaign: async (campaignId, creatorId, campaignPin) => {
-    const body = campaignPin 
-      ? { campaign_pin: campaignPin }
-      : { creator_id: creatorId };
+    const body = {};
+    if (creatorId) {
+      body.creator_id = creatorId;
+    }
+    if (campaignPin) {
+      body.campaign_pin = campaignPin;
+    }
     
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/close`, {
       method: 'PATCH',
@@ -64,9 +68,13 @@ export const api = {
   },
 
   deleteCampaign: async (campaignId, creatorId, campaignPin) => {
-    const body = campaignPin 
-      ? { campaign_pin: campaignPin }
-      : { creator_id: creatorId };
+    const body = {};
+    if (creatorId) {
+      body.creator_id = creatorId;
+    }
+    if (campaignPin) {
+      body.campaign_pin = campaignPin;
+    }
     
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`, {
       method: 'DELETE',
@@ -105,9 +113,13 @@ export const api = {
   },
 
   updateQuestion: async (questionId, questionText, creatorId, campaignPin) => {
-    const body = campaignPin 
-      ? { question_text: questionText, campaign_pin: campaignPin }
-      : { question_text: questionText, creator_id: creatorId };
+    const body = { question_text: questionText };
+    if (creatorId) {
+      body.creator_id = creatorId;
+    }
+    if (campaignPin) {
+      body.campaign_pin = campaignPin;
+    }
     
     const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
       method: 'PATCH',
@@ -134,9 +146,13 @@ export const api = {
   },
 
   deleteQuestion: async (questionId, creatorId, campaignPin) => {
-    const body = campaignPin 
-      ? { campaign_pin: campaignPin }
-      : { creator_id: creatorId };
+    const body = {};
+    if (creatorId) {
+      body.creator_id = creatorId;
+    }
+    if (campaignPin) {
+      body.campaign_pin = campaignPin;
+    }
     
     const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
       method: 'DELETE',

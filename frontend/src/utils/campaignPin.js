@@ -4,29 +4,35 @@ const PIN_VALUE_PREFIX = 'townhall_campaign_pin_value_';
 /**
  * Store verification status for a campaign PIN
  * @param {number|string} campaignId - The campaign ID
- * @param {string} pin - The PIN value (stored in sessionStorage only)
+ * @param {string} pin - The PIN value (stored in localStorage)
  */
 export function storeVerifiedPin(campaignId, pin) {
+  if (!campaignId) return;
   const key = `${PIN_STORAGE_PREFIX}${campaignId}`;
+  const pinKey = `${PIN_VALUE_PREFIX}${campaignId}`;
   localStorage.setItem(key, 'true');
-  
-  // Store PIN in sessionStorage temporarily for use in API requests
-  // This is cleared when browser session ends
-  if (pin) {
-    const pinKey = `${PIN_VALUE_PREFIX}${campaignId}`;
-    sessionStorage.setItem(pinKey, pin);
-  }
+  if (pin) localStorage.setItem(pinKey, pin);
 }
 
 /**
- * Get the stored PIN for a campaign (from sessionStorage)
+ * Get the stored PIN for a campaign (from localStorage)
+ * Falls back to legacy sessionStorage key and migrates it.
  * @param {number|string} campaignId - The campaign ID
  * @returns {string|null} - The PIN value or null if not stored
  */
 export function getVerifiedPin(campaignId) {
   if (!campaignId) return null;
   const pinKey = `${PIN_VALUE_PREFIX}${campaignId}`;
-  return sessionStorage.getItem(pinKey);
+  const localPin = localStorage.getItem(pinKey);
+  if (localPin) return localPin;
+
+  // Legacy migration path from older versions.
+  const sessionPin = sessionStorage.getItem(pinKey);
+  if (sessionPin) {
+    localStorage.setItem(pinKey, sessionPin);
+    return sessionPin;
+  }
+  return null;
 }
 
 /**
@@ -37,7 +43,16 @@ export function getVerifiedPin(campaignId) {
 export function hasVerifiedPin(campaignId) {
   if (!campaignId) return false;
   const key = `${PIN_STORAGE_PREFIX}${campaignId}`;
-  return localStorage.getItem(key) === 'true';
+  const verified = localStorage.getItem(key) === 'true';
+  if (!verified) return false;
+
+  const pin = getVerifiedPin(campaignId);
+  if (!pin) {
+    // Self-heal stale flags from older storage behavior.
+    localStorage.removeItem(key);
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -45,10 +60,11 @@ export function hasVerifiedPin(campaignId) {
  * @param {number|string} campaignId - The campaign ID
  */
 export function clearVerifiedPin(campaignId) {
+  if (!campaignId) return;
   const key = `${PIN_STORAGE_PREFIX}${campaignId}`;
-  localStorage.removeItem(key);
-  
-  // Also clear PIN value from sessionStorage
   const pinKey = `${PIN_VALUE_PREFIX}${campaignId}`;
+  localStorage.removeItem(key);
+  localStorage.removeItem(pinKey);
+  // Legacy cleanup from older versions.
   sessionStorage.removeItem(pinKey);
 }
