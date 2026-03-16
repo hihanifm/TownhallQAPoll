@@ -83,6 +83,25 @@ function AppFooter({ selectedCampaignId }) {
     }
   }, [selectedCampaignId]);
 
+  useEffect(() => {
+    const handlePinInvalid = (event) => {
+      const invalidCampaignId = event?.detail?.campaignId;
+      if (!selectedCampaignId || !invalidCampaignId) {
+        return;
+      }
+
+      if (String(selectedCampaignId) === String(invalidCampaignId)) {
+        setPinVerified(false);
+        setShowPinModal(true);
+      }
+    };
+
+    window.addEventListener('townhall:campaign-pin-invalid', handlePinInvalid);
+    return () => {
+      window.removeEventListener('townhall:campaign-pin-invalid', handlePinInvalid);
+    };
+  }, [selectedCampaignId]);
+
   const handlePinVerified = () => {
     setPinVerified(true);
   };

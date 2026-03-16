@@ -5,7 +5,7 @@ import CreateQuestionForm from './CreateQuestionForm';
 import WelcomeCard from './WelcomeCard';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import { getUserId } from '../utils/userId';
-import { hasVerifiedPin, getVerifiedPin } from '../utils/campaignPin';
+import { hasVerifiedPin, getVerifiedPin, clearVerifiedPin } from '../utils/campaignPin';
 import './QuestionPanel.css';
 
 function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
@@ -16,6 +16,26 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
   const [error, setError] = useState(null);
   const [showShareFeedback, setShowShareFeedback] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
+
+  const handleCampaignPinFailure = (error) => {
+    const errorMessage = error?.message || '';
+    const isPinAuthError = hasVerifiedPin(campaignId) && (
+      errorMessage.toLowerCase().includes('valid pin') ||
+      errorMessage.toLowerCase().includes('campaign_pin')
+    );
+
+    if (!isPinAuthError) {
+      return false;
+    }
+
+    clearVerifiedPin(campaignId);
+    setPinVerified(false);
+    window.dispatchEvent(new CustomEvent('townhall:campaign-pin-invalid', {
+      detail: { campaignId }
+    }));
+    alert('Your stored PIN is no longer valid. Please re-enter the campaign PIN.');
+    return true;
+  };
 
   useEffect(() => {
     if (campaignId) {
@@ -222,7 +242,9 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
         onCampaignClosed(campaignId);
       }
     } catch (err) {
-      alert(err.message);
+      if (!handleCampaignPinFailure(err)) {
+        alert(err.message);
+      }
     }
   };
 
@@ -239,7 +261,9 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
         onCampaignDeleted(campaignId);
       }
     } catch (err) {
-      alert(err.message);
+      if (!handleCampaignPinFailure(err)) {
+        alert(err.message);
+      }
     }
   };
 

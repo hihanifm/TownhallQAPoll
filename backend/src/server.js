@@ -1,6 +1,10 @@
+const path = require('path');
+const dotenv = require('dotenv');
+// Load root .env so backend runtime vars are available in all start modes.
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const cron = require('node-cron');
 const errorHandler = require('./middleware/errorHandler');
 const validateOrigin = require('./middleware/validateOrigin');

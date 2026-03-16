@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
 import { getFingerprint } from '../utils/browserFingerprint';
-import { getVerifiedPin, hasVerifiedPin } from '../utils/campaignPin';
+import { getVerifiedPin, hasVerifiedPin, clearVerifiedPin } from '../utils/campaignPin';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import './QuestionCard.css';
 
@@ -29,6 +29,25 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
   const justToggledRef = useRef(false);
   const previousVoteCountRef = useRef(question.vote_count || 0);
   const previousNumberRef = useRef(number);
+  
+  const handleCampaignPinFailure = (error) => {
+    const errorMessage = error?.message || '';
+    const isPinAuthError = hasVerifiedPin(campaignId) && (
+      errorMessage.toLowerCase().includes('valid pin') ||
+      errorMessage.toLowerCase().includes('campaign_pin')
+    );
+
+    if (!isPinAuthError) {
+      return false;
+    }
+
+    clearVerifiedPin(campaignId);
+    window.dispatchEvent(new CustomEvent('townhall:campaign-pin-invalid', {
+      detail: { campaignId }
+    }));
+    alert('Your stored PIN is no longer valid. Please re-enter the campaign PIN.');
+    return true;
+  };
 
   // Get browser fingerprint on component mount
   useEffect(() => {
@@ -153,7 +172,9 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
       }
     } catch (error) {
       console.error('Error deleting question:', error);
-      alert(error.message || 'Failed to delete question');
+      if (!handleCampaignPinFailure(error)) {
+        alert(error.message || 'Failed to delete question');
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -197,7 +218,9 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
       }
     } catch (error) {
       console.error('Error updating question:', error);
-      alert(error.message || 'Failed to update question');
+      if (!handleCampaignPinFailure(error)) {
+        alert(error.message || 'Failed to update question');
+      }
     } finally {
       setIsUpdating(false);
     }
@@ -235,7 +258,9 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
       }
     } catch (error) {
       console.error('Error creating comment:', error);
-      alert(error.message || 'Failed to create comment');
+      if (!handleCampaignPinFailure(error)) {
+        alert(error.message || 'Failed to create comment');
+      }
     } finally {
       setIsCreatingComment(false);
     }
@@ -270,7 +295,9 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
       }
     } catch (error) {
       console.error('Error updating comment:', error);
-      alert(error.message || 'Failed to update comment');
+      if (!handleCampaignPinFailure(error)) {
+        alert(error.message || 'Failed to update comment');
+      }
     } finally {
       setIsUpdatingComment(false);
     }
@@ -292,7 +319,9 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
       }
     } catch (error) {
       console.error('Error deleting comment:', error);
-      alert(error.message || 'Failed to delete comment');
+      if (!handleCampaignPinFailure(error)) {
+        alert(error.message || 'Failed to delete comment');
+      }
     } finally {
       setIsDeletingComment(false);
     }
