@@ -54,7 +54,7 @@ function CreateFeedbackForm({ onFeedbackCreated }) {
           type="text"
           value={feedbackText}
           onChange={(e) => setFeedbackText(e.target.value)}
-          placeholder="Your Name: Share your feedback, bug report, or feature request..."
+          placeholder="Your Name: Describe the bug (what happened, what you expected, steps to reproduce)..."
           disabled={isSubmitting}
         />
         <button type="submit" disabled={isSubmitting || !feedbackText.trim()}>
@@ -62,7 +62,7 @@ function CreateFeedbackForm({ onFeedbackCreated }) {
         </button>
       </form>
       <div className="feedback-form-tip">
-        <span className="feedback-form-tip-text">Tip: Prefix your name so we can reach out for more details if needed</span>
+        <span className="feedback-form-tip-text">Tip: Prefix your name and include expected vs actual behavior for faster triage</span>
       </div>
       {error && <div className="error-message">{error}</div>}
     </div>

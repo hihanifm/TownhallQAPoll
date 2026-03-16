@@ -253,10 +253,30 @@ function AppFooter({ selectedCampaignId }) {
           <button
             className="footer-feedback-button"
             onClick={() => navigate('/feedback')}
-            title="View and submit feedback"
+            title="Open the bugs board"
             style={{ fontWeight: isFeedbackPage ? '700' : 'normal' }}
+            aria-label="Open bugs board"
           >
-            {isFeedbackPage ? '✓ Feedback' : 'Feedback'}
+            <svg
+              className="footer-feedback-icon"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M8 2l1.88 1.88"></path>
+              <path d="M14.12 3.88L16 2"></path>
+              <path d="M9 7.13V6a3 3 0 1 1 6 0v1.13"></path>
+              <path d="M12 20v-8"></path>
+              <path d="M5 12H2"></path>
+              <path d="M22 12h-3"></path>
+              <path d="M7 15.5a5 5 0 0 0 10 0V12a5 5 0 0 0-10 0z"></path>
+            </svg>
           </button>
         </div>
       </div>

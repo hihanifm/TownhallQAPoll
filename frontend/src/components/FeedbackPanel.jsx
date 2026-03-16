@@ -127,8 +127,8 @@ function FeedbackPanel() {
     <div className="feedback-panel">
       <div className="panel-header">
         <div className="panel-header-left">
-          <h2 className="panel-title">Feedback</h2>
-          <p className="panel-subtitle">Share your feedback, bug reports, or feature requests. Upvote feedback you relate to!</p>
+          <h2 className="panel-title">Bugs</h2>
+          <p className="panel-subtitle">Report bugs here and upvote issues you are also seeing. Include enough detail so we can reproduce quickly.</p>
         </div>
         <div className="panel-header-right">
           <div className="sort-toggle">
@@ -175,7 +175,7 @@ function FeedbackPanel() {
 
       {feedback.length === 0 && (
         <div className="empty-state">
-          <p>No feedback yet. Be the first to share your thoughts!</p>
+          <p>No bugs reported yet. Be the first to log one.</p>
         </div>
       )}
 
