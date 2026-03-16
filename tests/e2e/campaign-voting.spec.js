@@ -333,6 +333,71 @@ test.describe('Campaign Voting E2E Test', () => {
     console.log('✓ Comment test completed successfully!');
   });
 
+  test('should clear campaign access and prompt re-entry when stored campaign PIN is stale', async ({ page }) => {
+    const creatorId = `creator-${Date.now()}`;
+    const campaignPin = '2468';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:33000';
+
+    // Step 1: Create campaign + question via API so UI can operate on comment actions.
+    const campaign = await createCampaign(
+      request,
+      `Stale Campaign PIN Flow ${Date.now()}`,
+      'E2E test for stale campaign PIN handling',
+      creatorId,
+      'Stale PIN Creator',
+      campaignPin
+    );
+    campaignId = campaign.id;
+
+    const question = await createQuestion(
+      request,
+      campaignId,
+      'Question for stale campaign PIN comment flow',
+      creatorId
+    );
+    question1Id = question.id;
+
+    // Step 2: Open campaign page and verify PIN through UI.
+    await page.goto(`${frontendUrl}/campaign/${campaignId}`);
+    await page.waitForLoadState('domcontentloaded');
+
+    const requestPinButton = page.locator('.footer-admin-button');
+    await expect(requestPinButton).toBeVisible({ timeout: 10000 });
+    await requestPinButton.click();
+
+    const pinInput = page.locator('.pin-modal-content input[type="password"]');
+    await expect(pinInput).toBeVisible({ timeout: 10000 });
+    await pinInput.fill(campaignPin);
+    await page.locator('.pin-modal-verify').click();
+
+    await expect(page.locator('.admin-badge')).toBeVisible({ timeout: 10000 });
+
+    // Step 3: Tamper campaign PIN in localStorage (mimics DevTools edit).
+    await page.evaluate((id) => {
+      localStorage.setItem(`townhall_campaign_pin_${id}`, 'true');
+      localStorage.setItem(`townhall_campaign_pin_value_${id}`, 'wrong-pin');
+    }, campaignId);
+
+    // Step 4: Try to create comment. Backend should reject and UI should reset access state.
+    await expect(page.locator('.add-comment-btn')).toBeVisible({ timeout: 10000 });
+    await page.locator('.add-comment-btn').click();
+    await page.locator('.add-comment-textarea').fill('Comment attempt with stale stored campaign PIN');
+
+    let alertMessage = '';
+    page.once('dialog', async (dialog) => {
+      alertMessage = dialog.message();
+      await dialog.accept();
+    });
+    await page.locator('.save-comment-btn').click();
+
+    await expect.poll(() => alertMessage).toContain('stored PIN is no longer valid');
+
+    // Step 5: Verify access is revoked and PIN modal is shown again for re-entry.
+    await expect(page.locator('.footer-admin-button')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.admin-badge')).toHaveCount(0);
+    await expect(page.locator('.pin-modal-content')).toBeVisible({ timeout: 10000 });
+  });
+
   test('should test share button click and clipboard copy', async ({ page, context }) => {
     // Grant clipboard permissions
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
