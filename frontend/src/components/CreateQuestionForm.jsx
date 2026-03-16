@@ -8,13 +8,18 @@ function CreateQuestionForm({ campaignId, onQuestionCreated }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const inputRef = useRef(null);
+  const focusWithoutScroll = () => {
+    if (!inputRef.current) return;
+    // Keep keyboard focus for fast typing without jumping viewport to the form.
+    inputRef.current.focus({ preventScroll: true });
+  };
 
   // Focus input when campaign is selected (campaignId changes)
   useEffect(() => {
     if (campaignId && inputRef.current) {
       // Small delay to ensure the component is fully rendered
       setTimeout(() => {
-        inputRef.current?.focus();
+        focusWithoutScroll();
       }, 100);
     }
   }, [campaignId]);
@@ -37,7 +42,7 @@ function CreateQuestionForm({ campaignId, onQuestionCreated }) {
       onQuestionCreated(newQuestion);
       // Focus input after successful submission
       setTimeout(() => {
-        inputRef.current?.focus();
+        focusWithoutScroll();
       }, 100);
     } catch (err) {
       setError(err.message);
