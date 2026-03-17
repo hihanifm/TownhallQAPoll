@@ -11,6 +11,8 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
 LOG_DIR="$SCRIPT_DIR/logs"
+source "$SCRIPT_DIR/port-config.sh"
+load_port_config "$SCRIPT_DIR"
 
 # Function to get version
 get_version() {
@@ -128,9 +130,9 @@ check_firewall_status() {
     
     # Determine which ports to check based on mode
     if [ "$MODE" = "dev" ]; then
-        ports_to_check=(33000 33001)
+        ports_to_check=($FRONTEND_PORT $BACKEND_PORT)
     else
-        ports_to_check=(33001)
+        ports_to_check=($BACKEND_PORT)
     fi
     
     if [ "$os" = "linux" ]; then
@@ -193,19 +195,19 @@ fi
 BACKEND_PORT_IN_USE=false
 FRONTEND_PORT_IN_USE=false
 
-if check_port 33001; then
+if check_port "$BACKEND_PORT"; then
     BACKEND_PORT_IN_USE=true
     PORTS_IN_USE=true
-    echo "⚠️  Error: Port 33001 (backend) is already in use!"
+    echo "⚠️  Error: Port $BACKEND_PORT (backend) is already in use!"
 fi
 
-# In production modes, backend serves static files, so we only need port 33001
+# In production modes, backend serves static files, so we only need backend port
 # In development mode, we need both ports
 if [ "$MODE" = "dev" ]; then
-    if check_port 33000; then
+    if check_port "$FRONTEND_PORT"; then
         FRONTEND_PORT_IN_USE=true
         PORTS_IN_USE=true
-        echo "⚠️  Error: Port 33000 (frontend) is already in use!"
+        echo "⚠️  Error: Port $FRONTEND_PORT (frontend) is already in use!"
     fi
 fi
 
@@ -327,8 +329,8 @@ if [ "$MODE" = "prod-docker" ]; then
     
     # Wait a moment and verify backend started successfully
     sleep 5
-    if ! check_port 33001; then
-        echo "❌ Error: Docker container started but port 33001 is not listening!"
+    if ! check_port "$BACKEND_PORT"; then
+        echo "❌ Error: Docker container started but port $BACKEND_PORT is not listening!"
         echo "   Check Docker logs with: $COMPOSE_CMD logs"
         $COMPOSE_CMD down 2>/dev/null || true
         exit 1
@@ -358,8 +360,8 @@ if [ "$MODE" = "prod-pm2" ]; then
     
     # Wait a moment and verify backend started successfully
     sleep 3
-    if ! check_port 33001; then
-        echo "❌ Error: Backend server process started but port 33001 is not listening!"
+    if ! check_port "$BACKEND_PORT"; then
+        echo "❌ Error: Backend server process started but port $BACKEND_PORT is not listening!"
         echo "   Check PM2 logs with: pm2 logs townhall-backend"
         pm2 stop townhall-backend 2>/dev/null || true
         pm2 delete townhall-backend 2>/dev/null || true
@@ -397,13 +399,13 @@ else
         echo "❌ Error: Backend server failed to start! Check $LOG_DIR/backend.log"
         # Check if it's a port conflict
         if grep -q "EADDRINUSE" "$LOG_DIR/backend.log" 2>/dev/null; then
-            echo "   Port 33001 is already in use. Please stop the existing server first."
+            echo "   Port $BACKEND_PORT is already in use. Please stop the existing server first."
         fi
         exit 1
     fi
     
-    if ! check_port 33001; then
-        echo "❌ Error: Backend server process started but port 33001 is not listening!"
+    if ! check_port "$BACKEND_PORT"; then
+        echo "❌ Error: Backend server process started but port $BACKEND_PORT is not listening!"
         echo "   Check $LOG_DIR/backend.log for errors"
         kill $BACKEND_PID 2>/dev/null || true
         exit 1
@@ -436,13 +438,13 @@ if [ "$MODE" = "dev" ]; then
         kill $BACKEND_PID 2>/dev/null || true
         # Check if it's a port conflict
         if grep -q "EADDRINUSE" "$LOG_DIR/frontend.log" 2>/dev/null; then
-            echo "   Port 33000 is already in use. Please stop the existing server first."
+            echo "   Port $FRONTEND_PORT is already in use. Please stop the existing server first."
         fi
         exit 1
     fi
     
-    if ! check_port 33000; then
-        echo "❌ Error: Frontend server process started but port 33000 is not listening!"
+    if ! check_port "$FRONTEND_PORT"; then
+        echo "❌ Error: Frontend server process started but port $FRONTEND_PORT is not listening!"
         echo "   Check $LOG_DIR/frontend.log for errors"
         kill $BACKEND_PID 2>/dev/null || true
         kill $FRONTEND_PID 2>/dev/null || true
@@ -477,21 +479,21 @@ echo ""
 echo "Access URLs:"
 if [ "$MODE" != "dev" ]; then
     echo "  Application:"
-    echo "    - Local:  http://localhost:33001"
+    echo "    - Local:  http://localhost:$BACKEND_PORT"
     if [ -n "$LOCAL_IP" ]; then
-        echo "    - Network: http://$LOCAL_IP:33001"
+        echo "    - Network: http://$LOCAL_IP:$BACKEND_PORT"
     fi
     echo "    (Backend serves both API and frontend)"
 else
     echo "  Backend:"
-    echo "    - Local:  http://localhost:33001"
+    echo "    - Local:  http://localhost:$BACKEND_PORT"
     if [ -n "$LOCAL_IP" ]; then
-        echo "    - Network: http://$LOCAL_IP:33001"
+        echo "    - Network: http://$LOCAL_IP:$BACKEND_PORT"
     fi
     echo "  Frontend:"
-    echo "    - Local:  http://localhost:33000"
+    echo "    - Local:  http://localhost:$FRONTEND_PORT"
     if [ -n "$LOCAL_IP" ]; then
-        echo "    - Network: http://$LOCAL_IP:33000"
+        echo "    - Network: http://$LOCAL_IP:$FRONTEND_PORT"
     fi
 fi
 

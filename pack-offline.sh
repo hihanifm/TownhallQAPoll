@@ -7,6 +7,8 @@
 set -e  # Exit on error
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$SCRIPT_DIR/port-config.sh"
+load_port_config "$SCRIPT_DIR"
 
 # Function to get version
 get_version() {
@@ -343,7 +345,7 @@ echo "3. Stop the application:"
 echo "   ./stop.sh"
 echo ""
 echo "4. Access the application:"
-echo "   http://localhost:33001"
+echo "   http://localhost:$BACKEND_PORT"
 echo ""
 EOFSCRIPT
 chmod +x "$PACKAGE_NAME/setup.sh"
@@ -421,9 +423,9 @@ if [ -f "$PID_FILE" ]; then
     done < "$PID_FILE"
 fi
 
-if check_port 33001; then
+if check_port "$BACKEND_PORT"; then
     PORTS_IN_USE=true
-    echo "⚠️  Error: Port 33001 (backend) is already in use!"
+    echo "⚠️  Error: Port $BACKEND_PORT (backend) is already in use!"
 fi
 
 # Check for PM2 mode specific requirements
@@ -479,8 +481,8 @@ if [ "$MODE" = "prod-pm2" ]; then
     
     # Wait a moment and verify backend started successfully
     sleep 3
-    if ! check_port 33001; then
-        echo "❌ Error: Backend server process started but port 33001 is not listening!"
+    if ! check_port "$BACKEND_PORT"; then
+        echo "❌ Error: Backend server process started but port $BACKEND_PORT is not listening!"
         echo "   Check PM2 logs with: pm2 logs townhall-backend"
         pm2 stop townhall-backend 2>/dev/null || true
         pm2 delete townhall-backend 2>/dev/null || true
@@ -510,13 +512,13 @@ else
     if ! ps -p $BACKEND_PID > /dev/null 2>&1; then
         echo "❌ Error: Backend server failed to start! Check $LOG_DIR/backend.log"
         if grep -q "EADDRINUSE" "$LOG_DIR/backend.log" 2>/dev/null; then
-            echo "   Port 33001 is already in use. Please stop the existing server first."
+            echo "   Port $BACKEND_PORT is already in use. Please stop the existing server first."
         fi
         exit 1
     fi
     
-    if ! check_port 33001; then
-        echo "❌ Error: Backend server process started but port 33001 is not listening!"
+    if ! check_port "$BACKEND_PORT"; then
+        echo "❌ Error: Backend server process started but port $BACKEND_PORT is not listening!"
         echo "   Check $LOG_DIR/backend.log for errors"
         kill $BACKEND_PID 2>/dev/null || true
         exit 1
@@ -545,9 +547,9 @@ esac
 echo ""
 echo "Access URLs:"
 echo "  Application:"
-echo "    - Local:  http://localhost:33001"
+echo "    - Local:  http://localhost:$BACKEND_PORT"
 if [ -n "$LOCAL_IP" ]; then
-    echo "    - Network: http://$LOCAL_IP:33001"
+    echo "    - Network: http://$LOCAL_IP:$BACKEND_PORT"
 fi
 echo "    (Backend serves both API and frontend)"
 echo ""
@@ -633,10 +635,10 @@ if [ ! -f "$PID_FILE" ]; then
     echo "Checking for running processes..."
     
     # Try to find and kill by port
-    BACKEND_PID=$(lsof -ti:33001 2>/dev/null)
+    BACKEND_PID=$(lsof -ti:$BACKEND_PORT 2>/dev/null)
     
     if [ -z "$BACKEND_PID" ]; then
-        echo "No server found running on port 33001."
+        echo "No server found running on port $BACKEND_PORT."
         exit 0
     fi
 else
@@ -662,10 +664,10 @@ else
 fi
 
 # Clean up any remaining processes on the port
-BACKEND_PORT_PID=$(lsof -ti:33001 2>/dev/null)
+BACKEND_PORT_PID=$(lsof -ti:$BACKEND_PORT 2>/dev/null)
 
 if [ -n "$BACKEND_PORT_PID" ]; then
-    echo "Killing process on port 33001 (PID: $BACKEND_PORT_PID)..."
+    echo "Killing process on port $BACKEND_PORT (PID: $BACKEND_PORT_PID)..."
     kill -9 $BACKEND_PORT_PID 2>/dev/null
 fi
 
@@ -747,12 +749,12 @@ if [ "$PM2_RUNNING" = true ]; then
     echo "  - Monitor: pm2 monit"
     echo ""
     LOCAL_IP=$(get_local_ip)
-    if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
         echo "Access URLs:"
         echo "  Application:"
-        echo "    - Local:  http://localhost:33001"
+        echo "    - Local:  http://localhost:$BACKEND_PORT"
         if [ -n "$LOCAL_IP" ]; then
-            echo "    - Network: http://$LOCAL_IP:33001"
+            echo "    - Network: http://$LOCAL_IP:$BACKEND_PORT"
         fi
         echo ""
     fi
@@ -761,7 +763,7 @@ fi
 
 # Otherwise, show nohup status (prod-nohup mode)
 MODE="UNKNOWN"
-if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
     MODE="PRODUCTION (nohup)"
 fi
 
@@ -787,23 +789,23 @@ fi
 
 # Check by port
 echo "Port status:"
-if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
-    PORT_PID=$(lsof -ti:33001)
-    echo "  Port 33001 (backend):  ✓ In use (PID: $PORT_PID)"
+if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1 ; then
+    PORT_PID=$(lsof -ti:$BACKEND_PORT)
+    echo "  Port $BACKEND_PORT (backend):  ✓ In use (PID: $PORT_PID)"
 else
-    echo "  Port 33001 (backend):  ✗ Not in use"
+    echo "  Port $BACKEND_PORT (backend):  ✗ Not in use"
 fi
 
 echo ""
 
 # Show access URLs
 LOCAL_IP=$(get_local_ip)
-if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
     echo "Access URLs:"
     echo "  Application:"
-    echo "    - Local:  http://localhost:33001"
+    echo "    - Local:  http://localhost:$BACKEND_PORT"
     if [ -n "$LOCAL_IP" ]; then
-        echo "    - Network: http://$LOCAL_IP:33001"
+        echo "    - Network: http://$LOCAL_IP:$BACKEND_PORT"
     fi
     echo ""
 fi
@@ -850,8 +852,8 @@ cat > "$PACKAGE_NAME/DEPLOYMENT.md" << 'EOFMARKDOWN'
    ```
 
 4. Access the application:
-   - Open browser: `http://localhost:33001`
-   - Or from network: `http://<your-ip>:33001`
+   - Open browser: `http://localhost:$BACKEND_PORT`
+   - Or from network: `http://<your-ip>:$BACKEND_PORT`
 
 ## Available Scripts
 
@@ -905,8 +907,8 @@ The `setup.sh` script will:
 You can customize the application using environment variables:
 
 ```bash
-# Port (default: 33001)
-PORT=33001 ./start.sh
+# Port (default: configured backend port)
+PORT=$BACKEND_PORT ./start.sh
 
 # Host binding (default: 0.0.0.0 for network access)
 HOST=127.0.0.1 ./start.sh  # localhost only
@@ -942,7 +944,7 @@ This will:
 - Stop PM2 process (if using PM2 mode)
 - Stop nohup process (if using nohup mode)
 - Clean up PID files
-- Kill any processes on port 33001
+- Kill any processes on the configured backend port
 
 ## Troubleshooting
 

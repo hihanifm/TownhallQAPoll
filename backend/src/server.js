@@ -2,6 +2,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 // Load root .env so backend runtime vars are available in all start modes.
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+const portsConfig = require('../../config/ports.json');
 
 const express = require('express');
 const cors = require('cors');
@@ -16,7 +17,8 @@ const sseRouter = require('./routes/sse');
 const { performBackup, getBackupStatus } = require('./services/backupService');
 
 const app = express();
-const PORT = process.env.PORT || 33001;
+const FRONTEND_PORT = Number(process.env.FRONTEND_PORT) || Number(portsConfig.frontend);
+const PORT = Number(process.env.PORT) || Number(portsConfig.backend);
 
 // Track server start time for uptime calculation
 const serverStartTime = Date.now();
@@ -26,8 +28,8 @@ const getAllowedOrigins = () => {
   const origins = [];
   
   // Development origins
-  origins.push('http://localhost:33000');
-  origins.push('http://127.0.0.1:33000');
+  origins.push(`http://localhost:${FRONTEND_PORT}`);
+  origins.push(`http://127.0.0.1:${FRONTEND_PORT}`);
   
   // Production frontend URL from environment
   if (process.env.FRONTEND_URL) {
@@ -53,8 +55,8 @@ const isFrontendPort = (origin) => {
   try {
     const url = new URL(origin);
     const port = url.port || (url.protocol === 'https:' ? '443' : '80');
-    // Only allow explicit port 33000
-    return port === '33000';
+    // Only allow explicit frontend port
+    return port === FRONTEND_PORT.toString();
   } catch (e) {
     return false;
   }
@@ -71,13 +73,13 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 app.use(cors({
   origin: function (origin, callback) {
     // In production mode when serving static files, allow same-origin requests
-    // Check if origin is on the backend port (33001) - same-origin when serving static files
+    // Check if origin is on the backend port - same-origin when serving static files
     if (!isDevelopment && origin) {
       try {
         const originUrl = new URL(origin);
         const originPort = originUrl.port || (originUrl.protocol === 'https:' ? '443' : '80');
         // In production, allow origins on the backend port (same-origin requests)
-        if (originPort === PORT.toString() || originPort === '33001') {
+        if (originPort === PORT.toString()) {
           return callback(null, true);
         }
       } catch (e) {
@@ -118,8 +120,8 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } 
-    // If ALLOW_ANY_FRONTEND_PORT is not disabled, allow any origin on port 33000
-    // This enables IP addresses to work automatically (e.g., http://192.168.1.100:33000)
+    // If ALLOW_ANY_FRONTEND_PORT is not disabled, allow any origin on frontend port
+    // This enables IP addresses to work automatically (e.g., http://192.168.1.100:<frontend-port>)
     else if (process.env.ALLOW_ANY_FRONTEND_PORT !== 'false' && isFrontendPort(origin)) {
       callback(null, true);
     } 

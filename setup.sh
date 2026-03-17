@@ -5,6 +5,8 @@
 # Usage: ./setup.sh
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$SCRIPT_DIR/port-config.sh"
+load_port_config "$SCRIPT_DIR"
 
 # Function to get version
 get_version() {
@@ -203,7 +205,7 @@ echo "   npm run start:frontend"
 echo "   (or use: ./start-background.sh to start both in background)"
 echo ""
 echo "3. Open your browser and navigate to:"
-echo "   http://localhost:33000"
+echo "   http://localhost:$FRONTEND_PORT"
 echo ""
 echo "For more information, see README.md"
 echo ""

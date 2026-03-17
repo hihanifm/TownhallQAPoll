@@ -9,7 +9,7 @@ Variables prefixed with `VITE_` are **build-time** variables. They are embedded 
 
 **Examples:**
 - `VITE_ENABLE_BROWSER_RESTRICTION=true`
-- `VITE_API_URL=http://localhost:33001`
+- `VITE_API_URL=http://localhost:33101`
 
 **How to set:**
 1. Create a `.env` file in the project root (see `.env.example`)
@@ -25,8 +25,8 @@ These are used by the Node.js backend server at runtime. They can be set in:
 **Examples:**
 - `NODE_ENV=production`
 - `HOST=0.0.0.0`
-- `PORT=33001`
-- `FRONTEND_URL=http://localhost:33000`
+- `PORT=33101`
+- `FRONTEND_URL=http://localhost:33100`
 
 ## Setting Up PM2 for Auto-Start on Reboot
 
@@ -82,8 +82,8 @@ Add runtime environment variables to `ecosystem.config.js`:
 env_production: {
   NODE_ENV: 'production',
   HOST: '0.0.0.0',
-  PORT: 33001,
-  FRONTEND_URL: 'http://localhost:33000'
+  PORT: 33101,
+  FRONTEND_URL: 'http://localhost:33100'
 }
 ```
 

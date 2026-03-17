@@ -1,4 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const portsConfigPath = resolve(__dirname, 'config/ports.json');
+const portsConfig = JSON.parse(readFileSync(portsConfigPath, 'utf8'));
+const frontendPort = Number(process.env.FRONTEND_PORT) || Number(portsConfig.frontend);
+const baseURL = process.env.FRONTEND_URL || `http://localhost:${frontendPort}`;
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -18,7 +27,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:33000',
+    baseURL,
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
@@ -34,7 +43,7 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   // webServer: {
   //   command: 'npm run start',
-  //   url: 'http://localhost:33000',
+  //   url: baseURL,
   //   reuseExistingServer: !process.env.CI,
   // },
 });

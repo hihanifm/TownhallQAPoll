@@ -9,6 +9,7 @@ import {
   closeFeedback,
   checkBackendHealth
 } from '../helpers/api.js';
+import { BACKEND_BASE_URL, FRONTEND_BASE_URL } from '../helpers/ports.js';
 
 test.describe('Feedback E2E Test', () => {
   let request;
@@ -26,7 +27,7 @@ test.describe('Feedback E2E Test', () => {
     // Optional: Check if backend is running
     const isBackendRunning = await checkBackendHealth(request);
     if (!isBackendRunning) {
-      console.warn('⚠️  Backend may not be running on http://localhost:33001');
+      console.warn(`⚠️  Backend may not be running on ${BACKEND_BASE_URL}`);
       console.warn('   Make sure to start the backend before running tests');
     }
   });
@@ -450,7 +451,7 @@ test.describe('Feedback E2E Test', () => {
     console.log(`✓ Created feedback via API with ID: ${feedback1Id}`);
 
     // Step 2: Navigate to feedback page
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:33000';
+    const frontendUrl = FRONTEND_BASE_URL;
     await page.goto(`${frontendUrl}/feedback`);
     
     // Wait for the page to load
@@ -494,7 +495,7 @@ test.describe('Feedback E2E Test', () => {
     console.log(`✓ Created feedback via API with ID: ${feedback1Id}`);
 
     // Step 2: Navigate to feedback page
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:33000';
+    const frontendUrl = FRONTEND_BASE_URL;
     await page.goto(`${frontendUrl}/feedback`);
     
     // Wait for the page to load

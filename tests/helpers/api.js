@@ -2,7 +2,7 @@
  * API helper functions for E2E tests
  */
 
-const API_BASE_URL = 'http://localhost:33001/api';
+import { API_BASE_URL } from './ports.js';
 
 /**
  * Generate a test user ID

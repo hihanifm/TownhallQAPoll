@@ -3,13 +3,16 @@
  * This prevents direct access to the backend API
  */
 
+const portsConfig = require('../../../config/ports.json');
+const FRONTEND_PORT = Number(process.env.FRONTEND_PORT) || Number(portsConfig.frontend);
+
 // Allowed origins - requests must come from these origins
 const getAllowedOrigins = () => {
   const allowedOrigins = [];
   
   // Add localhost origins (development)
-  allowedOrigins.push('http://localhost:33000');
-  allowedOrigins.push('http://127.0.0.1:33000');
+  allowedOrigins.push(`http://localhost:${FRONTEND_PORT}`);
+  allowedOrigins.push(`http://127.0.0.1:${FRONTEND_PORT}`);
   
   // Add environment variable for custom frontend URL (production)
   if (process.env.FRONTEND_URL) {
@@ -38,18 +41,17 @@ const getAllowedOrigins = () => {
 const allowedOrigins = getAllowedOrigins();
 
 /**
- * Check if an origin is on the frontend port (33000)
+ * Check if an origin is on the frontend port
  * This allows IP addresses to work without explicit configuration
  */
 const isFrontendPort = (urlString) => {
   try {
     const url = new URL(urlString);
     // If no port is specified and it's HTTP, default port is 80, but we check explicitly
-    // If port is specified, check if it's 33000
+    // If port is specified, check if it's frontend port
     const port = url.port || (url.protocol === 'https:' ? '443' : '80');
-    // Allow if port is 33000, or if no port specified and it's HTTP (could be port 33000)
-    // But to be safe, we'll only allow explicit port 33000
-    return port === '33000';
+    // Allow if port matches configured frontend port
+    return port === FRONTEND_PORT.toString();
   } catch (e) {
     return false;
   }
@@ -153,7 +155,7 @@ const isOriginAllowed = (req) => {
       return true;
     }
     
-    // If ALLOW_ANY_FRONTEND_PORT is set (default: true), allow any origin on port 33000
+    // If ALLOW_ANY_FRONTEND_PORT is set (default: true), allow any origin on frontend port
     // This makes IP addresses work automatically without configuration
     if (process.env.ALLOW_ANY_FRONTEND_PORT !== 'false' && isFrontendPort(origin)) {
       return true;
@@ -175,7 +177,7 @@ const isOriginAllowed = (req) => {
         return true;
       }
       
-      // If ALLOW_ANY_FRONTEND_PORT is set (default: true), allow any referer on port 33000
+      // If ALLOW_ANY_FRONTEND_PORT is set (default: true), allow any referer on frontend port
       if (process.env.ALLOW_ANY_FRONTEND_PORT !== 'false' && isFrontendPort(refererOrigin)) {
         return true;
       }

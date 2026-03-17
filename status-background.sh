@@ -8,6 +8,8 @@ PID_FILE="$SCRIPT_DIR/server.pids"
 LOG_DIR="$SCRIPT_DIR/logs"
 BACKUP_DIR="$SCRIPT_DIR/backend/data/backups"
 METADATA_FILE="$BACKUP_DIR/.last_backup_checksum"
+source "$SCRIPT_DIR/port-config.sh"
+load_port_config "$SCRIPT_DIR"
 
 # Function to get local IP address
 get_local_ip() {
@@ -88,15 +90,15 @@ check_firewall_status() {
     local needs_warning=false
     
     # Determine which ports to check based on what's running
-    if lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
         # Development mode - check both ports
-        ports_to_check=(33000 33001)
-    elif lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        ports_to_check=($FRONTEND_PORT $BACKEND_PORT)
+    elif lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
         # Production mode - only backend port
-        ports_to_check=(33001)
+        ports_to_check=($BACKEND_PORT)
     else
         # No servers running, check both ports anyway
-        ports_to_check=(33000 33001)
+        ports_to_check=($FRONTEND_PORT $BACKEND_PORT)
     fi
     
     if [ "$os" = "linux" ]; then
@@ -204,12 +206,12 @@ if [ "$DOCKER_RUNNING" = true ]; then
     echo ""
     
     LOCAL_IP=$(get_local_ip)
-    if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
         echo "Access URLs:"
         echo "  Application:"
-        echo "    - Local:  http://localhost:33001"
+        echo "    - Local:  http://localhost:$BACKEND_PORT"
         if [ -n "$LOCAL_IP" ]; then
-            echo "    - Network: http://$LOCAL_IP:33001"
+            echo "    - Network: http://$LOCAL_IP:$BACKEND_PORT"
         fi
         echo ""
         echo "Database Location: /var/lib/townhall/data/"
@@ -245,12 +247,12 @@ if [ "$PM2_RUNNING" = true ]; then
     echo "  - Monitor: pm2 monit"
     echo ""
     LOCAL_IP=$(get_local_ip)
-    if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
         echo "Access URLs:"
         echo "  Application:"
-        echo "    - Local:  http://localhost:33001"
+        echo "    - Local:  http://localhost:$BACKEND_PORT"
         if [ -n "$LOCAL_IP" ]; then
-            echo "    - Network: http://$LOCAL_IP:33001"
+            echo "    - Network: http://$LOCAL_IP:$BACKEND_PORT"
         fi
         echo ""
         echo "Firewall Status:"
@@ -263,10 +265,10 @@ fi
 
 # Otherwise, show nohup status (dev or prod-nohup mode)
 MODE="UNKNOWN"
-if lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
     MODE="DEVELOPMENT"
 else
-    if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
         MODE="PRODUCTION (nohup)"
     fi
 fi
@@ -324,45 +326,45 @@ fi
 
 # Check by port
 echo "Port status:"
-if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
-    PORT_PID=$(lsof -ti:33001)
-    echo "  Port 33001 (backend):  ✓ In use (PID: $PORT_PID)"
+if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1 ; then
+    PORT_PID=$(lsof -ti:$BACKEND_PORT)
+    echo "  Port $BACKEND_PORT (backend):  ✓ In use (PID: $PORT_PID)"
 else
-    echo "  Port 33001 (backend):  ✗ Not in use"
+    echo "  Port $BACKEND_PORT (backend):  ✗ Not in use"
 fi
 
-if lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
-    PORT_PID=$(lsof -ti:33000)
-    echo "  Port 33000 (frontend): ✓ In use (PID: $PORT_PID)"
+if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1 ; then
+    PORT_PID=$(lsof -ti:$FRONTEND_PORT)
+    echo "  Port $FRONTEND_PORT (frontend): ✓ In use (PID: $PORT_PID)"
 else
-    echo "  Port 33000 (frontend): ✗ Not in use"
+    echo "  Port $FRONTEND_PORT (frontend): ✗ Not in use"
 fi
 
 echo ""
 
 # Show access URLs
 LOCAL_IP=$(get_local_ip)
-if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1 || lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1 || lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
     echo "Access URLs:"
-    if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
         echo "  Backend:"
-        echo "    - Local:  http://localhost:33001"
+        echo "    - Local:  http://localhost:$BACKEND_PORT"
         if [ -n "$LOCAL_IP" ]; then
-            echo "    - Network: http://$LOCAL_IP:33001"
+            echo "    - Network: http://$LOCAL_IP:$BACKEND_PORT"
         fi
     fi
-    if lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    if lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
         echo "  Frontend:"
-        echo "    - Local:  http://localhost:33000"
+        echo "    - Local:  http://localhost:$FRONTEND_PORT"
         if [ -n "$LOCAL_IP" ]; then
-            echo "    - Network: http://$LOCAL_IP:33000"
+            echo "    - Network: http://$LOCAL_IP:$FRONTEND_PORT"
         fi
     fi
     echo ""
 fi
 
 # Check firewall status
-if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1 || lsof -Pi :33000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1 || lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
     echo "Firewall Status:"
     echo "----------------"
     check_firewall_status
@@ -407,7 +409,7 @@ if [ -f "$LOG_DIR/backend.log" ]; then
 fi
 
 # Also check if backend is running (backup service runs with backend)
-if lsof -Pi :33001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+if lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
     if [ "$BACKUP_INITIALIZED" = "Unknown" ]; then
         BACKUP_INITIALIZED="✓ Backend running (cron should be active)"
     fi

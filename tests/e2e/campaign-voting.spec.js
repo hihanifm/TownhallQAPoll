@@ -16,6 +16,7 @@ import {
   deleteComment,
   checkBackendHealth
 } from '../helpers/api.js';
+import { BACKEND_BASE_URL, FRONTEND_BASE_URL } from '../helpers/ports.js';
 
 test.describe('Campaign Voting E2E Test', () => {
   let request;
@@ -31,7 +32,7 @@ test.describe('Campaign Voting E2E Test', () => {
     // Optional: Check if backend is running
     const isBackendRunning = await checkBackendHealth(request);
     if (!isBackendRunning) {
-      console.warn('⚠️  Backend may not be running on http://localhost:33001');
+      console.warn(`⚠️  Backend may not be running on ${BACKEND_BASE_URL}`);
       console.warn('   Make sure to start the backend before running tests');
     }
   });
@@ -336,7 +337,7 @@ test.describe('Campaign Voting E2E Test', () => {
   test('should clear campaign access and prompt re-entry when stored campaign PIN is stale', async ({ page }) => {
     const creatorId = `creator-${Date.now()}`;
     const campaignPin = '2468';
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:33000';
+    const frontendUrl = FRONTEND_BASE_URL;
 
     // Step 1: Create campaign + question via API so UI can operate on comment actions.
     const campaign = await createCampaign(
@@ -416,7 +417,7 @@ test.describe('Campaign Voting E2E Test', () => {
     console.log(`✓ Created campaign for share test - ID: ${campaignId}`);
 
     // Step 2: Navigate to the campaign page
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:33000';
+    const frontendUrl = FRONTEND_BASE_URL;
     await page.goto(`${frontendUrl}/campaign/${campaignId}`);
     
     // Wait for the page to load (use domcontentloaded instead of networkidle 

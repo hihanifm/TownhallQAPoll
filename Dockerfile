@@ -36,12 +36,12 @@ COPY backend/ ./backend/
 COPY --from=frontend-builder /app/frontend/dist ./backend/public
 
 # Expose port
-EXPOSE 33001
+EXPOSE 33101
 
 # Set production environment
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
-ENV PORT=33001
+ENV PORT=33101
 
 # Run backend server
 CMD ["node", "backend/src/server.js"]

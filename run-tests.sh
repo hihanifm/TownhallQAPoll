@@ -10,6 +10,8 @@ set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
+source "$SCRIPT_DIR/port-config.sh"
+load_port_config "$SCRIPT_DIR"
 
 # Colors for output
 RED='\033[0;31m'
@@ -60,11 +62,11 @@ fi
 
 # Check if server is running
 SERVER_RUNNING=false
-if check_port 33000; then
+if check_port "$FRONTEND_PORT"; then
     SERVER_RUNNING=true
-    echo -e "${GREEN}✓${NC} Server is already running on port 33000"
+    echo -e "${GREEN}✓${NC} Server is already running on port $FRONTEND_PORT"
 else
-    echo -e "${YELLOW}⚠${NC}  Server is not running on port 33000"
+    echo -e "${YELLOW}⚠${NC}  Server is not running on port $FRONTEND_PORT"
     
     if [ "$START_SERVER" = false ]; then
         echo ""
@@ -90,7 +92,7 @@ if [ "$START_SERVER" = true ] && [ "$SERVER_RUNNING" = false ]; then
     ./start-background.sh > /dev/null 2>&1
     
     # Wait for server to be ready
-    if ! wait_for_server "http://localhost:33000"; then
+    if ! wait_for_server "http://localhost:$FRONTEND_PORT"; then
         echo -e "${RED}❌${NC} Server failed to start or is not responding"
         echo "Check logs in: logs/"
         exit 1

@@ -1,3 +1,5 @@
+const portsConfig = require('./config/ports.json');
+
 module.exports = {
   apps: [
     {
@@ -27,9 +29,9 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         HOST: '0.0.0.0', // Bind to all interfaces
-        PORT: 33001,
+        PORT: Number(process.env.PORT) || Number(portsConfig.backend),
         // Add other runtime environment variables here as needed
-        // Example: FRONTEND_URL: 'http://localhost:33000'
+        // Example: FRONTEND_URL: `http://localhost:${portsConfig.frontend}`
       },
       
       // Logging

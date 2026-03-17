@@ -98,8 +98,8 @@ curl -k -L -O https://github.com/YOUR_ORG/TownhallQAPoll/releases/download/v1.12
    ```
 
 3. **Access the application:**
-   - Local: `http://localhost:33001`
-   - Network: `http://<your-ip>:33001`
+   - Local: `http://localhost:33101`
+   - Network: `http://<your-ip>:33101`
 
 ## Configuration
 
@@ -108,7 +108,7 @@ curl -k -L -O https://github.com/YOUR_ORG/TownhallQAPoll/releases/download/v1.12
 Customize the application using environment variables:
 
 ```bash
-# Change port (default: 33001)
+# Change port (default: 33101)
 PORT=8080 ./run-offline.sh
 
 # Bind to localhost only (default: 0.0.0.0 for network access)
@@ -164,8 +164,8 @@ The package may be corrupted. Re-download from GitHub Releases.
 ### "Port already in use"
 Change the PORT environment variable or stop the process using that port:
 ```bash
-# Find process using port 33001
-lsof -i :33001
+# Find process using port 33101
+lsof -i :33101
 # Kill it (replace PID with actual process ID)
 kill <PID>
 ```
