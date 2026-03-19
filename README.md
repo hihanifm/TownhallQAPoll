@@ -70,6 +70,14 @@ cd backend && npm install
 cd ../frontend && npm install
 ```
 
+#### Git Submodule (agent-browser)
+
+This project uses `tools/agent-browser` as a Git submodule.
+
+```bash
+git submodule update --init --recursive
+```
+
 ### Running the Application
 
 1. Start the backend server (in one terminal):
