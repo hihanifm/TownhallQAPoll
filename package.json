@@ -16,7 +16,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:agent-browser": "node --test tests/agent-browser/*.test.mjs",
     "test:agent-browser:headed": "AGENT_BROWSER_HEADED=true node --test tests/agent-browser/*.test.mjs",
-    "agent-browser": "node tools/agent-browser/bin/agent-browser.js",
+    "agent-browser": "agent-browser",
     "agent-browser:help": "npm run agent-browser -- --help",
     "agent-browser:install": "npm run agent-browser -- install",
     "agent-browser:smoke": "npm run agent-browser -- open https://example.com && npm run agent-browser -- snapshot -i && npm run agent-browser -- close"
@@ -30,6 +30,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@playwright/test": "^1.40.0"
+    "@playwright/test": "^1.40.0",
+    "agent-browser": "^0.21.2"
   }
 }

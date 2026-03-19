@@ -1,3 +1,0 @@
-[submodule "tools/agent-browser"]
-	path = tools/agent-browser
-	url = https://github.com/vercel-labs/agent-browser.git

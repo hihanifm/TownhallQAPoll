@@ -11,11 +11,17 @@ const portsConfigPath = resolve(projectRoot, 'config/ports.json');
 const portsConfig = JSON.parse(readFileSync(portsConfigPath, 'utf8'));
 const frontendPort = Number(process.env.FRONTEND_PORT) || Number(portsConfig.frontend);
 const frontendUrl = process.env.FRONTEND_URL || `http://localhost:${frontendPort}`;
+const agentBrowserBin = resolve(
+  projectRoot,
+  'node_modules',
+  '.bin',
+  process.platform === 'win32' ? 'agent-browser.cmd' : 'agent-browser'
+);
 
 function runAgentBrowser(args) {
   return execFileSync(
-    'node',
-    ['tools/agent-browser/bin/agent-browser.js', ...args],
+    agentBrowserBin,
+    args,
     {
       cwd: projectRoot,
       encoding: 'utf8',
