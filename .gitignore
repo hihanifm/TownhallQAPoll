@@ -17,6 +17,7 @@ backend/data/
 .env.production.local
 *.env
 !.env.example
+!frontend/.env.example
 
 # Secrets and credentials
 *.key
