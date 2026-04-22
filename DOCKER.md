@@ -254,11 +254,7 @@ The application automatically creates backups daily at midnight. Backups are sto
 
 **Manual backup:**
 ```bash
-# Copy database
 sudo cp /var/lib/townhall/data/townhall.db /var/lib/townhall/data/backups/manual-backup-$(date +%Y%m%d_%H%M%S).db
-
-# Or use the backup API endpoint (if you have admin access)
-curl http://localhost:33101/api/system/backup
 ```
 
 ### Restore

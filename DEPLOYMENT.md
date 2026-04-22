@@ -92,14 +92,30 @@ curl -k -L -O https://github.com/YOUR_ORG/TownhallQAPoll/releases/download/v1.12
    cd townhall-qa-poll-*-offline
    ```
 
-2. **Run the application:**
+2. **Run setup** (checks Node.js, creates directories, rebuilds sqlite3 for your platform):
    ```bash
-   ./run-offline.sh
+   ./setup.sh
    ```
 
-3. **Access the application:**
+3. **Start the application:**
+   ```bash
+   ./start.sh          # Production mode (nohup background process)
+   ./start.sh -pm2     # Production mode (PM2 with auto-restart)
+   ```
+
+4. **Access the application:**
    - Local: `http://localhost:33101`
    - Network: `http://<your-ip>:33101`
+
+## Available Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `./setup.sh` | Check prerequisites, create directories, rebuild native modules |
+| `./start.sh` | Start server in background (nohup) |
+| `./start.sh -pm2` | Start server with PM2 (auto-restart on crash) |
+| `./stop.sh` | Stop the running server |
+| `./status.sh` | Show server status, ports, and log locations |
 
 ## Configuration
 
@@ -109,16 +125,16 @@ Customize the application using environment variables:
 
 ```bash
 # Change port (default: 33101)
-PORT=8080 ./run-offline.sh
+PORT=8080 ./start.sh
 
 # Bind to localhost only (default: 0.0.0.0 for network access)
-HOST=127.0.0.1 ./run-offline.sh
+HOST=127.0.0.1 ./start.sh
 
 # Combined
-PORT=8080 HOST=0.0.0.0 ./run-offline.sh
+PORT=8080 HOST=0.0.0.0 ./start.sh
 
 # Feedback moderation PIN (required for feedback admin actions)
-FEEDBACK_MASTER_PIN=change-this-to-a-strong-pin ./run-offline.sh
+FEEDBACK_MASTER_PIN=change-this-to-a-strong-pin ./start.sh
 ```
 
 ## Package Contents
@@ -133,7 +149,11 @@ townhall-qa-poll-*-offline/
 ├── frontend/
 │   ├── dist/             # Pre-built frontend
 │   └── package.json
-├── run-offline.sh        # Startup script
+├── ecosystem.config.js   # PM2 configuration
+├── setup.sh              # Prerequisite check and native module rebuild
+├── start.sh              # Start server (nohup or PM2)
+├── stop.sh               # Stop server
+├── status.sh             # Show server status
 ├── DEPLOYMENT.md         # This file
 └── README.md             # Project readme
 ```
@@ -149,7 +169,11 @@ cp backend/data/townhall.db backup-townhall.db
 
 ## Stopping the Server
 
-Press `Ctrl+C` in the terminal where the server is running.
+```bash
+./stop.sh
+```
+
+Or press `Ctrl+C` if the server is running in the foreground.
 
 ## Troubleshooting
 
@@ -170,10 +194,10 @@ lsof -i :33101
 kill <PID>
 ```
 
-### "Permission denied" when running run-offline.sh
-Make the script executable:
+### "Permission denied" when running scripts
+Make the scripts executable:
 ```bash
-chmod +x run-offline.sh
+chmod +x setup.sh start.sh stop.sh status.sh
 ```
 
 ### Certificate errors when downloading
