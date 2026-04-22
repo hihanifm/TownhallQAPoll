@@ -291,23 +291,11 @@ router.get('/questions/:id/votes', async (req, res, next) => {
       return res.status(400).json({ error: 'user_id is required' });
     }
     
-    // Check by fingerprint_hash first (prevents incognito abuse), fallback to user_id
-    let vote = null;
-    if (fingerprint_hash) {
-      vote = await getQuery(
-        'SELECT * FROM votes WHERE question_id = ? AND fingerprint_hash = ?',
-        [id, fingerprint_hash]
-      );
-    }
-    
-    // If not found by fingerprint, check by user_id for backwards compatibility
-    if (!vote) {
-      vote = await getQuery(
-        'SELECT * FROM votes WHERE question_id = ? AND user_id = ?',
-        [id, user_id]
-      );
-    }
-    
+    const vote = await getQuery(
+      'SELECT * FROM votes WHERE question_id = ? AND user_id = ?',
+      [id, user_id]
+    );
+
     res.json({ hasVoted: !!vote });
   } catch (error) {
     next(error);

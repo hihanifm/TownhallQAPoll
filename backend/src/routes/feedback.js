@@ -132,10 +132,6 @@ router.post('/feedback/:id/upvote', async (req, res, next) => {
       return res.status(400).json({ error: 'user_id is required' });
     }
     
-    if (!fingerprint_hash) {
-      return res.status(400).json({ error: 'fingerprint_hash is required' });
-    }
-    
     // Check if feedback exists
     const feedback = await getQuery(
       'SELECT * FROM feedback WHERE id = ?',
@@ -151,70 +147,40 @@ router.post('/feedback/:id/upvote', async (req, res, next) => {
       return res.status(403).json({ error: 'Cannot vote on closed feedback' });
     }
     
-    // Check if this fingerprint has already voted (primary check - prevents incognito abuse)
-    const existingVoteByFingerprint = await getQuery(
-      'SELECT * FROM feedback_votes WHERE feedback_id = ? AND fingerprint_hash = ?',
-      [id, fingerprint_hash]
-    );
-    
-    // Also check by user_id for backwards compatibility and toggle behavior
-    const existingVoteByUserId = await getQuery(
+    // Check if this user has already voted (userId is the sole identity)
+    const existingVote = await getQuery(
       'SELECT * FROM feedback_votes WHERE feedback_id = ? AND user_id = ?',
       [id, user_id]
     );
-    
+
     let hasVoted = false;
-    
-    // If vote exists by fingerprint OR user_id, remove it (toggle off)
-    if (existingVoteByFingerprint || existingVoteByUserId) {
-      // Remove vote (toggle off) - delete by fingerprint_hash to prevent incognito abuse
-      console.log('Removing vote for feedback:', id, 'fingerprint:', fingerprint_hash.substring(0, 8) + '...');
-      const deleteResult = await runQuery(
-        'DELETE FROM feedback_votes WHERE feedback_id = ? AND fingerprint_hash = ?',
-        [id, fingerprint_hash]
+
+    if (existingVote) {
+      // Toggle off — remove this user's vote
+      await runQuery(
+        'DELETE FROM feedback_votes WHERE feedback_id = ? AND user_id = ?',
+        [id, user_id]
       );
-      console.log('Delete result:', deleteResult);
       hasVoted = false;
     } else {
-      // Create vote (toggle on)
-      console.log('Adding vote for feedback:', id, 'fingerprint:', fingerprint_hash.substring(0, 8) + '...');
-      try {
-        const insertResult = await runQuery(
-          'INSERT INTO feedback_votes (feedback_id, user_id, fingerprint_hash) VALUES (?, ?, ?)',
-          [id, user_id, fingerprint_hash]
-        );
-        console.log('Insert result:', insertResult);
-        hasVoted = true;
-      } catch (insertError) {
-        // If it's a constraint error (duplicate), the vote already exists
-        if (insertError.code === 'SQLITE_CONSTRAINT') {
-          console.log('Constraint error - vote already exists (fingerprint or user_id), setting hasVoted to true');
-          hasVoted = true;
-        } else {
-          console.error('Error inserting vote:', insertError);
-          throw insertError;
-        }
-      }
+      // Toggle on — add vote (store fingerprint as metadata only)
+      await runQuery(
+        'INSERT INTO feedback_votes (feedback_id, user_id, fingerprint_hash) VALUES (?, ?, ?)',
+        [id, user_id, fingerprint_hash || null]
+      );
+      hasVoted = true;
     }
-    
+
     // Get updated vote count
     const voteCount = await getQuery(
       'SELECT COUNT(*) as count FROM feedback_votes WHERE feedback_id = ?',
       [id]
     );
-    
-    // Double-check the vote status after the operation (check by fingerprint)
-    const finalVoteCheck = await getQuery(
-      'SELECT * FROM feedback_votes WHERE feedback_id = ? AND fingerprint_hash = ?',
-      [id, fingerprint_hash]
-    );
-    
-    console.log('Final vote check:', { hasVoted, finalVoteCheck: !!finalVoteCheck, voteCount: voteCount.count });
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       vote_count: voteCount.count,
-      hasVoted: !!finalVoteCheck
+      hasVoted
     });
   } catch (error) {
     console.error('Error in feedback upvote endpoint:', error);
@@ -232,23 +198,11 @@ router.get('/feedback/:id/votes', async (req, res, next) => {
       return res.status(400).json({ error: 'user_id is required' });
     }
     
-    // Check by fingerprint_hash first (prevents incognito abuse), fallback to user_id
-    let vote = null;
-    if (fingerprint_hash) {
-      vote = await getQuery(
-        'SELECT * FROM feedback_votes WHERE feedback_id = ? AND fingerprint_hash = ?',
-        [id, fingerprint_hash]
-      );
-    }
-    
-    // If not found by fingerprint, check by user_id for backwards compatibility
-    if (!vote) {
-      vote = await getQuery(
-        'SELECT * FROM feedback_votes WHERE feedback_id = ? AND user_id = ?',
-        [id, user_id]
-      );
-    }
-    
+    const vote = await getQuery(
+      'SELECT * FROM feedback_votes WHERE feedback_id = ? AND user_id = ?',
+      [id, user_id]
+    );
+
     res.json({ hasVoted: !!vote });
   } catch (error) {
     next(error);

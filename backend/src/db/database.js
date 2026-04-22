@@ -66,13 +66,6 @@ function initDatabase() {
         }
       });
       
-      // Create unique index on fingerprint_hash if it doesn't exist
-      db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_votes_question_fingerprint ON votes(question_id, fingerprint_hash)', (indexErr) => {
-        if (indexErr && !indexErr.message.includes('already exists')) {
-          console.warn('Note: Could not create fingerprint index:', indexErr.message);
-        }
-      });
-      
       // Add status column to existing feedback table if it doesn't exist
       db.run('ALTER TABLE feedback ADD COLUMN status TEXT DEFAULT \'open\'', (alterErr) => {
         // Ignore error if column already exists
@@ -90,9 +83,65 @@ function initDatabase() {
         }
       });
       
-      resolve(db);
+      runMigrations(db)
+        .then(() => resolve(db))
+        .catch(err => {
+          console.error('Migration failed:', err);
+          resolve(db); // Don't block startup on migration failure
+        });
     });
   });
+}
+
+async function runMigrations(db) {
+  const dbRun = (sql, params = []) => new Promise((res, rej) => {
+    db.run(sql, params, function(err) { if (err) rej(err); else res(this); });
+  });
+  const dbGet = (sql, params = []) => new Promise((res, rej) => {
+    db.get(sql, params, (err, row) => { if (err) rej(err); else res(row); });
+  });
+
+  await dbRun(`CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY)`);
+  const alreadyRan = await dbGet(`SELECT name FROM _migrations WHERE name = 'drop_fingerprint_unique'`);
+  if (alreadyRan) return;
+
+  console.log('Running migration: drop_fingerprint_unique');
+
+  // Drop the old unique index on fingerprint if it exists
+  await dbRun(`DROP INDEX IF EXISTS idx_votes_question_fingerprint`);
+
+  // Recreate votes table without UNIQUE(question_id, fingerprint_hash)
+  await dbRun(`ALTER TABLE votes RENAME TO votes_old`);
+  await dbRun(`CREATE TABLE votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question_id INTEGER NOT NULL,
+    user_id TEXT NOT NULL,
+    fingerprint_hash TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (question_id) REFERENCES questions(id),
+    UNIQUE(question_id, user_id)
+  )`);
+  await dbRun(`INSERT INTO votes SELECT * FROM votes_old`);
+  await dbRun(`DROP TABLE votes_old`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_votes_question ON votes(question_id)`);
+
+  // Recreate feedback_votes table without UNIQUE(feedback_id, fingerprint_hash)
+  await dbRun(`ALTER TABLE feedback_votes RENAME TO feedback_votes_old`);
+  await dbRun(`CREATE TABLE feedback_votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    feedback_id INTEGER NOT NULL,
+    user_id TEXT NOT NULL,
+    fingerprint_hash TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (feedback_id) REFERENCES feedback(id),
+    UNIQUE(feedback_id, user_id)
+  )`);
+  await dbRun(`INSERT INTO feedback_votes SELECT * FROM feedback_votes_old`);
+  await dbRun(`DROP TABLE feedback_votes_old`);
+  await dbRun(`CREATE INDEX IF NOT EXISTS idx_feedback_votes_feedback ON feedback_votes(feedback_id)`);
+
+  await dbRun(`INSERT INTO _migrations VALUES ('drop_fingerprint_unique')`);
+  console.log('Migration drop_fingerprint_unique completed — vote identity is now userId only');
 }
 
 // Get database instance

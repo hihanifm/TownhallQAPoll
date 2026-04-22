@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
 import { getFingerprint } from '../utils/browserFingerprint';
+import { isIncognito } from '../utils/incognito';
 import { getVerifiedPin, hasVerifiedPin, clearVerifiedPin } from '../utils/campaignPin';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import './QuestionCard.css';
@@ -26,6 +27,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
   const [isUpdatingComment, setIsUpdatingComment] = useState(false);
   const [isDeletingComment, setIsDeletingComment] = useState(false);
   const [expandedComments, setExpandedComments] = useState(new Set());
+  const [isIncognitoMode, setIsIncognitoMode] = useState(false);
   const justToggledRef = useRef(false);
   const previousVoteCountRef = useRef(question.vote_count || 0);
   const previousNumberRef = useRef(number);
@@ -55,8 +57,11 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
       setFingerprintHash(hash);
     }).catch(error => {
       console.error('Error getting fingerprint:', error);
-      // Continue without fingerprint (will fallback to user_id only)
     });
+  }, []);
+
+  useEffect(() => {
+    isIncognito().then(result => setIsIncognitoMode(result)).catch(() => {});
   }, []);
 
   const checkVoteStatus = useCallback(async () => {
@@ -424,12 +429,13 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
         )}
         {!isEditing && (
           <button
-            className={`upvote-button ${hasVoted ? 'voted' : ''}`}
+            className={`upvote-button ${hasVoted ? 'voted' : ''} ${isIncognitoMode ? 'incognito-disabled' : ''}`}
             onClick={handleUpvote}
-            disabled={isVoting || isDeleting || isUpdating}
+            disabled={isVoting || isDeleting || isUpdating || isIncognitoMode}
+            title={isIncognitoMode ? 'Voting is not available in private/incognito mode' : undefined}
           >
             <span className="upvote-icon">{hasVoted ? '✓' : '↑'}</span>
-            <span className="upvote-text">{hasVoted ? 'Voted' : 'Upvote'}</span>
+            <span className="upvote-text">{isIncognitoMode ? 'Private mode' : hasVoted ? 'Voted' : 'Upvote'}</span>
             {voteCount > 0 && <span className="vote-count-inline">{voteCount}</span>}
           </button>
         )}
