@@ -19,27 +19,37 @@ This directory contains an Excalidraw-compatible architecture diagram for the To
 The diagram shows the complete architecture of the Townhall Q&A Poll application:
 
 ### Frontend Layer (React)
-- **App.jsx** - Main component with browser detection
-- **CampaignList.jsx** - Campaign management with SSE
-- **QuestionPanel.jsx** - Question display with real-time updates
-- **QuestionCard.jsx** - Individual question display
+- **App.jsx** - Main component, routing, SSE connection, browser restriction
+- **CampaignList.jsx** - Campaign list with SSE-driven real-time updates
+- **QuestionPanel.jsx** - Question display with PIN verification and campaign close
+- **QuestionCard.jsx** - Individual question with vote, edit, delete, comments
 - **CreateQuestionForm.jsx** - Question submission
-- **api.js** - API client service
-- **localStorage** - Anonymous user ID storage
+- **FeedbackPanel.jsx** - Feedback board with voting and moderation
+- **FeedbackCard.jsx** - Individual feedback item
+- **CreateFeedbackForm.jsx** - Feedback submission
+- **PinEntryModal.jsx** - Campaign PIN entry
+- **FeedbackPinModal.jsx** - Feedback moderation PIN entry
+- **api.js** - All frontend HTTP calls
+- **localStorage** - Anonymous user UUID, verified PINs
 
 ### Backend Layer (Express)
-- **server.js** - Express server (Port 33101)
-- **routes/campaigns.js** - Campaign CRUD operations
-- **routes/questions.js** - Question management
-- **routes/votes.js** - Voting functionality
-- **routes/sse.js** - Server-Sent Events for real-time updates
-- **services/sseService.js** - SSE service implementation
-- **db/database.js** - SQLite connection
+- **server.js** - Express server (Port 33101 prod, 33102 dev)
+- **middleware/validateOrigin.js** - Origin validation; permissive in dev, strict in prod
+- **routes/campaigns.js** - Campaign CRUD + PIN verification
+- **routes/questions.js** - Question management + comments
+- **routes/votes.js** - Vote toggling
+- **routes/feedback.js** - Feedback CRUD + moderation
+- **routes/sse.js** - SSE subscription handler
+- **services/sseService.js** - SSE singleton; `broadcast(campaignId)` + `broadcastAll()`
+- **db/database.js** - SQLite helpers (`getQuery`, `allQuery`, `runQuery`)
 
 ### Database Layer (SQLite)
-- **campaigns** table - Campaign storage
-- **questions** table - Question storage
-- **votes** table - Vote tracking with duplicate prevention
+- **campaigns** table - Campaign storage (title, status, creator PIN)
+- **questions** table - Question storage (text, creator, moderator flag)
+- **votes** table - Vote tracking; UNIQUE(question_id, user_id)
+- **comments** table - Moderator comments on questions
+- **feedback** table - General feedback submissions (open/closed status)
+- **feedback_votes** table - Feedback upvotes; UNIQUE(feedback_id, user_id)
 
 ### Communication
 - **HTTP/REST** - Standard API calls (solid arrow)
@@ -48,9 +58,11 @@ The diagram shows the complete architecture of the Townhall Q&A Poll application
 
 ## Features Highlighted
 
-- Real-time updates via Server-Sent Events (SSE)
-- Anonymous voting using localStorage-generated user IDs
-- Top 5 question ranking system
-- Campaign management (create, close, delete)
-- Question submission and voting
-- Duplicate vote prevention
+- Real-time updates via Server-Sent Events (SSE) — per-campaign channels
+- Anonymous voting using localStorage-generated UUIDs (user_id is sole vote identity)
+- Question ranking: sorted by vote_count DESC, created_at ASC
+- Campaign management (create with mandatory PIN, close, delete)
+- Campaign PIN system: creator_id OR PIN grants edit/delete access
+- Comments: moderators can annotate questions (campaign-level auth)
+- Feedback channel: separate from campaigns, with global moderation PIN
+- Automatic daily SQLite backups with 7-day retention

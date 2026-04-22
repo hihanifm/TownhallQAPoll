@@ -6,12 +6,14 @@ A web application that helps collect and rank the top 5 questions from employees
 
 ## Features
 
-- **Campaign Management**: Moderators can create new poll campaigns with optional initial questions
-- **Question Submission**: Employees can anonymously submit questions
-- **Voting System**: Employees can upvote questions they want to see answered
-- **Top 5 Display**: Questions are automatically sorted by vote count, with the top 5 prominently displayed
-- **Anonymity**: All interactions are anonymous - only localStorage-generated IDs are used
-- **Duplicate Prevention**: Each user can only vote once per question (enforced via localStorage ID)
+- **Campaign Management**: Moderators create poll campaigns (mandatory PIN required for edit/delete access)
+- **Question Submission**: Employees can anonymously submit questions; moderators can pre-seed questions
+- **Voting System**: Employees can upvote questions they want to see answered (one vote per user, toggleable)
+- **Comments**: Moderators can add comments to questions (requires campaign PIN)
+- **Feedback Channel**: Separate feedback board for general submissions, with voting and moderation via a global master PIN
+- **Real-time Updates**: All question, vote, and feedback changes broadcast instantly via Server-Sent Events
+- **Anonymity**: All interactions are anonymous — only localStorage-generated UUIDs are used
+- **Duplicate Prevention**: Each user can only vote once per question or feedback item
 
 ## Tech Stack
 
@@ -253,7 +255,7 @@ VITE_API_URL=https://your-backend-url.com
 ### For Moderators
 
 1. Click "New Campaign" to create a new poll
-2. Enter a campaign title (required)
+2. Enter a campaign title and a PIN (required — save this PIN to edit or delete the campaign later)
 3. Optionally add a description and/or an initial question
 4. Click "Create Campaign"
 
@@ -269,9 +271,14 @@ VITE_API_URL=https://your-backend-url.com
 
 The SQLite database is automatically created in `backend/data/townhall.db` on first run. The schema includes:
 
-- **campaigns**: Stores poll campaigns
-- **questions**: Stores questions within campaigns
-- **votes**: Tracks upvotes with duplicate prevention
+- **campaigns**: Poll campaigns (title, description, status, creator PIN)
+- **questions**: Questions within campaigns (text, creator, moderator flag)
+- **votes**: Question upvotes with duplicate prevention per user
+- **comments**: Moderator comments on questions
+- **feedback**: General feedback submissions (separate from campaigns)
+- **feedback_votes**: Upvotes on feedback items
+
+Daily backups are written to `backend/data/backups/` automatically at midnight (last 7 days retained).
 
 ## Security
 
@@ -345,12 +352,34 @@ The backend API is **restricted to only accept requests from the frontend applic
 
 ## API Endpoints
 
+**Campaigns**
 - `GET /api/campaigns` - List all campaigns
-- `POST /api/campaigns` - Create new campaign
-- `GET /api/campaigns/:id/questions` - Get questions for a campaign
-- `POST /api/campaigns/:id/questions` - Create new question
-- `POST /api/questions/:id/upvote` - Upvote a question
-- `GET /api/questions/:id/votes` - Check if user has voted
+- `POST /api/campaigns` - Create campaign (PIN required)
+- `GET /api/campaigns/:id` - Get campaign
+- `POST /api/campaigns/:id/verify-pin` - Verify campaign PIN
+- `PATCH /api/campaigns/:id/close` - Close campaign (creator or PIN)
+- `DELETE /api/campaigns/:id` - Delete campaign (creator or PIN)
+
+**Questions & Votes**
+- `GET /api/campaigns/:id/questions` - Get questions (sorted by votes DESC)
+- `POST /api/campaigns/:id/questions` - Create question
+- `PATCH /api/questions/:id` - Edit question (creator or campaign PIN)
+- `DELETE /api/questions/:id` - Delete question (creator or campaign PIN)
+- `POST /api/questions/:id/upvote` - Toggle upvote
+- `GET /api/questions/:id/votes` - Check vote status
+
+**Comments** (campaign creator or PIN only)
+- `POST /api/questions/:id/comments` - Add comment
+- `PATCH /api/questions/:id/comments/:commentId` - Edit comment
+- `DELETE /api/questions/:id/comments/:commentId` - Delete comment
+
+**Feedback**
+- `GET /api/feedback` - List feedback (`?sort=votes|time`)
+- `POST /api/feedback` - Submit feedback
+- `POST /api/feedback/verify-pin` - Verify `FEEDBACK_MASTER_PIN`
+- `POST /api/feedback/:id/upvote` - Upvote feedback
+- `PATCH /api/feedback/:id` - Edit feedback (creator only)
+- `PATCH /api/feedback/:id/close` - Close feedback (`FEEDBACK_MASTER_PIN` required)
 
 **Note**: These endpoints can only be accessed through the frontend application. Direct API access is blocked.
 
