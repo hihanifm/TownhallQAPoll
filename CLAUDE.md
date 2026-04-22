@@ -30,6 +30,16 @@ npm run test:agent-browser
 
 No unit tests or linting configured — testing is exclusively E2E via Playwright.
 
+## Security Principles
+
+These are non-negotiable constraints. Do not suggest or implement anything that violates them.
+
+**Anonymity by design**: Users have no accounts, no logins, and no persistent identity on the server. The only identity is a UUID in `localStorage` used solely for vote deduplication — it is never tied to a person, never sent to a third party, and never stored in a way that could identify a user. Do not introduce authentication, user profiles, sessions, or any server-side tracking of individuals.
+
+**Browser-only access**: The API must only be reachable from the frontend running in a real browser. In production, `validateOrigin.js` blocks all requests that lack a valid browser `Origin` or `Referer` header. Do not recommend enabling `ALLOW_NO_ORIGIN`, `ALLOW_ANY_FRONTEND_PORT`, or `ALLOW_REMOTE` — these open backdoors that bypass browser-only enforcement. Do not document or expose these escape hatches in example configs. If someone needs to call the API outside a browser (e.g. scripts, curl, Postman), that is explicitly out of scope and should be refused at the middleware level.
+
+**No fingerprinting beyond deduplication**: `fingerprint_hash` is stored in the DB but is intentionally not enforced — it exists only as a passive field and must not be used to track, identify, or block users.
+
 ## Architecture
 
 **Monorepo:** `frontend/` (React 18 + Vite SPA) and `backend/` (Express + SQLite3). Shared port config in `config/ports.json` (prod: frontend 33100, backend 33101; dev: frontend 33103, backend 33102).
@@ -42,7 +52,7 @@ No unit tests or linting configured — testing is exclusively E2E via Playwrigh
 
 **Authorization pattern**: Mutations check creator_id OR campaign PIN via an `isAuthorized(campaignId, creatorId, pin)` helper in each router. Comment endpoints follow campaign-level auth (campaign creator or PIN), not question-level auth.
 
-**Security middleware** (`middleware/validateOrigin.js`): All API requests are validated against allowed origins. Dev mode is permissive (allows localhost, private IPs, no-origin requests from tools like curl). Prod mode is strict — only configured frontend origins are accepted. Configured via env vars: `FRONTEND_URL`, `FRONTEND_URLS`, `ALLOW_ANY_FRONTEND_PORT`, `ALLOW_NO_ORIGIN`.
+**Security middleware** (`middleware/validateOrigin.js`): All API requests are validated against allowed origins. Dev mode is permissive (allows localhost and private IPs). Prod mode is strict — only browser requests from configured frontend origins are accepted. Configure allowed origins via `FRONTEND_URL` or `FRONTEND_URLS` env vars.
 
 **Production serving**: Backend serves pre-built `frontend/dist/` as static files and falls back to `index.html` for client-side routing. In dev, Vite and Express run as separate processes.
 
@@ -67,7 +77,7 @@ No unit tests or linting configured — testing is exclusively E2E via Playwrigh
 | `backend/src/services/sseService.js` | SSE singleton — `broadcast(campaignId, event)`, `broadcastAll(event)` |
 | `config/ports.json` | Port configuration shared across frontend, backend, and tests |
 | `tests/helpers/api.js` | Playwright API helpers for E2E tests; use `generateUserId()` for test users |
-| `.env.example` | All supported environment variables |
+| `.env.example` | Backend runtime env vars; `frontend/.env.example` for build-time vars |
 
 ## Deployment Alternatives
 
