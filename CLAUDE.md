@@ -36,13 +36,19 @@ No unit tests or linting configured — testing is exclusively E2E via Playwrigh
 
 **Frontend** (`frontend/src/`): React Router v6 with routes `/`, `/campaign/:id`, `/feedback`. All HTTP requests go through `services/api.js`. Real-time updates via a persistent SSE connection to `/api/sse`. Anonymous user identity is a UUID in `localStorage`, used for deduplicating votes.
 
-**Backend** (`backend/src/`): Express REST API with routers for campaigns, questions, votes, feedback, and SSE. SQLite database initialized from `db/schema.sql` on first run (5 tables: `campaigns`, `questions`, `votes`, `feedback`, `comments`). `services/sseService.js` broadcasts updates to all SSE clients on mutations.
+**Backend** (`backend/src/`): Express REST API with routers for campaigns, questions, votes, feedback, and SSE. SQLite database initialized from `db/schema.sql` on first run (6 tables: `campaigns`, `questions`, `votes`, `feedback`, `feedback_votes`, `comments`). `services/sseService.js` broadcasts updates to all SSE clients on mutations — any route that mutates data should call `sseService.broadcast(campaignId, event)` for campaign subscribers and `sseService.broadcastAll(event)` for the campaign list.
+
+**Database helpers** (`backend/src/db/database.js`): All routes query SQLite via `getQuery(sql, params)` (single row), `allQuery(sql, params)` (array), and `runQuery(sql, params)` (insert/update/delete). `formatDatetime()` converts SQLite timestamps to ISO 8601 UTC for responses.
+
+**Authorization pattern**: Mutations check creator_id OR campaign PIN via an `isAuthorized(campaignId, creatorId, pin)` helper in each router. Comment endpoints follow campaign-level auth (campaign creator or PIN), not question-level auth.
 
 **Security middleware** (`middleware/validateOrigin.js`): All API requests are validated against allowed origins. Dev mode is permissive (allows localhost, private IPs, no-origin requests from tools like curl). Prod mode is strict — only configured frontend origins are accepted. Configured via env vars: `FRONTEND_URL`, `FRONTEND_URLS`, `ALLOW_ANY_FRONTEND_PORT`, `ALLOW_NO_ORIGIN`.
 
 **Production serving**: Backend serves pre-built `frontend/dist/` as static files and falls back to `index.html` for client-side routing. In dev, Vite and Express run as separate processes.
 
-**Campaign PIN system**: Optional PIN protection on campaigns, separate from the global `FEEDBACK_MASTER_PIN` env var used for feedback moderation access.
+**Campaign PIN system**: Mandatory PIN on campaign creation, used to authorize edits/deletes when the original session is gone. Separate from the global `FEEDBACK_MASTER_PIN` env var used for feedback moderation. Both PINs are stored client-side in `localStorage` after verification.
+
+**Vote identity**: `user_id` (UUID in `localStorage`) is the sole vote deduplication key — `fingerprint_hash` is stored but not enforced. Questions are sorted `vote_count DESC, created_at ASC` for deterministic ordering.
 
 **Backup service**: Auto-daily SQLite backups at midnight via node-cron, stored in `backend/data/backups/`.
 
@@ -57,5 +63,12 @@ No unit tests or linting configured — testing is exclusively E2E via Playwrigh
 | `backend/src/db/schema.sql` | SQLite schema (authoritative) |
 | `frontend/src/App.jsx` | Root component, routing, SSE connection, browser restriction |
 | `frontend/src/services/api.js` | All frontend HTTP calls |
+| `backend/src/db/database.js` | DB query helpers: `getQuery`, `allQuery`, `runQuery`, `formatDatetime` |
+| `backend/src/services/sseService.js` | SSE singleton — `broadcast(campaignId, event)`, `broadcastAll(event)` |
 | `config/ports.json` | Port configuration shared across frontend, backend, and tests |
+| `tests/helpers/api.js` | Playwright API helpers for E2E tests; use `generateUserId()` for test users |
 | `.env.example` | All supported environment variables |
+
+## Deployment Alternatives
+
+Docker (`docker-compose.yml`) and PM2 (`ecosystem.config.js`) are available for production deployments. See `DOCKER.md` for setup instructions.
