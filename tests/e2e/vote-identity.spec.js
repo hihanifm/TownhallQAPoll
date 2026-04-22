@@ -25,7 +25,7 @@ test.describe.serial('Vote identity — userId is sole owner', () => {
   const USER_B = generateUserId();
 
   test.beforeAll(async ({ request }) => {
-    const campaign = await createCampaign(request, 'Vote Identity Test', null, USER_A);
+    const campaign = await createCampaign(request, 'Vote Identity Test', null, USER_A, null, 'votepin1');
     campaignId = campaign.id;
     const question = await createQuestion(request, campaignId, 'Does each userId vote independently?', USER_A);
     questionId = question.id;

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
+import { storeVerifiedPin } from '../utils/campaignPin';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import './CampaignList.css';
 
@@ -93,6 +94,11 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
       return;
     }
 
+    if (!formData.pin.trim()) {
+      alert('A PIN is required. Share it with others to grant them admin access if your session is lost.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const userId = getUserId();
@@ -101,10 +107,11 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
         description: formData.description.trim() || null,
         creator_id: userId,
         creator_name: formData.creator_name.trim() || null,
-        pin: formData.pin.trim() || null
+        pin: formData.pin.trim()
       };
       
       const newCampaign = await api.createCampaign(campaignData);
+      storeVerifiedPin(newCampaign.id, campaignData.pin);
       setCampaigns([newCampaign, ...campaigns]);
       setFormData({ title: '', description: '', creator_name: '', pin: '' });
       setShowCreateForm(false);
@@ -179,9 +186,10 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
             />
             <input
               type="password"
-              placeholder="PIN (optional - share with others to grant access)"
+              placeholder="PIN * (required — share to grant admin access)"
               value={formData.pin}
               onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
+              required
               disabled={isSubmitting}
             />
             <button type="submit" disabled={isSubmitting}>

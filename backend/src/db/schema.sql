@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
     status TEXT DEFAULT 'active',
     creator_id TEXT,
     creator_name TEXT,
-    pin TEXT
+    pin TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS questions (

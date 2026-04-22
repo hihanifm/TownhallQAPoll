@@ -145,10 +145,15 @@ router.post('/', async (req, res, next) => {
     if (!creator_id) {
       return res.status(400).json({ error: 'creator_id is required' });
     }
-    
+
+    if (!pin || !pin.trim()) {
+      return res.status(400).json({ error: 'A PIN is required to create a campaign' });
+    }
+    const trimmedPin = pin.trim();
+
     const result = await runQuery(
       'INSERT INTO campaigns (title, description, status, creator_id, creator_name, pin) VALUES (?, ?, ?, ?, ?, ?)',
-      [title, description || null, 'active', creator_id, creator_name || null, pin || null]
+      [title, description || null, 'active', creator_id, creator_name || null, trimmedPin]
     );
     
     const campaignId = result.lastID;

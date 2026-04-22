@@ -44,14 +44,16 @@ test.describe('Campaign Voting E2E Test', () => {
       description: 'E2E Test Campaign',
       creatorId: testUserId,
       creatorName: 'Test Author',
+      pin: 'testpin1',
     };
-    
+
     const campaign = await createCampaign(
       request,
       campaignData.title,
       campaignData.description,
       campaignData.creatorId,
-      campaignData.creatorName
+      campaignData.creatorName,
+      campaignData.pin
     );
     
     expect(campaign).toBeDefined();
@@ -409,7 +411,8 @@ test.describe('Campaign Voting E2E Test', () => {
       `Share Test Campaign ${Date.now()}`,
       'E2E Test Campaign for Share Button',
       testUserId,
-      'Share Test Creator'
+      'Share Test Creator',
+      'sharepin1'
     );
     
     expect(campaign).toBeDefined();
@@ -463,5 +466,42 @@ test.describe('Campaign Voting E2E Test', () => {
     }
 
     console.log('✓ Share button test completed successfully!');
+  });
+
+  test('should reject campaign creation without a PIN and succeed with one', async () => {
+    // Creating without a PIN must fail with 400
+    try {
+      await createCampaign(
+        request,
+        `No-PIN Campaign ${Date.now()}`,
+        'Should fail',
+        testUserId,
+        'Test Creator',
+        null
+      );
+      throw new Error('Should have rejected campaign creation without PIN');
+    } catch (error) {
+      expect(error.message).toContain('A PIN is required to create a campaign');
+      console.log('✓ Correctly rejected campaign creation without PIN');
+    }
+
+    // Creating with a PIN must succeed
+    const campaign = await createCampaign(
+      request,
+      `PIN-Required Campaign ${Date.now()}`,
+      'Should succeed',
+      testUserId,
+      'Test Creator',
+      'securepin'
+    );
+
+    expect(campaign).toBeDefined();
+    expect(campaign.id).toBeDefined();
+    expect(campaign.has_pin).toBe(true);
+    expect(campaign.pin).toBeUndefined(); // PIN value must never be returned
+    campaignId = campaign.id;
+    console.log(`✓ Created campaign with PIN - ID: ${campaignId}`);
+
+    console.log('✓ Mandatory PIN enforcement test completed successfully!');
   });
 });
