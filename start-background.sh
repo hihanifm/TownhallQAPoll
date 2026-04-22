@@ -37,6 +37,14 @@ elif [[ "$1" == "--docker" ]] || [[ "$1" == "-d" ]]; then
     MODE="prod-docker"
 fi
 
+# Dev mode always runs on 33200/33201 — separate from prod (33100/33101)
+if [ "$MODE" = "dev" ]; then
+    BACKEND_PORT=33102
+    FRONTEND_PORT=33103
+    PORT=33102
+    export BACKEND_PORT FRONTEND_PORT PORT
+fi
+
 # Create logs directory if it doesn't exist
 mkdir -p "$LOG_DIR"
 
@@ -388,7 +396,7 @@ else
         echo "  Setting NODE_ENV=development"
     fi
     
-    nohup env NODE_ENV=$NODE_ENV HOST=${HOST:-} npm start > "$LOG_DIR/backend.log" 2>&1 &
+    nohup env NODE_ENV=$NODE_ENV HOST=${HOST:-} PORT=$PORT FRONTEND_PORT=$FRONTEND_PORT npm start > "$LOG_DIR/backend.log" 2>&1 &
     BACKEND_PID=$!
     # Disown the process to fully detach it from the shell
     disown $BACKEND_PID 2>/dev/null || true
@@ -424,7 +432,7 @@ if [ "$MODE" = "dev" ]; then
     echo "Starting frontend server..."
     cd "$SCRIPT_DIR/frontend"
     echo "Starting frontend development server..."
-    nohup npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
+    nohup env PORT=$PORT FRONTEND_PORT=$FRONTEND_PORT npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
     
     FRONTEND_PID=$!
     # Disown the process to fully detach it from the shell

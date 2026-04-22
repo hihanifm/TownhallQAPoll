@@ -1,6 +1,6 @@
 {
   "name": "townhall-qa-poll",
-  "version": "1.20.0",
+  "version": "1.21.0",
   "description": "Web application to collect and rank employee questions for town hall meetings",
   "scripts": {
     "install:all": "cd backend && npm install && cd ../frontend && npm install",
@@ -12,8 +12,8 @@
     "build:frontend": "cd frontend && npm run build",
     "start:frontend:prod": "cd frontend && npm run build && npm run preview",
     "start:prod": "npm run build:frontend && cd backend && NODE_ENV=production HOST=0.0.0.0 node src/server.js",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
+    "test:e2e": "FRONTEND_PORT=33103 PORT=33102 playwright test",
+    "test:e2e:ui": "FRONTEND_PORT=33103 PORT=33102 playwright test --ui",
     "test:agent-browser": "node --test tests/agent-browser/*.test.mjs",
     "test:agent-browser:headed": "AGENT_BROWSER_HEADED=true node --test tests/agent-browser/*.test.mjs",
     "agent-browser": "agent-browser",
