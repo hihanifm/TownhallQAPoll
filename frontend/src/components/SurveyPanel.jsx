@@ -17,6 +17,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
+  const [resultsExpanded, setResultsExpanded] = useState(false);
 
   const loadSurvey = useCallback(async () => {
     if (!surveyId) return;
@@ -41,11 +42,13 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     setResultsError(null);
     const userId = getUserId();
     const pin = getVerifiedPin(surveyId);
+    const isCreator = survey.creator_id === userId;
+    const admin = isCreator || hasVerifiedPin(surveyId);
     try {
       const data = await api.getSurveyResults(surveyId, {
-        userId: submitted ? userId : undefined,
+        userId: admin ? undefined : (submitted ? userId : undefined),
         surveyPin: pin || undefined,
-        creatorId: userId,
+        creatorId: admin ? userId : undefined,
       });
       setResultsData(data);
     } catch (err) {
@@ -57,6 +60,12 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
   useEffect(() => {
     loadSurvey();
   }, [loadSurvey]);
+
+  useEffect(() => {
+    setResultsExpanded(false);
+    setResultsData(null);
+    setResultsError(null);
+  }, [surveyId]);
 
   useEffect(() => {
     if (!surveyId || !survey) return;
@@ -71,11 +80,20 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     return () => eventSource.close();
   }, [surveyId, survey, loadSurvey, loadResults]);
 
+  const userId = getUserId();
+  const hasAdminAccess = survey
+    ? survey.creator_id === userId || pinVerified
+    : false;
+  const canLoadResults = Boolean(
+    survey &&
+    (hasAdminAccess || (submitted && survey.results_visibility !== 'pin_only'))
+  );
+
   useEffect(() => {
-    if (survey && (submitted || survey.results_visibility === 'public' || pinVerified)) {
+    if (canLoadResults) {
       loadResults();
     }
-  }, [survey, submitted, pinVerified, loadResults]);
+  }, [canLoadResults, loadResults]);
 
   const handleSubmit = async (answers) => {
     setIsSubmitting(true);
@@ -117,16 +135,10 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     }
   };
 
-  const canShowResults =
-    survey &&
-    (survey.results_visibility === 'public' ||
-      submitted ||
-      pinVerified);
-
-  const visibilityLabel = {
-    pin_only: 'Results: PIN only',
-    after_submit: 'Results: after you submit',
-    public: 'Results: public',
+  const visibilityLabels = {
+    pin_only: 'Results visible with PIN only',
+    after_submit: 'Results visible after you submit',
+    public: 'Results visible to everyone (live)',
   };
 
   if (isCreating) {
@@ -167,30 +179,110 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
   }
 
   const isClosed = survey.status === 'closed';
-  const isCreator = survey.creator_id === getUserId();
+  const isCreator = survey.creator_id === userId;
+
+  const responseCount =
+    resultsData?.response_count ?? survey.response_count ?? 0;
+
+  const showResultsHint =
+    !hasAdminAccess &&
+    !submitted &&
+    !isClosed &&
+    survey.results_visibility !== 'pin_only';
 
   return (
     <div className="question-panel">
-      <div className="question-panel-header">
-        <h2>{survey.title}</h2>
-        {survey.status === 'closed' && <span className="campaign-closed-badge">Closed</span>}
+      <div className="question-panel-header survey-panel-header">
+        <h2 className="survey-title">
+          {survey.title}
+          {survey.has_pin && (
+            <svg
+              className="pin-icon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 17v5" />
+              <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a3 3 0 0 0-6 0v3.76" />
+            </svg>
+          )}
+        </h2>
+        {isClosed && <span className="campaign-closed-badge">Closed</span>}
       </div>
       {survey.description && <p className="survey-description">{survey.description}</p>}
-      <p className="survey-meta">
-        {visibilityLabel[survey.results_visibility] || survey.results_visibility}
-        {' · '}
-        {survey.response_count ?? 0} response(s)
-      </p>
 
-      {(isCreator || pinVerified) && survey.status === 'active' && (
-        <div className="survey-admin-actions">
-          <button type="button" onClick={handleClose}>Close Survey</button>
-          <button type="button" className="danger-btn" onClick={handleDelete}>Delete</button>
+      <div className="survey-admin-bar">
+        <div className="survey-admin-badges">
+          {survey.has_pin ? (
+            <span className="survey-badge survey-badge-pin" title="Admin and gated results use the survey PIN">
+              PIN protected
+            </span>
+          ) : (
+            <span className="survey-badge survey-badge-open">No PIN</span>
+          )}
+          <span className="survey-badge survey-badge-visibility">
+            {visibilityLabels[survey.results_visibility] || survey.results_visibility}
+          </span>
+          <span className={`survey-badge survey-badge-status ${isClosed ? 'closed' : 'active'}`}>
+            {isClosed ? 'Closed' : 'Accepting responses'}
+          </span>
+          <span className="survey-badge">
+            {survey.response_count ?? 0} response{(survey.response_count ?? 0) !== 1 ? 's' : ''}
+          </span>
         </div>
-      )}
+
+        <div className="survey-admin-access-row">
+          {hasAdminAccess ? (
+            <span className="survey-access survey-access-granted">
+              Admin access — {isCreator && pinVerified
+                ? 'Creator & PIN verified'
+                : isCreator
+                  ? 'You created this survey'
+                  : 'PIN verified in this browser'}
+            </span>
+          ) : (
+            <span className="survey-access survey-access-none">
+              Respondent view — enter PIN for admin (close, delete, PIN-only results)
+            </span>
+          )}
+          {survey.has_pin && !hasAdminAccess && (
+            <button
+              type="button"
+              className="survey-enter-pin-btn"
+              onClick={() => setShowPinModal(true)}
+            >
+              Enter PIN
+            </button>
+          )}
+        </div>
+
+        {hasAdminAccess && (
+          <div className="survey-admin-actions">
+            {!isClosed && (
+              <button type="button" className="survey-admin-btn" onClick={handleClose}>
+                Close survey
+              </button>
+            )}
+            <button type="button" className="survey-admin-btn danger-btn" onClick={handleDelete}>
+              Delete survey
+            </button>
+          </div>
+        )}
+      </div>
 
       {!submitted && !isClosed && (
-        <SurveyForm survey={survey} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+        <>
+          <SurveyForm survey={survey} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+          {showResultsHint && (
+            <p className="survey-results-hint">Results will appear after you submit.</p>
+          )}
+        </>
       )}
 
       {submitted && !isClosed && (
@@ -201,25 +293,46 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
         <p className="survey-closed-msg">This survey is closed.</p>
       )}
 
-      {canShowResults ? (
-        <div className="survey-results-section">
-          <h3>Results</h3>
-          <SurveyResults resultsData={resultsData} responseCount={survey.response_count} />
-        </div>
-      ) : (
-        <div className="survey-results-gated">
-          {resultsError && <p>{resultsError}</p>}
-          {!submitted && survey.results_visibility === 'after_submit' && (
-            <p>Submit the survey to see results.</p>
+      {canLoadResults && (
+        <section className="survey-results-section">
+          <button
+            type="button"
+            className="survey-results-toggle"
+            aria-expanded={resultsExpanded}
+            onClick={() => setResultsExpanded((v) => !v)}
+          >
+            <span className="survey-results-toggle-label">
+              {hasAdminAccess ? 'Results' : 'View results'}
+              {' · '}
+              {responseCount} response{responseCount !== 1 ? 's' : ''}
+              {hasAdminAccess && <span className="survey-results-admin-tag">Admin</span>}
+            </span>
+            <span className="survey-results-toggle-chevron" aria-hidden="true">
+              {resultsExpanded ? '▼' : '▶'}
+            </span>
+          </button>
+          {resultsExpanded && (
+            <div className="survey-results-body">
+              {resultsError ? (
+                <p className="survey-results-error">{resultsError}</p>
+              ) : (
+                <SurveyResults resultsData={resultsData} responseCount={responseCount} />
+              )}
+            </div>
           )}
-          {survey.results_visibility === 'pin_only' && !pinVerified && (
-            <>
-              <p>Results require the survey PIN.</p>
-              <button type="button" onClick={() => setShowPinModal(true)}>Enter PIN</button>
-            </>
-          )}
-        </div>
+        </section>
       )}
+
+      {submitted &&
+        survey.results_visibility === 'pin_only' &&
+        !hasAdminAccess && (
+          <div className="survey-results-gated">
+            <p>Aggregated results require the survey PIN.</p>
+            <button type="button" className="survey-enter-pin-btn" onClick={() => setShowPinModal(true)}>
+              Enter PIN
+            </button>
+          </div>
+        )}
 
       {showPinModal && (
         <SurveyPinEntryModal
