@@ -31,6 +31,41 @@ const INITIAL_FORM = {
   questions: [EMPTY_QUESTION()],
 };
 
+const SAMPLE_SURVEY_FORM = {
+  title: 'Sample Survey — Try All Question Types',
+  description: 'A quick demo of single choice, multiple choice, rating, and short text. Edit anything before publishing.',
+  pin: '',
+  require_participant_pin: false,
+  participant_pin: '',
+  results_visibility: 'after_submit',
+  questions: [
+    {
+      prompt: 'Which mythical creature best matches your Monday mood?',
+      type: 'single',
+      options: ['Dragon', 'Sloth', 'Phoenix', 'Unicorn'],
+      allow_other: true,
+    },
+    {
+      prompt: 'Which office upgrades would you vote for? (pick all that apply)',
+      type: 'multi',
+      options: ['Standing desks', 'Better coffee', 'Quiet rooms', 'More plants'],
+      allow_other: false,
+    },
+    {
+      prompt: 'How would you rate our office Wi‑Fi?',
+      type: 'rating',
+      options: ['Option 1', 'Option 2'],
+      allow_other: false,
+    },
+    {
+      prompt: 'What device serial number are you looking for?',
+      type: 'text',
+      options: ['Option 1', 'Option 2'],
+      allow_other: false,
+    },
+  ],
+};
+
 function validateDetails(formData) {
   if (!formData.title.trim()) return 'Survey title is required';
   if (!formData.pin.trim()) return 'A PIN is required for results and admin access';
@@ -107,6 +142,17 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
     setError(null);
     setStep(2);
     setMaxStepReached((m) => Math.max(m, 2));
+  };
+
+  const handleLoadSample = () => {
+    setFormData({
+      ...SAMPLE_SURVEY_FORM,
+      pin: formData.pin,
+      require_participant_pin: formData.require_participant_pin,
+      participant_pin: formData.participant_pin,
+    });
+    setActiveQuestionIndex(0);
+    setError(null);
   };
 
   const questionCount = formData.questions.length;
@@ -378,6 +424,14 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
             </select>
           </label>
           <div className="wizard-footer">
+            <button
+              type="button"
+              className="wizard-secondary-btn"
+              onClick={handleLoadSample}
+              disabled={isSubmitting}
+            >
+              Load sample survey
+            </button>
             <button type="button" className="wizard-primary-btn" onClick={handleNextFromDetails}>
               Continue to questions
             </button>
