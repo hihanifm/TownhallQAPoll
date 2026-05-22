@@ -462,7 +462,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
         onQuestionCreated={handleQuestionCreated}
       />
 
-      <WelcomeCard />
+      <WelcomeCard variant="compact" />
 
       {campaign && (
         <div className="campaign-footer">

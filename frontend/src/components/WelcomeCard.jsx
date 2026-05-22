@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react';
 import { getConfig } from '../services/configService';
 import './WelcomeCard.css';
 
-function WelcomeCard({ configKey = 'welcome', compact = false }) {
+function WelcomeCard({ configKey = 'welcome', variant = 'default' }) {
   const [welcomeText, setWelcomeText] = useState('Welcome to Townhall Q&A Poll\n\nAsk questions, vote on what matters most, and have your voice heard. Questions with the most votes get priority attention.');
 
-  // Load configuration on mount
   useEffect(() => {
     getConfig().then(config => {
       const text = config[configKey];
@@ -15,7 +14,6 @@ function WelcomeCard({ configKey = 'welcome', compact = false }) {
     });
   }, [configKey]);
 
-  // Parse text with markdown-style bold syntax (**text**)
   const parseTextWithBold = (text) => {
     const parts = [];
     const regex = /\*\*(.*?)\*\*/g;
@@ -24,16 +22,13 @@ function WelcomeCard({ configKey = 'welcome', compact = false }) {
     let key = 0;
 
     while ((match = regex.exec(text)) !== null) {
-      // Add text before the bold section
       if (match.index > lastIndex) {
         parts.push(text.substring(lastIndex, match.index));
       }
-      // Add bold text with blue color
       parts.push(<strong key={key++} className="welcome-bold">{match[1]}</strong>);
       lastIndex = regex.lastIndex;
     }
 
-    // Add remaining text after the last bold section
     if (lastIndex < text.length) {
       parts.push(text.substring(lastIndex));
     }
@@ -41,21 +36,20 @@ function WelcomeCard({ configKey = 'welcome', compact = false }) {
     return parts.length > 0 ? parts : text;
   };
 
-  // Convert newlines to paragraphs and parse bold text
-  const lines = welcomeText.split('\n').filter(line => line.trim() !== '');
-  const formattedText = lines.map((line, index) => {
-    const isFeatureHeader = /^[A-Z][^:]+:/.test(line.trim());
-    return (
-      <p key={index} className={isFeatureHeader ? 'welcome-feature-header' : 'welcome-paragraph'}>
-        {parseTextWithBold(line)}
-      </p>
-    );
-  });
+  const lines = welcomeText.split('\n');
+  const formattedText = lines.map((line, index) => (
+    <span key={index}>
+      {parseTextWithBold(line)}
+      {index < lines.length - 1 && <br />}
+    </span>
+  ));
+
+  const isCompact = variant === 'compact';
 
   return (
-    <div className={`welcome-card${compact ? ' welcome-card-compact' : ''}`}>
+    <div className={`welcome-card${isCompact ? ' welcome-card--compact' : ''}`}>
       <div className="welcome-card-content">
-        <div className="welcome-description">{formattedText}</div>
+        <p className="welcome-description">{formattedText}</p>
       </div>
     </div>
   );

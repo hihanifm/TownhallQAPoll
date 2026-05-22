@@ -271,7 +271,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
   if (!surveyId) {
     return (
       <div className="question-panel empty">
-        <WelcomeCard configKey="welcomeSurveys" compact />
+        <WelcomeCard configKey="welcomeSurveys" variant="compact" />
       </div>
     );
   }
