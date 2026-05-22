@@ -157,6 +157,10 @@
   background: #fee2e2;
 }
 
+.survey-question-panel {
+  position: relative;
+}
+
 .survey-thanks,
 .survey-closed-msg {
   padding: 12px;

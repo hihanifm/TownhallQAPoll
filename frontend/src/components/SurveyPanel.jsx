@@ -7,6 +7,7 @@ import SurveyResults from './SurveyResults';
 import SurveyPinEntryModal from './SurveyPinEntryModal';
 import CreateSurveyWizard from './CreateSurveyWizard';
 import { exportSurveySummaryCsv } from '../utils/surveyExport';
+import SurveyThanksCelebration from './SurveyThanksCelebration';
 import './QuestionPanel.css';
 import './SurveyResults.css';
 
@@ -21,6 +22,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
   const [pinVerified, setPinVerified] = useState(false);
   const [resultsExpanded, setResultsExpanded] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const loadSurvey = useCallback(async () => {
     if (!surveyId) return;
@@ -38,6 +40,10 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     } finally {
       setIsLoading(false);
     }
+  }, [surveyId]);
+
+  useEffect(() => {
+    setShowCelebration(false);
   }, [surveyId]);
 
   const loadResults = useCallback(async () => {
@@ -98,12 +104,15 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     }
   }, [canLoadResults, loadResults]);
 
+  const endCelebration = useCallback(() => setShowCelebration(false), []);
+
   const handleSubmit = async (answers) => {
     setIsSubmitting(true);
     try {
       const userId = getUserId();
       await api.submitSurvey(surveyId, userId, answers);
       setSubmitted(true);
+      setShowCelebration(true);
       await loadSurvey();
       await loadResults();
     } catch (err) {
@@ -232,7 +241,10 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     survey.results_visibility !== 'pin_only';
 
   return (
-    <div className="question-panel">
+    <div className="question-panel survey-question-panel">
+      {showCelebration && (
+        <SurveyThanksCelebration onComplete={endCelebration} />
+      )}
       <div className="question-panel-header survey-panel-header">
         <h2 className="survey-title">
           {survey.title}

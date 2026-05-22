@@ -1,0 +1,143 @@
+.survey-graffiti-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(4px);
+  animation: surveyGraffitiFadeIn 0.35s ease-out, surveyGraffitiFadeOut 0.5s ease-in 2.7s forwards;
+  pointer-events: none;
+}
+
+.survey-graffiti-message {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 28px 36px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(37, 99, 235, 0.15);
+  border: 2px solid #bfdbfe;
+  animation: surveyGraffitiPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.survey-graffiti-message h3 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 800;
+  color: #1e40af;
+  letter-spacing: -0.02em;
+}
+
+.survey-graffiti-message p {
+  margin: 0;
+  font-size: 15px;
+  color: #475569;
+}
+
+.survey-graffiti-tag {
+  position: absolute;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0;
+  text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.8);
+  animation: surveyGraffitiTagPop 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+
+.survey-graffiti-splats {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.survey-graffiti-splat {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  animation: surveyGraffitiSplat 0.6s ease-out forwards;
+}
+
+.splat-a {
+  width: 120px;
+  height: 90px;
+  top: 18%;
+  left: 20%;
+  background: rgba(251, 191, 36, 0.35);
+  transform: rotate(-25deg);
+}
+
+.splat-b {
+  width: 100px;
+  height: 100px;
+  bottom: 22%;
+  right: 18%;
+  background: rgba(59, 130, 246, 0.3);
+  animation-delay: 0.1s;
+}
+
+.splat-c {
+  width: 80px;
+  height: 110px;
+  top: 45%;
+  right: 30%;
+  background: rgba(236, 72, 153, 0.28);
+  animation-delay: 0.18s;
+}
+
+@keyframes surveyGraffitiFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes surveyGraffitiFadeOut {
+  to { opacity: 0; visibility: hidden; }
+}
+
+@keyframes surveyGraffitiPop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes surveyGraffitiTagPop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0.92;
+    transform: scale(1);
+  }
+}
+
+@keyframes surveyGraffitiSplat {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .survey-graffiti-message,
+  .survey-graffiti-tag,
+  .survey-graffiti-splat {
+    animation: none;
+    opacity: 1;
+  }
+
+  .survey-graffiti-overlay {
+    animation: surveyGraffitiFadeOut 0.5s ease-in 2.5s forwards;
+  }
+}
