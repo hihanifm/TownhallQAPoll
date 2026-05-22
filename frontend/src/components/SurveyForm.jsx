@@ -133,6 +133,10 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
     return () => window.removeEventListener('keydown', handleKeyboard);
   }, [handleKeyboard]);
 
+  useEffect(() => {
+    wrapRef.current?.focus({ preventScroll: true });
+  }, [currentStep]);
+
   const renderQuestion = (q) => {
     const opts = q.options?.options || (Array.isArray(q.options) ? q.options : []);
     const allowOther = q.options?.allow_other;
@@ -307,6 +311,7 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
   return (
     <div
       ref={wrapRef}
+      tabIndex={-1}
       className={`survey-form-wrap ${preview ? 'survey-form-preview' : ''}`}
     >
       {preview && (

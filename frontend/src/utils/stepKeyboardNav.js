@@ -36,7 +36,6 @@ export function handleStepKeyboard(e, { container, onPrev, onNext, isLast, onSub
   };
 
   if (e.key === 'Enter') {
-    if (inChoice) return false;
     if (target?.tagName === 'TEXTAREA' && !(e.ctrlKey || e.metaKey)) return false;
     if (target?.tagName === 'TEXTAREA' && e.shiftKey) return false;
     e.preventDefault();
