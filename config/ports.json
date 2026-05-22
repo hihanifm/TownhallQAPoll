@@ -1,4 +1,8 @@
 {
-  "frontend": 33100,
-  "backend": 33101
+  "frontend": 33111,
+  "backend": 33111,
+  "dev": {
+    "frontend": 33113,
+    "backend": 33112
+  }
 }

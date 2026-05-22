@@ -11,7 +11,7 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 source "$SCRIPT_DIR/port-config.sh"
-load_port_config "$SCRIPT_DIR"
+load_dev_port_config "$SCRIPT_DIR"
 
 # Colors for output
 RED='\033[0;31m'

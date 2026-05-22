@@ -93,8 +93,8 @@ docker-compose ps
 ```
 
 Access the application:
-- Local: http://localhost:33101
-- Network: http://<your-ip>:33101
+- Local: http://localhost:33111
+- Network: http://<your-ip>:33111
 
 ## Directory Structure
 
@@ -129,12 +129,12 @@ Set in `docker-compose.yml` or `.env` file:
 
 - `NODE_ENV`: `production` (set automatically)
 - `HOST`: `0.0.0.0` (set automatically, allows network access)
-- `PORT`: `33101` (set automatically)
+- `PORT`: `33111` (set automatically)
 - `FRONTEND_URL`: Optional, for CORS validation
 
 **Example `.env` file:**
 ```bash
-FRONTEND_URL=http://localhost:33100
+FRONTEND_URL=http://localhost:33111
 ```
 
 ## Managing the Container
@@ -287,7 +287,7 @@ The volume mount ensures the database persists even if the container is removed.
 docker-compose logs
 
 # Check if port is in use
-lsof -i :33101
+lsof -i :33111
 
 # Check container status
 docker-compose ps
@@ -324,7 +324,7 @@ docker-compose build 2>&1 | tee build.log
 docker inspect townhall-qa-poll | grep -A 10 Health
 
 # Test health endpoint manually
-curl http://localhost:33101/api/health
+curl http://localhost:33111/api/health
 
 # Check if wget is available in container
 docker-compose exec townhall-app which wget
@@ -370,7 +370,7 @@ If you're currently using PM2:
 3. **Verify everything works:**
    ```bash
    ./status-background.sh
-   curl http://localhost:33101/api/health
+   curl http://localhost:33111/api/health
    ```
 
 4. **Remove PM2 startup (if configured):**
@@ -403,7 +403,7 @@ docker-compose up -d
 
 ## Security Considerations
 
-1. **Firewall**: Ensure port 33101 is properly configured in your firewall
+1. **Firewall**: Ensure port 33111 is properly configured in your firewall
 2. **Network access**: The container binds to `0.0.0.0` (all interfaces) by default
 3. **Database location**: Database is stored in `/var/lib/townhall/data/` (protected system directory)
 4. **Permissions**: Directories should be owned by the user running Docker

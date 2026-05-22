@@ -12,7 +12,6 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
 LOG_DIR="$SCRIPT_DIR/logs"
 source "$SCRIPT_DIR/port-config.sh"
-load_port_config "$SCRIPT_DIR"
 
 # Function to get version
 get_version() {
@@ -37,12 +36,10 @@ elif [[ "$1" == "--docker" ]] || [[ "$1" == "-d" ]]; then
     MODE="prod-docker"
 fi
 
-# Dev mode always runs on 33200/33201 — separate from prod (33100/33101)
 if [ "$MODE" = "dev" ]; then
-    BACKEND_PORT=33102
-    FRONTEND_PORT=33103
-    PORT=33102
-    export BACKEND_PORT FRONTEND_PORT PORT
+    load_dev_port_config "$SCRIPT_DIR"
+else
+    load_port_config "$SCRIPT_DIR"
 fi
 
 # Create logs directory if it doesn't exist

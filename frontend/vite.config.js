@@ -7,18 +7,20 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const portsConfigPath = resolve(__dirname, '../config/ports.json')
 const portsConfig = JSON.parse(readFileSync(portsConfigPath, 'utf8'))
+const devPorts = portsConfig.dev || {}
 
-const frontendPort = Number(process.env.FRONTEND_PORT) || portsConfig.frontend
-const backendPort = Number(process.env.PORT) || Number(process.env.BACKEND_PORT) || portsConfig.backend
+const devFrontendPort = Number(process.env.FRONTEND_PORT) || Number(devPorts.frontend) || portsConfig.frontend
+const devBackendPort = Number(process.env.PORT) || Number(process.env.BACKEND_PORT) || Number(devPorts.backend) || portsConfig.backend
+const previewFrontendPort = Number(process.env.FRONTEND_PORT) || portsConfig.frontend
 
 export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0', // Allow remote access
-    port: frontendPort,
+    port: devFrontendPort,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || `http://localhost:${backendPort}`,
+        target: process.env.VITE_API_URL || `http://localhost:${devBackendPort}`,
         changeOrigin: true,
         // Preserve the origin header so backend can validate it
         configure: (proxy, options) => {
@@ -38,7 +40,7 @@ export default defineConfig({
   },
   preview: {
     host: '0.0.0.0', // Allow remote access
-    port: frontendPort
+    port: previewFrontendPort
   }
 })
 

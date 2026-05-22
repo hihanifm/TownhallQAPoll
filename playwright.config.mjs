@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const portsConfigPath = resolve(__dirname, 'config/ports.json');
 const portsConfig = JSON.parse(readFileSync(portsConfigPath, 'utf8'));
-const frontendPort = Number(process.env.FRONTEND_PORT) || Number(portsConfig.frontend);
+const devPorts = portsConfig.dev || {};
+const frontendPort = Number(process.env.FRONTEND_PORT) || Number(devPorts.frontend) || Number(portsConfig.frontend);
 const baseURL = process.env.FRONTEND_URL || `http://localhost:${frontendPort}`;
 
 /**

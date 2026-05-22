@@ -33,7 +33,7 @@ The diagram shows the complete architecture of the Townhall Q&A Poll application
 - **localStorage** - Anonymous user UUID, verified PINs
 
 ### Backend Layer (Express)
-- **server.js** - Express server (Port 33101 prod, 33102 dev)
+- **server.js** - Express server (Port 33111 prod, 33112 dev)
 - **middleware/validateOrigin.js** - Origin validation; permissive in dev, strict in prod
 - **routes/campaigns.js** - Campaign CRUD + PIN verification
 - **routes/questions.js** - Question management + comments

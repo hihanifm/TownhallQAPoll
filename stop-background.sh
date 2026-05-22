@@ -7,6 +7,10 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/server.pids"
 source "$SCRIPT_DIR/port-config.sh"
 load_port_config "$SCRIPT_DIR"
+load_dev_port_config "$SCRIPT_DIR"
+DEV_FRONTEND_PORT="$FRONTEND_PORT"
+DEV_BACKEND_PORT="$BACKEND_PORT"
+load_port_config "$SCRIPT_DIR"
 
 # Function to get version
 get_version() {
@@ -77,9 +81,15 @@ if [ ! -f "$PID_FILE" ]; then
     # Try to find and kill by port
     BACKEND_PID=$(lsof -ti:$BACKEND_PORT 2>/dev/null)
     FRONTEND_PID=$(lsof -ti:$FRONTEND_PORT 2>/dev/null)
+    if [ -z "$BACKEND_PID" ]; then
+        BACKEND_PID=$(lsof -ti:$DEV_BACKEND_PORT 2>/dev/null)
+    fi
+    if [ -z "$FRONTEND_PID" ]; then
+        FRONTEND_PID=$(lsof -ti:$DEV_FRONTEND_PORT 2>/dev/null)
+    fi
     
     if [ -z "$BACKEND_PID" ] && [ -z "$FRONTEND_PID" ]; then
-        echo "No servers found running on ports $FRONTEND_PORT or $BACKEND_PORT."
+        echo "No servers found running on ports $FRONTEND_PORT, $BACKEND_PORT, $DEV_FRONTEND_PORT, or $DEV_BACKEND_PORT."
         exit 0
     fi
 else
@@ -126,19 +136,14 @@ else
     echo "Frontend server not found (may already be stopped)"
 fi
 
-# Clean up any remaining processes on the ports
-BACKEND_PORT_PID=$(lsof -ti:$BACKEND_PORT 2>/dev/null)
-FRONTEND_PORT_PID=$(lsof -ti:$FRONTEND_PORT 2>/dev/null)
-
-if [ -n "$BACKEND_PORT_PID" ]; then
-    echo "Killing process on port $BACKEND_PORT (PID: $BACKEND_PORT_PID)..."
-    kill -9 $BACKEND_PORT_PID 2>/dev/null
-fi
-
-if [ -n "$FRONTEND_PORT_PID" ]; then
-    echo "Killing process on port $FRONTEND_PORT (PID: $FRONTEND_PORT_PID)..."
-    kill -9 $FRONTEND_PORT_PID 2>/dev/null
-fi
+# Clean up any remaining processes on prod or dev ports
+for port in "$BACKEND_PORT" "$FRONTEND_PORT" "$DEV_BACKEND_PORT" "$DEV_FRONTEND_PORT"; do
+    PORT_PID=$(lsof -ti:$port 2>/dev/null)
+    if [ -n "$PORT_PID" ]; then
+        echo "Killing process on port $port (PID: $PORT_PID)..."
+        kill -9 $PORT_PID 2>/dev/null
+    fi
+done
 
 # Remove PID file
 if [ -f "$PID_FILE" ]; then

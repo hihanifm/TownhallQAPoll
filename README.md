@@ -88,7 +88,9 @@ npm run dev:backend
 npm run start:backend:prod
 ```
 
-The backend will run on `http://localhost:33101`
+The backend will run on `http://localhost:33111` (production defaults from `config/ports.json`).
+
+**Development** (`npm run dev:backend` / `npm run dev:frontend` or `./start-background.sh`): backend `http://localhost:33112`, frontend `http://localhost:33113`.
 
 **Note**: The scripts automatically set `NODE_ENV`:
 - Development: `NODE_ENV=development` (allows testing with curl, Postman, etc.)
@@ -102,11 +104,11 @@ npm run start:frontend
 npm run dev:frontend
 ```
 
-The frontend will run on `http://localhost:33100`
+The frontend will run on `http://localhost:33111` (or `http://localhost:33113` when using `dev:frontend`).
 
-3. Open your browser and navigate to `http://localhost:33100`
+3. Open your browser at the URL shown in the terminal (33111 for prod defaults, 33113 for dev).
 
-Port defaults come from `config/ports.json`. Update that file to change both frontend/backend ports in one place.
+Port defaults come from `config/ports.json` (`frontend`/`backend` for production, `dev` for development). Update that file to change ports in one place.
 
 ## Running in Background (Linux/macOS only)
 
@@ -150,7 +152,7 @@ To run both servers in the background on Linux or macOS, use the provided shell 
 
 - **`stop-background.sh`** (Linux/macOS only)
   - Stops both servers by their saved process IDs
-  - Also checks and kills any processes using ports 33100 and 33101
+  - Also checks and kills processes on prod port 33111 or dev ports 33112/33113
   - Cleans up the PID file
 
 - **`status-background.sh`** (Linux/macOS only)
@@ -192,13 +194,13 @@ For quick testing and sharing during development:
 2. Start your backend and frontend servers as usual
 3. In a new terminal, run:
    ```bash
-   ngrok http 33100
+   ngrok http 33111
    ```
 4. Share the ngrok URL (e.g., `https://abc123.ngrok.io`) with others
 
 **Note:** The frontend proxy needs to know the backend URL. Set environment variable:
 ```bash
-VITE_API_URL=http://your-ngrok-backend-url:33101 npm run dev:frontend
+VITE_API_URL=http://your-ngrok-backend-url:33112 npm run dev:frontend
 ```
 
 ### Option 2: Local Network Access
@@ -208,10 +210,10 @@ To allow access from other devices on your local network:
 1. Find your local IP address:
    - **macOS/Linux**: `ifconfig | grep "inet "` or `ip addr show`
 2. Start the servers (they now listen on `0.0.0.0` by default)
-3. Access from other devices using: `http://YOUR_IP_ADDRESS:33100`
-   - Example: `http://192.168.1.100:33100`
+3. Access from other devices using: `http://YOUR_IP_ADDRESS:33111`
+   - Example: `http://192.168.1.100:33111`
 
-**Security Note:** Make sure your firewall allows connections on ports 33100 and 33101.
+**Security Note:** Allow port 33111 for production, or 33112 and 33113 for development.
 
 ### Option 3: Production Deployment
 
@@ -227,7 +229,7 @@ For production use, consider deploying to:
 
 Create a `.env` file in the backend directory:
 ```env
-PORT=33101
+PORT=33111
 HOST=0.0.0.0
 NODE_ENV=production
 FEEDBACK_MASTER_PIN=change-this-to-a-strong-pin
@@ -244,7 +246,7 @@ VITE_API_URL=https://your-backend-url.com
 
 ### Option 4: Self-Hosted with Port Forwarding
 
-1. Configure your router to forward ports 33100 (frontend) and 33101 (backend) to your machine
+1. Configure your router to forward port 33111 (production) or ports 33112 and 33113 (development) to your machine
 2. Use a dynamic DNS service (like DuckDNS) if you don't have a static IP
 3. Access via your public IP or domain name
 
@@ -289,14 +291,14 @@ The backend API is **restricted to only accept requests from the frontend applic
 **Security Features:**
 - **CORS Protection**: Only requests from allowed frontend origins are accepted
 - **Origin Validation**: Middleware validates that requests come from the authorized frontend
-- **Automatic IP Support**: By default, any origin on port 33100 is allowed (works with IP addresses automatically)
+- **Automatic IP Support**: By default, any origin on port 33111 is allowed (works with IP addresses automatically)
 - **Localhost Binding**: By default, backend binds to `127.0.0.1` (localhost only), preventing network access
 
 **How It Works:**
-- ✅ **No configuration needed for IP addresses!** If you access the frontend via `http://192.168.1.100:33100`, it will automatically work
-- ✅ The system allows any origin on port 33100 (the frontend port) by default
+- ✅ **No configuration needed for IP addresses!** If you access the frontend via `http://192.168.1.100:33111`, it will automatically work
+- ✅ The system allows any origin on port 33111 (the frontend port) by default
 - ✅ You can still explicitly set `FRONTEND_URL` for production domains
-- ✅ Direct API access (e.g., `curl http://localhost:33101/api/campaigns`) is blocked
+- ✅ Direct API access (e.g., `curl http://localhost:33111/api/campaigns`) is blocked
 
 **Configuration:**
 
@@ -320,12 +322,12 @@ The backend API is **restricted to only accept requests from the frontend applic
    FRONTEND_URL=https://your-frontend-domain.com npm run start:backend
    
    # Or multiple URLs (comma-separated)
-   FRONTEND_URLS=http://localhost:33100,https://your-frontend-domain.com npm run start:backend
+   FRONTEND_URLS=http://localhost:33111,https://your-frontend-domain.com npm run start:backend
    ```
 
 4. **Strict Mode** (only explicitly allowed origins):
    ```bash
-   # Disable automatic port 33100 allowance (more restrictive)
+   # Disable automatic port 33111 allowance (more restrictive)
    ALLOW_ANY_FRONTEND_PORT=false npm run start:backend
    ```
    This requires you to explicitly set `FRONTEND_URL` or `FRONTEND_URLS`.

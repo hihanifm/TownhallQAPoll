@@ -104,8 +104,8 @@ curl -k -L -O https://github.com/YOUR_ORG/TownhallQAPoll/releases/download/v1.12
    ```
 
 4. **Access the application:**
-   - Local: `http://localhost:33101`
-   - Network: `http://<your-ip>:33101`
+   - Local: `http://localhost:33111`
+   - Network: `http://<your-ip>:33111`
 
 ## Available Scripts
 
@@ -124,7 +124,7 @@ curl -k -L -O https://github.com/YOUR_ORG/TownhallQAPoll/releases/download/v1.12
 Customize the application using environment variables:
 
 ```bash
-# Change port (default: 33101)
+# Change port (default: 33111)
 PORT=8080 ./start.sh
 
 # Bind to localhost only (default: 0.0.0.0 for network access)
@@ -188,8 +188,8 @@ The package may be corrupted. Re-download from GitHub Releases.
 ### "Port already in use"
 Change the PORT environment variable or stop the process using that port:
 ```bash
-# Find process using port 33101
-lsof -i :33101
+# Find process using port 33111
+lsof -i :33111
 # Kill it (replace PID with actual process ID)
 kill <PID>
 ```

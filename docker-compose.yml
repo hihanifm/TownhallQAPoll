@@ -9,11 +9,11 @@ services:
         VITE_ENABLE_BROWSER_RESTRICTION: true
     container_name: townhall-qa-poll
     ports:
-      - "${BACKEND_PORT:-33101}:${BACKEND_PORT:-33101}"
+      - "${BACKEND_PORT:-33111}:${BACKEND_PORT:-33111}"
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
-      - PORT=${BACKEND_PORT:-33101}
+      - PORT=${BACKEND_PORT:-33111}
       - FRONTEND_URL=${FRONTEND_URL:-}
       - FEEDBACK_MASTER_PIN=${FEEDBACK_MASTER_PIN}
     volumes:
@@ -23,7 +23,7 @@ services:
       - /var/log/townhall:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:${BACKEND_PORT:-33101}/api/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:${BACKEND_PORT:-33111}/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

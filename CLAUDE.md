@@ -9,8 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run install:all
 
 # Development (two terminals)
-npm run dev:backend      # Express API on port 33102, auto-reload
-npm run dev:frontend     # Vite dev server on port 33103, HMR
+npm run dev:backend      # Express API on port 33112, auto-reload
+npm run dev:frontend     # Vite dev server on port 33113, HMR
 
 # Or run both in background (macOS/Linux)
 ./start-background.sh
@@ -43,7 +43,7 @@ These are non-negotiable constraints. Do not suggest or implement anything that 
 
 ## Architecture
 
-**Monorepo:** `frontend/` (React 18 + Vite SPA) and `backend/` (Express + SQLite3). Shared port config in `config/ports.json` (prod: frontend 33100, backend 33101; dev: frontend 33103, backend 33102).
+**Monorepo:** `frontend/` (React 18 + Vite SPA) and `backend/` (Express + SQLite3). Shared port config in `config/ports.json` (prod: 33111; dev: frontend 33113, backend 33112).
 
 **Frontend** (`frontend/src/`): React Router v6 with routes `/`, `/campaign/:id`, `/surveys`, `/survey/:id`, `/feedback`. All HTTP requests go through `services/api.js`. Real-time updates via a persistent SSE connection to `/api/sse`. Anonymous user identity is a UUID in `localStorage`, used for deduplicating votes and survey submissions.
 

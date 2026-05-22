@@ -9,7 +9,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, '..', '..');
 const portsConfigPath = resolve(projectRoot, 'config/ports.json');
 const portsConfig = JSON.parse(readFileSync(portsConfigPath, 'utf8'));
-const frontendPort = Number(process.env.FRONTEND_PORT) || Number(portsConfig.frontend);
+const devPorts = portsConfig.dev || {};
+const frontendPort = Number(process.env.FRONTEND_PORT) || Number(devPorts.frontend) || Number(portsConfig.frontend);
 const frontendUrl = process.env.FRONTEND_URL || `http://localhost:${frontendPort}`;
 const agentBrowserBin = resolve(
   projectRoot,
