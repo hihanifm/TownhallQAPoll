@@ -5,6 +5,7 @@ import {
   getSurvey,
   submitSurvey,
   getSurveyResults,
+  exportSurveyResponses,
   checkBackendHealth,
 } from '../helpers/api.js';
 import { BACKEND_BASE_URL } from '../helpers/ports.js';
@@ -111,5 +112,35 @@ test.describe('Survey E2E', () => {
     const results = await getSurveyResults(request, survey.id);
     expect(results.ok).toBe(true);
     expect(results.data.results[0].counts.Yes).toBe(1);
+  });
+
+  test('export responses CSV requires admin and includes submission row', async ({ request }) => {
+    const creatorId = generateUserId();
+    const respondentId = generateUserId();
+    const pin = 'export-pin-99';
+
+    const survey = await createSurvey(request, {
+      title: `Export ${Date.now()}`,
+      creatorId,
+      pin,
+      results_visibility: 'pin_only',
+      questions: [{ prompt: 'Favorite', type: 'single', options: ['X', 'Y'] }],
+    });
+
+    const full = await getSurvey(request, survey.id);
+    await submitSurvey(request, survey.id, respondentId, [
+      { question_id: full.questions[0].id, value: 'X' },
+    ]);
+
+    const blocked = await exportSurveyResponses(request, survey.id, { surveyPin: 'wrong' });
+    expect(blocked.ok).toBe(false);
+    expect(blocked.status).toBe(403);
+
+    const exported = await exportSurveyResponses(request, survey.id, { surveyPin: pin });
+    expect(exported.ok).toBe(true);
+    expect(exported.csv).toContain('submitted_at');
+    expect(exported.csv).toContain('Favorite');
+    expect(exported.csv).toContain('X');
+    expect(exported.csv).not.toContain(respondentId);
   });
 });

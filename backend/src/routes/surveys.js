@@ -210,6 +210,72 @@ async function buildResults(surveyId) {
   return results;
 }
 
+function csvCell(value) {
+  const str = String(value ?? '');
+  if (/[",\n\r]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function formatAnswerForExport(rawValue, type) {
+  let val = rawValue;
+  if (typeof rawValue === 'string') {
+    try {
+      val = JSON.parse(rawValue);
+    } catch {
+      val = rawValue;
+    }
+  }
+  if (type === 'text') {
+    return typeof val === 'string' ? val : String(val ?? '');
+  }
+  if (type === 'rating') {
+    return val != null ? String(val) : '';
+  }
+  if (type === 'single') {
+    if (val && typeof val === 'object' && val.other != null) {
+      return `Other: ${val.other}`;
+    }
+    return typeof val === 'string' ? val : '';
+  }
+  if (type === 'multi') {
+    const selected = Array.isArray(val?.selected) ? val.selected : (Array.isArray(val) ? val : []);
+    const parts = [...selected];
+    if (val?.other) {
+      parts.push(`Other: ${val.other}`);
+    }
+    return parts.join('; ');
+  }
+  return '';
+}
+
+async function buildResponsesCsv(surveyId) {
+  const questions = await getSurveyQuestions(surveyId);
+  const submissions = await allQuery(
+    'SELECT id, submitted_at FROM survey_submissions WHERE survey_id = ? ORDER BY submitted_at ASC, id ASC',
+    [surveyId]
+  );
+
+  const headers = ['submitted_at', ...questions.map((q) => q.prompt)];
+  const lines = [headers.map(csvCell).join(',')];
+
+  for (const sub of submissions) {
+    const answerRows = await allQuery(
+      'SELECT question_id, value_json FROM survey_answers WHERE submission_id = ?',
+      [sub.id]
+    );
+    const byQuestion = Object.fromEntries(answerRows.map((a) => [a.question_id, a.value_json]));
+    const row = [formatDatetime(sub.submitted_at)];
+    for (const q of questions) {
+      row.push(formatAnswerForExport(byQuestion[q.id], q.type));
+    }
+    lines.push(row.map(csvCell).join(','));
+  }
+
+  return lines.join('\n');
+}
+
 // GET /api/surveys
 router.get('/', async (req, res, next) => {
   try {
@@ -292,6 +358,34 @@ router.get('/:id/submission-status', async (req, res, next) => {
       [req.params.id, user_id]
     );
     res.json({ submitted: !!submission });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/surveys/:id/export — admin only; anonymized rows (no user_id)
+router.get('/:id/export', async (req, res, next) => {
+  try {
+    const survey = await getQuery('SELECT * FROM surveys WHERE id = ?', [req.params.id]);
+    if (!survey) {
+      return res.status(404).json({ error: 'Survey not found' });
+    }
+
+    const { survey_pin, creator_id } = req.query;
+    const auth = await isAuthorized(survey.id, creator_id || null, survey_pin || null);
+    if (!auth.authorized) {
+      return res.status(403).json({ error: 'Not authorized to export responses' });
+    }
+
+    const csv = await buildResponsesCsv(survey.id);
+    const safeTitle = String(survey.title || 'survey')
+      .replace(/[^\w\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .slice(0, 60) || 'survey';
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}-responses.csv"`);
+    res.send(`\uFEFF${csv}`);
   } catch (error) {
     next(error);
   }

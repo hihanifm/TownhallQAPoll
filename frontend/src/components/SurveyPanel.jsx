@@ -6,7 +6,9 @@ import SurveyForm from './SurveyForm';
 import SurveyResults from './SurveyResults';
 import SurveyPinEntryModal from './SurveyPinEntryModal';
 import CreateSurveyWizard from './CreateSurveyWizard';
+import { exportSurveySummaryCsv } from '../utils/surveyExport';
 import './QuestionPanel.css';
+import './SurveyResults.css';
 
 function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, onSurveyClosed, onSurveyDeleted }) {
   const [survey, setSurvey] = useState(null);
@@ -18,6 +20,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
   const [resultsExpanded, setResultsExpanded] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const loadSurvey = useCallback(async () => {
     if (!surveyId) return;
@@ -120,6 +123,44 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
       if (onSurveyClosed) onSurveyClosed(surveyId);
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleExportSummary = async () => {
+    setIsExporting(true);
+    try {
+      let data = resultsData;
+      if (!data) {
+        const userId = getUserId();
+        const pin = getVerifiedPin(surveyId);
+        data = await api.getSurveyResults(surveyId, {
+          userId,
+          surveyPin: pin,
+          creatorId: userId,
+        });
+        setResultsData(data);
+      }
+      exportSurveySummaryCsv(survey?.title || 'survey', data);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportResponses = async () => {
+    setIsExporting(true);
+    try {
+      const userId = getUserId();
+      const pin = getVerifiedPin(surveyId);
+      await api.downloadSurveyResponsesExport(surveyId, {
+        creatorId: userId,
+        surveyPin: pin,
+      });
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -295,22 +336,59 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
 
       {canLoadResults && (
         <section className="survey-results-section">
-          <button
-            type="button"
-            className="survey-results-toggle"
-            aria-expanded={resultsExpanded}
-            onClick={() => setResultsExpanded((v) => !v)}
-          >
-            <span className="survey-results-toggle-label">
-              {hasAdminAccess ? 'Results' : 'View results'}
-              {' · '}
-              {responseCount} response{responseCount !== 1 ? 's' : ''}
-              {hasAdminAccess && <span className="survey-results-admin-tag">Admin</span>}
-            </span>
-            <span className="survey-results-toggle-chevron" aria-hidden="true">
-              {resultsExpanded ? '▼' : '▶'}
-            </span>
-          </button>
+          <div className="survey-results-toolbar">
+            <button
+              type="button"
+              className="survey-results-toggle"
+              aria-expanded={resultsExpanded}
+              onClick={() => setResultsExpanded((v) => !v)}
+            >
+              <span className="survey-results-toggle-label">
+                {hasAdminAccess ? 'Results' : 'View results'}
+                {' · '}
+                {responseCount} response{responseCount !== 1 ? 's' : ''}
+                {hasAdminAccess && <span className="survey-results-admin-tag">Admin</span>}
+              </span>
+              <span className="survey-results-toggle-chevron" aria-hidden="true">
+                {resultsExpanded ? '▼' : '▶'}
+              </span>
+            </button>
+            <div className="survey-results-export-actions">
+              <button
+                type="button"
+                className="survey-export-btn survey-export-btn--summary"
+                disabled={isExporting}
+                onClick={handleExportSummary}
+              >
+                <span className="survey-export-btn-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                </span>
+                Export summary
+              </button>
+              {hasAdminAccess && (
+                <button
+                  type="button"
+                  className="survey-export-btn survey-export-btn--responses"
+                  disabled={isExporting}
+                  onClick={handleExportResponses}
+                >
+                  <span className="survey-export-btn-icon" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                  </span>
+                  Export responses
+                </button>
+              )}
+            </div>
+          </div>
           {resultsExpanded && (
             <div className="survey-results-body">
               {resultsError ? (

@@ -452,6 +452,34 @@ export const api = {
     return response.json();
   },
 
+  downloadSurveyResponsesExport: async (surveyId, { creatorId, surveyPin } = {}) => {
+    const params = new URLSearchParams();
+    if (creatorId) params.append('creator_id', creatorId);
+    if (surveyPin) params.append('survey_pin', surveyPin);
+    const qs = params.toString();
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/export${qs ? `?${qs}` : ''}`);
+    if (!response.ok) {
+      let message = 'Failed to export responses';
+      try {
+        const error = await response.json();
+        message = error.error || message;
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new Error(message);
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match ? match[1] : `survey-${surveyId}-responses.csv`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
   closeSurvey: async (surveyId, creatorId, surveyPin) => {
     const body = {};
     if (creatorId) body.creator_id = creatorId;

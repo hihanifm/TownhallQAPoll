@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { handleStepKeyboard } from '../utils/stepKeyboardNav';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
 import { storeVerifiedPin } from '../utils/surveyPin';
@@ -68,6 +69,7 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [maxStepReached, setMaxStepReached] = useState(0);
+  const questionsPanelRef = useRef(null);
 
   const goToStep = (index) => {
     if (index <= maxStepReached) {
@@ -97,6 +99,45 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
     setStep(2);
     setMaxStepReached((m) => Math.max(m, 2));
   };
+
+  const questionCount = formData.questions.length;
+
+  const goQuestionPrev = useCallback(() => {
+    setActiveQuestionIndex((i) => Math.max(0, i - 1));
+  }, []);
+
+  const goQuestionNext = useCallback(() => {
+    setActiveQuestionIndex((i) => Math.min(questionCount - 1, i + 1));
+  }, [questionCount]);
+
+  const handleQuestionsKeyboard = useCallback(
+    (e) => {
+      if (step !== 1 || isSubmitting || !questionsPanelRef.current) return;
+
+      const isLastQuestion = activeQuestionIndex >= questionCount - 1;
+      handleStepKeyboard(e, {
+        container: questionsPanelRef.current,
+        onPrev: goQuestionPrev,
+        onNext: goQuestionNext,
+        onEnter: isLastQuestion ? handleNextFromQuestions : goQuestionNext,
+        isLast: isLastQuestion,
+      });
+    },
+    [
+      step,
+      isSubmitting,
+      activeQuestionIndex,
+      questionCount,
+      goQuestionPrev,
+      goQuestionNext,
+      handleNextFromQuestions,
+    ]
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleQuestionsKeyboard);
+    return () => window.removeEventListener('keydown', handleQuestionsKeyboard);
+  }, [handleQuestionsKeyboard]);
 
   const updateQuestion = (index, field, value) => {
     setFormData((prev) => {
@@ -208,7 +249,6 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
   };
 
   const q = formData.questions[activeQuestionIndex];
-  const questionCount = formData.questions.length;
 
   return (
     <div className="create-survey-wizard">
@@ -292,7 +332,7 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
       )}
 
       {step === 1 && q && (
-        <div className="wizard-panel">
+        <div ref={questionsPanelRef} className="wizard-panel">
           <div className="wizard-question-nav">
             <span className="wizard-question-counter">
               Question {activeQuestionIndex + 1} of {questionCount}
@@ -414,6 +454,9 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
               Preview & publish
             </button>
           </div>
+          <p className="wizard-keyboard-hint" aria-hidden="true">
+            ←→ move between questions · Enter to continue
+          </p>
         </div>
       )}
 

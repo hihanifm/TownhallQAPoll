@@ -1,4 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import {
+  handleStepKeyboard,
+  handleChoiceArrow,
+} from '../utils/stepKeyboardNav';
 import './SurveyForm.css';
 
 function isQuestionAnswered(q, value) {
@@ -29,6 +33,8 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
   const [answers, setAnswers] = useState({});
   const [currentStep, setCurrentStep] = useState(0);
   const [stepError, setStepError] = useState(null);
+  const wrapRef = useRef(null);
+  const formRef = useRef(null);
 
   const questions = survey.questions || [];
   const total = questions.length;
@@ -59,19 +65,73 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
     onSubmit(payload);
   };
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
     if (!preview && currentQuestion && !isQuestionAnswered(currentQuestion, answers[currentQuestion.id])) {
       setStepError('Please answer this question before continuing.');
       return;
     }
     setStepError(null);
     setCurrentStep((s) => Math.min(s + 1, total - 1));
-  };
+  }, [preview, currentQuestion, answers, total]);
 
-  const goBack = () => {
+  const goBack = useCallback(() => {
     setStepError(null);
     setCurrentStep((s) => Math.max(s - 1, 0));
-  };
+  }, []);
+
+  const handleKeyboard = useCallback(
+    (e) => {
+      if (isSubmitting || !wrapRef.current) return;
+
+      const q = questions[currentStep];
+      if (q?.type === 'single') {
+        const opts = q.options?.options || (Array.isArray(q.options) ? q.options : []);
+        const current = answers[q.id];
+        const list = typeof current === 'object' && current?.other != null ? opts : opts;
+        if (
+          handleChoiceArrow(e, {
+            container: wrapRef.current,
+            options: list,
+            currentValue: typeof current === 'string' ? current : null,
+            onSelect: (val) => setAnswer(q.id, val),
+          })
+        ) {
+          return;
+        }
+      }
+      if (q?.type === 'rating') {
+        if (
+          handleChoiceArrow(e, {
+            container: wrapRef.current,
+            options: [1, 2, 3, 4, 5],
+            currentValue: answers[q.id],
+            onSelect: (val) => setAnswer(q.id, val),
+          })
+        ) {
+          return;
+        }
+      }
+
+      handleStepKeyboard(e, {
+        container: wrapRef.current,
+        onPrev: goBack,
+        onNext: goNext,
+        onEnter: goNext,
+        isLast,
+        onSubmit: preview
+          ? undefined
+          : () => {
+              formRef.current?.requestSubmit();
+            },
+      });
+    },
+    [isSubmitting, questions, currentStep, answers, isLast, preview, goNext, goBack]
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyboard);
+    return () => window.removeEventListener('keydown', handleKeyboard);
+  }, [handleKeyboard]);
 
   const renderQuestion = (q) => {
     const opts = q.options?.options || (Array.isArray(q.options) ? q.options : []);
@@ -236,8 +296,19 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
     return <p className="survey-empty">No questions in this survey.</p>;
   }
 
+  const keyboardHint = (() => {
+    const t = currentQuestion?.type;
+    if (t === 'text') return '←→ move between questions · ⌘/Ctrl+Enter to continue';
+    if (t === 'single' || t === 'rating') return '↑↓ select answer · ←→ move between questions · Enter to continue';
+    if (t === 'multi') return '←→ move between questions · Enter to continue';
+    return '←→ move between questions · Enter to continue';
+  })();
+
   return (
-    <div className={`survey-form-wrap ${preview ? 'survey-form-preview' : ''}`}>
+    <div
+      ref={wrapRef}
+      className={`survey-form-wrap ${preview ? 'survey-form-preview' : ''}`}
+    >
       {preview && (
         <p className="survey-preview-banner">
           Rehearsal — try the survey as respondents will see it. Answers are not saved.
@@ -272,6 +343,7 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
       {stepError && <div className="survey-step-error">{stepError}</div>}
 
       <form
+        ref={formRef}
         className="survey-form survey-form-stepped"
         onSubmit={preview ? (e) => e.preventDefault() : handleSubmit}
       >
@@ -305,6 +377,9 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
             <span className="survey-rehearse-end">End of rehearsal</span>
           )}
         </div>
+        <p className="survey-keyboard-hint" aria-hidden="true">
+          {keyboardHint}
+        </p>
       </form>
     </div>
   );
