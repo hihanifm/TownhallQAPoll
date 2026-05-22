@@ -113,3 +113,13 @@
   line-height: 1.5;
   flex: 1;
 }
+
+.welcome-card-compact {
+  padding: 20px 18px;
+}
+
+.welcome-card-compact .welcome-paragraph {
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}

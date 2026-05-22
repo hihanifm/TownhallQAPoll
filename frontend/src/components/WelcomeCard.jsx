@@ -2,17 +2,18 @@ import { useState, useEffect } from 'react';
 import { getConfig } from '../services/configService';
 import './WelcomeCard.css';
 
-function WelcomeCard() {
+function WelcomeCard({ configKey = 'welcome', compact = false }) {
   const [welcomeText, setWelcomeText] = useState('Welcome to Townhall Q&A Poll\n\nAsk questions, vote on what matters most, and have your voice heard. Questions with the most votes get priority attention.');
 
   // Load configuration on mount
   useEffect(() => {
     getConfig().then(config => {
-      if (config.welcome) {
-        setWelcomeText(config.welcome);
+      const text = config[configKey];
+      if (text) {
+        setWelcomeText(text);
       }
     });
-  }, []);
+  }, [configKey]);
 
   // Parse text with markdown-style bold syntax (**text**)
   const parseTextWithBold = (text) => {
@@ -52,7 +53,7 @@ function WelcomeCard() {
   });
 
   return (
-    <div className="welcome-card">
+    <div className={`welcome-card${compact ? ' welcome-card-compact' : ''}`}>
       <div className="welcome-card-content">
         <div className="welcome-description">{formattedText}</div>
       </div>

@@ -15,6 +15,7 @@ import { exportSurveySummaryCsv } from '../utils/surveyExport';
 import SurveyThanksCelebration from './SurveyThanksCelebration';
 import { showAppNotice } from '../utils/appNotice';
 import ConfirmDialog from './ConfirmDialog';
+import WelcomeCard from './WelcomeCard';
 import './QuestionPanel.css';
 import './SurveyResults.css';
 
@@ -269,10 +270,8 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
 
   if (!surveyId) {
     return (
-      <div className="question-panel">
-        <div className="question-panel-empty">
-          <p>Select a survey from the list, or click <strong>+ New Survey</strong> to set one up.</p>
-        </div>
+      <div className="question-panel empty">
+        <WelcomeCard configKey="welcomeSurveys" compact />
       </div>
     );
   }

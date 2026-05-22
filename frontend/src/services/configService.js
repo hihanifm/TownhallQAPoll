@@ -12,6 +12,7 @@ const defaultConfig = {
   title: 'Townhall Q&A Poll',
   subtitle: 'Ask. Vote. Be heard.',
   welcome: 'Welcome to Townhall Q&A Poll\n\nAsk questions, vote on what matters most, and have your voice heard. Questions with the most votes get priority attention.',
+  welcomeSurveys: 'Welcome to Surveys\n\nCreate structured polls with single-choice, multi-choice, rating, and text questions. One response per participant; control who sees results with visibility and PIN settings.\n\nSelect a survey from the list, or click **+ New Survey** to get started.',
   features: defaultFeatures
 };
 
@@ -63,6 +64,7 @@ async function loadConfig() {
         title: config.title || defaultConfig.title,
         subtitle: config.subtitle || defaultConfig.subtitle,
         welcome: config.welcome || defaultConfig.welcome,
+        welcomeSurveys: config.welcomeSurveys || defaultConfig.welcomeSurveys,
         features: mergeFeatures(config.features)
       };
       
