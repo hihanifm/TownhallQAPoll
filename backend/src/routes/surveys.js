@@ -49,6 +49,23 @@ function normalizeParticipantPin(value) {
   return trimmed || null;
 }
 
+function isSurveyCreator(survey, creator_id) {
+  return !!(survey.creator_id && creator_id && survey.creator_id === creator_id);
+}
+
+function redactConfidentialSurvey(row, { creator_id } = {}) {
+  if (!hasParticipantPin(row)) return row;
+  if (isSurveyCreator(row, creator_id)) return row;
+  return {
+    ...row,
+    title: null,
+    description: null,
+    question_count: 0,
+    response_count: 0,
+    list_redacted: true,
+  };
+}
+
 function parseQuestionOptions(options) {
   if (options == null) return null;
   if (typeof options === 'string') {
@@ -311,6 +328,7 @@ async function buildResponsesCsv(surveyId) {
 // GET /api/surveys
 router.get('/', async (req, res, next) => {
   try {
+    const { creator_id } = req.query;
     const surveys = await allQuery(
       `SELECT s.id, s.title, s.description, s.created_at, s.status, s.creator_id, s.results_visibility,
        COUNT(DISTINCT sq.id) as question_count,
@@ -323,7 +341,11 @@ router.get('/', async (req, res, next) => {
        GROUP BY s.id
        ORDER BY s.created_at DESC`
     );
-    res.json(surveys.map(formatSurveyRow));
+    res.json(
+      surveys
+        .map(formatSurveyRow)
+        .map((row) => redactConfidentialSurvey(row, { creator_id: creator_id || null }))
+    );
   } catch (error) {
     next(error);
   }
@@ -385,11 +407,23 @@ router.post('/', async (req, res, next) => {
 // GET /api/surveys/:id/submission-status — before /:id
 router.get('/:id/submission-status', async (req, res, next) => {
   try {
-    const { user_id } = req.query;
+    const { user_id, participant_pin, survey_pin, creator_id } = req.query;
     if (!user_id) {
       return res.status(400).json({ error: 'user_id is required' });
     }
     const surveyId = req.params.id;
+    const survey = await getQuery('SELECT * FROM surveys WHERE id = ?', [surveyId]);
+    if (!survey) {
+      return res.status(404).json({ error: 'Survey not found' });
+    }
+    const canAccess = await canAccessSurveyContent(survey, {
+      participant_pin: participant_pin || null,
+      survey_pin: survey_pin || null,
+      creator_id: creator_id || null,
+    });
+    if (hasParticipantPin(survey) && !canAccess) {
+      return res.json({ submitted: false });
+    }
     const submission = await getQuery(
       'SELECT id, submitted_at FROM survey_submissions WHERE survey_id = ? AND user_id = ?',
       [surveyId, user_id]
@@ -688,13 +722,16 @@ router.get('/:id', async (req, res, next) => {
       'SELECT COUNT(*) as count FROM survey_submissions WHERE survey_id = ?',
       [req.params.id]
     );
-    const payload = {
+    let payload = {
       ...formatSurveyRow(survey),
       questions,
       response_count: responseCount.count,
     };
     if (hasParticipantPin(survey) && !canAccess) {
       payload.participant_pin_required = true;
+      payload = redactConfidentialSurvey(payload, { creator_id: creator_id || null });
+      payload.questions = [];
+      payload.response_count = 0;
     }
     res.json(payload);
   } catch (error) {

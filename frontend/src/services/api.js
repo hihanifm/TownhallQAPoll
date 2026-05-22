@@ -376,8 +376,11 @@ export const api = {
   },
 
   // Surveys
-  getSurveys: async () => {
-    const response = await fetch(`${API_BASE_URL}/surveys`);
+  getSurveys: async ({ creatorId } = {}) => {
+    const params = new URLSearchParams();
+    if (creatorId) params.append('creator_id', creatorId);
+    const qs = params.toString();
+    const response = await fetch(`${API_BASE_URL}/surveys${qs ? `?${qs}` : ''}`);
     if (!response.ok) throw new Error('Failed to fetch surveys');
     return response.json();
   },
@@ -432,8 +435,11 @@ export const api = {
     return response.json();
   },
 
-  getSurveySubmissionStatus: async (surveyId, userId) => {
+  getSurveySubmissionStatus: async (surveyId, userId, { participantPin, surveyPin, creatorId } = {}) => {
     const params = new URLSearchParams({ user_id: userId });
+    if (participantPin) params.append('participant_pin', participantPin);
+    if (surveyPin) params.append('survey_pin', surveyPin);
+    if (creatorId) params.append('creator_id', creatorId);
     const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/submission-status?${params}`);
     if (!response.ok) throw new Error('Failed to check submission status');
     return response.json();

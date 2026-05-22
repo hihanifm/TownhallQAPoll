@@ -16,6 +16,8 @@ import SurveyThanksCelebration from './SurveyThanksCelebration';
 import './QuestionPanel.css';
 import './SurveyResults.css';
 
+const CONFIDENTIAL_LABEL = '— Confidential survey';
+
 function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, onSurveyClosed, onSurveyDeleted }) {
   const [survey, setSurvey] = useState(null);
   const [submitted, setSubmitted] = useState(false);
@@ -43,7 +45,11 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
         creatorId: userId,
       });
       setSurvey(data);
-      const status = await api.getSurveySubmissionStatus(surveyId, userId);
+      const status = await api.getSurveySubmissionStatus(surveyId, userId, {
+        participantPin: getVerifiedParticipantPin(surveyId) || undefined,
+        surveyPin: getVerifiedPin(surveyId) || undefined,
+        creatorId: userId,
+      });
       setSubmitted(status.submitted);
       setMyAnswers(status.submitted && status.answers ? status.answers : null);
       setPinVerified(hasVerifiedPin(surveyId));
@@ -118,6 +124,21 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
       loadResults();
     }
   }, [canLoadResults, loadResults]);
+
+  const isCreator = survey?.creator_id === userId;
+  const needsParticipantPin = Boolean(
+    survey &&
+    survey.has_participant_pin &&
+    !isCreator &&
+    !participantPinVerified &&
+    !submitted
+  );
+
+  useEffect(() => {
+    if (needsParticipantPin) {
+      setShowParticipantPinModal(true);
+    }
+  }, [surveyId, needsParticipantPin]);
 
   const endCelebration = useCallback(() => setShowCelebration(false), []);
 
@@ -248,13 +269,10 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
   }
 
   const isClosed = survey.status === 'closed';
-  const isCreator = survey.creator_id === userId;
   const canParticipate =
     !survey.has_participant_pin ||
     isCreator ||
     participantPinVerified;
-  const needsParticipantPin =
-    survey.has_participant_pin && !isCreator && !participantPinVerified && !submitted;
 
   const responseCount =
     resultsData?.response_count ?? survey.response_count ?? 0;
@@ -272,8 +290,8 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
       )}
       <div className="question-panel-header survey-panel-header">
         <h2 className="survey-title">
-          {survey.title}
-          {survey.has_pin && (
+          {needsParticipantPin ? CONFIDENTIAL_LABEL : survey.title}
+          {!needsParticipantPin && survey.has_pin && (
             <svg
               className="pin-icon"
               width="18"
@@ -291,10 +309,15 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
             </svg>
           )}
         </h2>
-        {isClosed && <span className="campaign-closed-badge">Closed</span>}
+        {!needsParticipantPin && isClosed && (
+          <span className="campaign-closed-badge">Closed</span>
+        )}
       </div>
-      {survey.description && <p className="survey-description">{survey.description}</p>}
+      {!needsParticipantPin && survey.description && (
+        <p className="survey-description">{survey.description}</p>
+      )}
 
+      {!needsParticipantPin && (
       <div className="survey-admin-bar">
         <div className="survey-admin-badges">
           {survey.has_pin ? (
@@ -358,6 +381,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
           </div>
         )}
       </div>
+      )}
 
       {!submitted && !isClosed && needsParticipantPin && (
         <div className="survey-results-gated">

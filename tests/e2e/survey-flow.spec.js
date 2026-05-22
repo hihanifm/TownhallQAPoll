@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   generateUserId,
   createSurvey,
+  listSurveys,
   getSurvey,
   submitSurvey,
   getSurveyResults,
@@ -153,8 +154,9 @@ test.describe('Survey E2E', () => {
     const adminPin = 'admin-pin-gate';
     const participantPin = 'participant-pin-gate';
 
+    const surveyTitle = `Participant gate ${Date.now()}`;
     const survey = await createSurvey(request, {
-      title: `Participant gate ${Date.now()}`,
+      title: surveyTitle,
       creatorId,
       pin: adminPin,
       participant_pin: participantPin,
@@ -164,11 +166,25 @@ test.describe('Survey E2E', () => {
 
     expect(survey.has_participant_pin).toBe(true);
 
+    const listForStranger = await listSurveys(request);
+    const redactedInList = listForStranger.find((s) => s.id === survey.id);
+    expect(redactedInList.list_redacted).toBe(true);
+    expect(redactedInList.title).toBeNull();
+    expect(redactedInList.question_count).toBe(0);
+    expect(redactedInList.response_count).toBe(0);
+
+    const listForCreator = await listSurveys(request, { creatorId });
+    const creatorView = listForCreator.find((s) => s.id === survey.id);
+    expect(creatorView.title).toBe(surveyTitle);
+    expect(creatorView.list_redacted).toBeUndefined();
+
     const gated = await getSurvey(request, survey.id);
     expect(gated.participant_pin_required).toBe(true);
+    expect(gated.title).toBeNull();
     expect(gated.questions).toHaveLength(0);
 
     const withParticipant = await getSurvey(request, survey.id, { participantPin });
+    expect(withParticipant.title).toBe(surveyTitle);
     expect(withParticipant.questions).toHaveLength(1);
 
     const q = withParticipant.questions[0];

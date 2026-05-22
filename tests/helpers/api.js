@@ -547,6 +547,21 @@ export async function createSurvey(request, {
 }
 
 /**
+ * List surveys
+ */
+export async function listSurveys(request, { creatorId } = {}) {
+  const params = new URLSearchParams();
+  if (creatorId) params.set('creator_id', creatorId);
+  const qs = params.toString();
+  const response = await request.get(`${API_BASE_URL}/surveys${qs ? `?${qs}` : ''}`);
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to list surveys: ${error.error || response.statusText()}`);
+  }
+  return await response.json();
+}
+
+/**
  * Get survey by ID
  */
 export async function getSurvey(request, surveyId, { participantPin, surveyPin, creatorId } = {}) {
