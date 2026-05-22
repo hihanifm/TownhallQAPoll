@@ -3,6 +3,7 @@ import { handleStepKeyboard } from '../utils/stepKeyboardNav';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
 import { storeVerifiedPin, storeVerifiedParticipantPin } from '../utils/surveyPin';
+import { parseSurveyXlsx } from '../utils/surveyImport';
 import SurveyForm from './SurveyForm';
 import './CreateSurveyWizard.css';
 
@@ -114,6 +115,7 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
   const [maxStepReached, setMaxStepReached] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const questionsPanelRef = useRef(null);
+  const importInputRef = useRef(null);
 
   const goToStep = (index) => {
     if (index <= maxStepReached) {
@@ -153,6 +155,26 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
     });
     setActiveQuestionIndex(0);
     setError(null);
+  };
+
+  const handleImportXlsx = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const { questions } = await parseSurveyXlsx(file);
+      const err = validateQuestions(questions);
+      if (err) {
+        setError(err);
+        return;
+      }
+      setFormData((prev) => ({ ...prev, questions }));
+      setActiveQuestionIndex(0);
+      setError(null);
+    } catch (err) {
+      setError(err.message || 'Failed to import questions');
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const questionCount = formData.questions.length;
@@ -317,6 +339,13 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
 
   return (
     <div className="create-survey-wizard">
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        onChange={handleImportXlsx}
+        hidden
+      />
       <div className="create-survey-wizard-header">
         <h2>Create survey</h2>
         <button type="button" className="wizard-cancel-btn" onClick={onCancel} disabled={isSubmitting}>
@@ -563,6 +592,14 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
           <div className="wizard-footer">
             <button type="button" className="wizard-secondary-btn" onClick={() => { setError(null); setStep(0); }}>
               Back
+            </button>
+            <button
+              type="button"
+              className="wizard-secondary-btn"
+              onClick={() => importInputRef.current?.click()}
+              disabled={isSubmitting}
+            >
+              Import .xlsx
             </button>
             <button type="button" className="wizard-primary-btn" onClick={handleNextFromQuestions}>
               Preview & publish
