@@ -311,7 +311,7 @@ function AppFooter({ selectedCampaignId, selectedSurveyId }) {
             style={{ fontWeight: isSurveyPage ? '700' : 'normal' }}
             aria-label={isSurveyPage ? 'Campaigns' : 'Surveys'}
           >
-            {isSurveyPage ? 'Q&A' : 'Survey'}
+            {isSurveyPage ? 'Q&A' : 'Surveys'}
           </button>
           <button
             className="footer-feedback-button"

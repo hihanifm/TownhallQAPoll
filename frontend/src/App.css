@@ -37,16 +37,20 @@ body {
 .app-header {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
-  padding: 20px 24px;
+  padding: 16px 24px 12px;
   box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
   flex-shrink: 0;
   text-align: center;
-  cursor: pointer;
   transition: background 0.2s ease;
 }
 
-.app-header:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+.app-header-brand {
+  cursor: pointer;
+}
+
+.app-header-brand:hover h1 {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .app-header h1 {
@@ -57,6 +61,36 @@ body {
 .app-header p {
   font-size: 14px;
   opacity: 0.9;
+}
+
+.app-nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.app-nav-btn {
+  padding: 8px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.app-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.app-nav-btn.active {
+  background: white;
+  color: #2563eb;
+  border-color: white;
 }
 
 .app-content {

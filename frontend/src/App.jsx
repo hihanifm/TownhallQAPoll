@@ -68,11 +68,41 @@ function AppContent() {
     }
   };
 
+  const goToCampaigns = (e) => {
+    e.stopPropagation();
+    navigate('/');
+  };
+
+  const goToSurveys = (e) => {
+    e.stopPropagation();
+    navigate('/surveys');
+  };
+
   return (
     <div className="app">
-      <header className="app-header" onClick={handleHeaderClick}>
-        <h1>{appConfig.title}</h1>
-        <p>{appConfig.subtitle}</p>
+      <header className="app-header">
+        <div className="app-header-brand" onClick={handleHeaderClick} role="button" tabIndex={0}>
+          <h1>{appConfig.title}</h1>
+          <p>{appConfig.subtitle}</p>
+        </div>
+        {!isFeedbackPage && (
+          <nav className="app-nav" aria-label="Main sections">
+            <button
+              type="button"
+              className={`app-nav-btn ${!isSurveyPage ? 'active' : ''}`}
+              onClick={goToCampaigns}
+            >
+              Q&A Campaigns
+            </button>
+            <button
+              type="button"
+              className={`app-nav-btn ${isSurveyPage ? 'active' : ''}`}
+              onClick={goToSurveys}
+            >
+              Surveys
+            </button>
+          </nav>
+        )}
       </header>
       <div className="app-content">
         {!isFeedbackPage && !isSurveyPage && (
