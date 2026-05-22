@@ -67,7 +67,7 @@ These are non-negotiable constraints. Do not suggest or implement anything that 
 
 **Surveys**: Separate from town-hall campaigns. Creator defines fixed questions (`single`, `multi`, `rating`, `text`); one submission per `user_id`. `results_visibility`: `pin_only`, `after_submit`, or `public`. Mandatory survey PIN (stored in `localStorage` via `surveyPin.js`) for admin/results when visibility requires it.
 
-**Runtime UI config**: `frontend/public/appConfig.json` controls `title`, `subtitle`, and `welcome` text. Loaded by `configService.js` at runtime — edit the JSON file without rebuilding.
+**Runtime UI config**: `frontend/public/appConfig.json` controls `title`, `subtitle`, `welcome`, and optional `features` (`campaigns`, `surveys`, both default `true`). Loaded by `configService.js` at runtime — edit the JSON file without rebuilding. Set `features.campaigns` or `features.surveys` to `false` for a soft UI-only single-feature instance (hides nav, redirects disabled routes; APIs unchanged).
 
 **Optional browser restriction**: Build-time `VITE_ENABLE_BROWSER_RESTRICTION` env var restricts access to specific browsers (User-Agent based). Always off in dev.
 
@@ -87,7 +87,7 @@ These are non-negotiable constraints. Do not suggest or implement anything that 
 | `frontend/src/components/SurveyPanel.jsx` | Survey detail: form, results, admin actions |
 | `config/ports.json` | Port configuration shared across frontend, backend, and tests |
 | `tests/helpers/api.js` | Playwright API helpers for E2E tests; use `generateUserId()` for test users |
-| `frontend/public/appConfig.json` | Runtime-editable UI text: title, subtitle, welcome message (no rebuild needed) |
+| `frontend/public/appConfig.json` | Runtime-editable UI text and feature flags: title, subtitle, welcome, `features.campaigns` / `features.surveys` (no rebuild needed) |
 | `.env.example` | Backend runtime env vars; `frontend/.env.example` for build-time vars |
 
 ## Deployment Alternatives

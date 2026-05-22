@@ -524,6 +524,7 @@ export async function createSurvey(request, {
   description = null,
   creatorId,
   pin,
+  participant_pin = null,
   results_visibility = 'pin_only',
   questions,
 }) {
@@ -533,6 +534,7 @@ export async function createSurvey(request, {
       description,
       creator_id: creatorId,
       pin,
+      participant_pin,
       results_visibility,
       questions,
     },
@@ -547,8 +549,13 @@ export async function createSurvey(request, {
 /**
  * Get survey by ID
  */
-export async function getSurvey(request, surveyId) {
-  const response = await request.get(`${API_BASE_URL}/surveys/${surveyId}`);
+export async function getSurvey(request, surveyId, { participantPin, surveyPin, creatorId } = {}) {
+  const params = new URLSearchParams();
+  if (participantPin) params.set('participant_pin', participantPin);
+  if (surveyPin) params.set('survey_pin', surveyPin);
+  if (creatorId) params.set('creator_id', creatorId);
+  const qs = params.toString();
+  const response = await request.get(`${API_BASE_URL}/surveys/${surveyId}${qs ? `?${qs}` : ''}`);
   if (!response.ok()) {
     const error = await response.json();
     throw new Error(`Failed to get survey: ${error.error || response.statusText()}`);
@@ -559,10 +566,30 @@ export async function getSurvey(request, surveyId) {
 /**
  * Submit survey answers
  */
-export async function submitSurvey(request, surveyId, userId, answers) {
+export async function submitSurvey(request, surveyId, userId, answers, { participantPin, creatorId } = {}) {
   const response = await request.post(`${API_BASE_URL}/surveys/${surveyId}/submit`, {
-    data: { user_id: userId, answers },
+    data: {
+      user_id: userId,
+      answers,
+      participant_pin: participantPin || null,
+      creator_id: creatorId || null,
+    },
   });
+  if (!response.ok()) {
+    const error = await response.json();
+    return { ok: false, status: response.status(), error: error.error || response.statusText() };
+  }
+  return { ok: true, data: await response.json() };
+}
+
+/**
+ * Get survey submission status (includes own answers when submitted)
+ */
+export async function getSurveySubmissionStatus(request, surveyId, userId) {
+  const params = new URLSearchParams({ user_id: userId });
+  const response = await request.get(
+    `${API_BASE_URL}/surveys/${surveyId}/submission-status?${params}`
+  );
   if (!response.ok()) {
     const error = await response.json();
     return { ok: false, status: response.status(), error: error.error || response.statusText() };

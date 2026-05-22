@@ -64,7 +64,8 @@ CREATE TABLE IF NOT EXISTS surveys (
     status TEXT DEFAULT 'active',
     creator_id TEXT,
     pin TEXT NOT NULL,
-    results_visibility TEXT DEFAULT 'pin_only'
+    results_visibility TEXT DEFAULT 'pin_only',
+    participant_pin TEXT
 );
 
 CREATE TABLE IF NOT EXISTS survey_questions (

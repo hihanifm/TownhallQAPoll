@@ -2,6 +2,46 @@
   max-width: 640px;
 }
 
+.wizard-advanced {
+  margin: 8px 0 16px;
+}
+
+.wizard-advanced-toggle {
+  background: none;
+  border: none;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.wizard-advanced-toggle:hover {
+  color: #1e40af;
+}
+
+.wizard-advanced-body {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.wizard-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #334155;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.wizard-checkbox input {
+  width: auto;
+}
+
 .create-survey-wizard-header {
   display: flex;
   justify-content: space-between;

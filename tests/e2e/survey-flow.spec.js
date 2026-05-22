@@ -5,6 +5,7 @@ import {
   getSurvey,
   submitSurvey,
   getSurveyResults,
+  getSurveySubmissionStatus,
   exportSurveyResponses,
   checkBackendHealth,
 } from '../helpers/api.js';
@@ -112,6 +113,87 @@ test.describe('Survey E2E', () => {
     const results = await getSurveyResults(request, survey.id);
     expect(results.ok).toBe(true);
     expect(results.data.results[0].counts.Yes).toBe(1);
+  });
+
+  test('submission-status returns own answers after submit', async ({ request }) => {
+    const creatorId = generateUserId();
+    const userA = generateUserId();
+    const userB = generateUserId();
+
+    const survey = await createSurvey(request, {
+      title: `Own answers ${Date.now()}`,
+      creatorId,
+      pin: 'pin-own',
+      results_visibility: 'pin_only',
+      questions: [{ prompt: 'Color?', type: 'single', options: ['Red', 'Blue'] }],
+    });
+
+    const full = await getSurvey(request, survey.id);
+    const q = full.questions[0];
+
+    const before = await getSurveySubmissionStatus(request, survey.id, userB);
+    expect(before.ok).toBe(true);
+    expect(before.data.submitted).toBe(false);
+    expect(before.data.answers).toBeUndefined();
+
+    await submitSurvey(request, survey.id, userA, [{ question_id: q.id, value: 'Red' }]);
+
+    const after = await getSurveySubmissionStatus(request, survey.id, userA);
+    expect(after.ok).toBe(true);
+    expect(after.data.submitted).toBe(true);
+    expect(after.data.submitted_at).toBeDefined();
+    expect(after.data.answers).toHaveLength(1);
+    expect(after.data.answers[0].display).toBe('Red');
+    expect(after.data.answers[0].prompt).toBe('Color?');
+  });
+
+  test('participant PIN gates questions and submit; admin PIN does not unlock submit', async ({ request }) => {
+    const creatorId = generateUserId();
+    const respondentId = generateUserId();
+    const adminPin = 'admin-pin-gate';
+    const participantPin = 'participant-pin-gate';
+
+    const survey = await createSurvey(request, {
+      title: `Participant gate ${Date.now()}`,
+      creatorId,
+      pin: adminPin,
+      participant_pin: participantPin,
+      results_visibility: 'public',
+      questions: [{ prompt: 'Pick', type: 'single', options: ['One', 'Two'] }],
+    });
+
+    expect(survey.has_participant_pin).toBe(true);
+
+    const gated = await getSurvey(request, survey.id);
+    expect(gated.participant_pin_required).toBe(true);
+    expect(gated.questions).toHaveLength(0);
+
+    const withParticipant = await getSurvey(request, survey.id, { participantPin });
+    expect(withParticipant.questions).toHaveLength(1);
+
+    const q = withParticipant.questions[0];
+    const answers = [{ question_id: q.id, value: 'One' }];
+
+    const noPin = await submitSurvey(request, survey.id, respondentId, answers);
+    expect(noPin.ok).toBe(false);
+    expect(noPin.status).toBe(403);
+
+    const wrongPin = await submitSurvey(request, survey.id, respondentId, answers, {
+      participantPin: 'wrong',
+    });
+    expect(wrongPin.ok).toBe(false);
+    expect(wrongPin.status).toBe(403);
+
+    const adminOnly = await submitSurvey(request, survey.id, respondentId, answers, {
+      participantPin: adminPin,
+    });
+    expect(adminOnly.ok).toBe(false);
+    expect(adminOnly.status).toBe(403);
+
+    const ok = await submitSurvey(request, survey.id, respondentId, answers, {
+      participantPin,
+    });
+    expect(ok.ok).toBe(true);
   });
 
   test('export responses CSV requires admin and includes submission row', async ({ request }) => {

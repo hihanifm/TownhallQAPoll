@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
-import { getVerifiedPin, hasVerifiedPin } from '../utils/surveyPin';
+import {
+  getVerifiedPin,
+  getVerifiedParticipantPin,
+  hasVerifiedPin,
+  hasVerifiedParticipantPin,
+} from '../utils/surveyPin';
 import SurveyForm from './SurveyForm';
 import SurveyResults from './SurveyResults';
 import SurveyPinEntryModal from './SurveyPinEntryModal';
@@ -14,12 +19,15 @@ import './SurveyResults.css';
 function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, onSurveyClosed, onSurveyDeleted }) {
   const [survey, setSurvey] = useState(null);
   const [submitted, setSubmitted] = useState(false);
+  const [myAnswers, setMyAnswers] = useState(null);
   const [resultsData, setResultsData] = useState(null);
   const [resultsError, setResultsError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
+  const [showParticipantPinModal, setShowParticipantPinModal] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
+  const [participantPinVerified, setParticipantPinVerified] = useState(false);
   const [resultsExpanded, setResultsExpanded] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -28,12 +36,18 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     if (!surveyId) return;
     setIsLoading(true);
     try {
-      const data = await api.getSurvey(surveyId);
-      setSurvey(data);
       const userId = getUserId();
+      const data = await api.getSurvey(surveyId, {
+        participantPin: getVerifiedParticipantPin(surveyId) || undefined,
+        surveyPin: getVerifiedPin(surveyId) || undefined,
+        creatorId: userId,
+      });
+      setSurvey(data);
       const status = await api.getSurveySubmissionStatus(surveyId, userId);
       setSubmitted(status.submitted);
+      setMyAnswers(status.submitted && status.answers ? status.answers : null);
       setPinVerified(hasVerifiedPin(surveyId));
+      setParticipantPinVerified(hasVerifiedParticipantPin(surveyId));
     } catch (err) {
       console.error(err);
       setSurvey(null);
@@ -74,6 +88,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     setResultsExpanded(false);
     setResultsData(null);
     setResultsError(null);
+    setMyAnswers(null);
   }, [surveyId]);
 
   useEffect(() => {
@@ -110,7 +125,11 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     setIsSubmitting(true);
     try {
       const userId = getUserId();
-      await api.submitSurvey(surveyId, userId, answers);
+      const isCreator = survey?.creator_id === userId;
+      await api.submitSurvey(surveyId, userId, answers, {
+        participantPin: getVerifiedParticipantPin(surveyId) || undefined,
+        creatorId: isCreator ? userId : undefined,
+      });
       setSubmitted(true);
       setShowCelebration(true);
       await loadSurvey();
@@ -230,6 +249,12 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
 
   const isClosed = survey.status === 'closed';
   const isCreator = survey.creator_id === userId;
+  const canParticipate =
+    !survey.has_participant_pin ||
+    isCreator ||
+    participantPinVerified;
+  const needsParticipantPin =
+    survey.has_participant_pin && !isCreator && !participantPinVerified && !submitted;
 
   const responseCount =
     resultsData?.response_count ?? survey.response_count ?? 0;
@@ -278,6 +303,11 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
             </span>
           ) : (
             <span className="survey-badge survey-badge-open">No PIN</span>
+          )}
+          {survey.has_participant_pin && (
+            <span className="survey-badge survey-badge-pin" title="Respondents need the participant PIN">
+              Participant PIN required
+            </span>
           )}
           <span className="survey-badge survey-badge-visibility">
             {visibilityLabels[survey.results_visibility] || survey.results_visibility}
@@ -329,7 +359,20 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
         )}
       </div>
 
-      {!submitted && !isClosed && (
+      {!submitted && !isClosed && needsParticipantPin && (
+        <div className="survey-results-gated">
+          <p>Enter the participant PIN to take this survey.</p>
+          <button
+            type="button"
+            className="survey-enter-pin-btn"
+            onClick={() => setShowParticipantPinModal(true)}
+          >
+            Enter participant PIN
+          </button>
+        </div>
+      )}
+
+      {!submitted && !isClosed && canParticipate && (
         <>
           <SurveyForm survey={survey} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
           {showResultsHint && (
@@ -338,12 +381,26 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
         </>
       )}
 
-      {submitted && !isClosed && (
+      {submitted && (
         <p className="survey-thanks">Thank you — your response has been recorded.</p>
       )}
 
       {isClosed && !submitted && (
         <p className="survey-closed-msg">This survey is closed.</p>
+      )}
+
+      {submitted && myAnswers?.length > 0 && (
+        <section className="survey-my-response" aria-labelledby="survey-my-response-heading">
+          <h3 id="survey-my-response-heading" className="survey-my-response-heading">Your response</h3>
+          <div className="survey-results">
+            {myAnswers.map((a) => (
+              <div key={a.question_id} className="survey-result-card">
+                <h4 className="survey-result-prompt">{a.prompt}</h4>
+                <p className="survey-my-response-answer">{a.display}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {canLoadResults && (
@@ -427,10 +484,24 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
       {showPinModal && (
         <SurveyPinEntryModal
           surveyId={surveyId}
+          mode="admin"
           onClose={() => setShowPinModal(false)}
           onVerified={() => {
             setPinVerified(true);
+            loadSurvey();
             loadResults();
+          }}
+        />
+      )}
+
+      {showParticipantPinModal && (
+        <SurveyPinEntryModal
+          surveyId={surveyId}
+          mode="participant"
+          onClose={() => setShowParticipantPinModal(false)}
+          onVerified={() => {
+            setParticipantPinVerified(true);
+            loadSurvey();
           }}
         />
       )}

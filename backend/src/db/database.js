@@ -189,6 +189,14 @@ async function runMigrations(db) {
     await dbRun(`INSERT INTO _migrations VALUES ('add_surveys_tables')`);
     console.log('Migration add_surveys_tables completed');
   }
+
+  const participantPinMigration = await dbGet(`SELECT name FROM _migrations WHERE name = 'add_survey_participant_pin'`);
+  if (!participantPinMigration) {
+    console.log('Running migration: add_survey_participant_pin');
+    await dbRun('ALTER TABLE surveys ADD COLUMN participant_pin TEXT');
+    await dbRun(`INSERT INTO _migrations VALUES ('add_survey_participant_pin')`);
+    console.log('Migration add_survey_participant_pin completed');
+  }
 }
 
 // Get database instance

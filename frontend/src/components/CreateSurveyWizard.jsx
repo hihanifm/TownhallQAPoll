@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { handleStepKeyboard } from '../utils/stepKeyboardNav';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
-import { storeVerifiedPin } from '../utils/surveyPin';
+import { storeVerifiedPin, storeVerifiedParticipantPin } from '../utils/surveyPin';
 import SurveyForm from './SurveyForm';
 import './CreateSurveyWizard.css';
 
@@ -25,6 +25,8 @@ const INITIAL_FORM = {
   title: '',
   description: '',
   pin: '',
+  require_participant_pin: false,
+  participant_pin: '',
   results_visibility: 'pin_only',
   questions: [EMPTY_QUESTION()],
 };
@@ -32,6 +34,12 @@ const INITIAL_FORM = {
 function validateDetails(formData) {
   if (!formData.title.trim()) return 'Survey title is required';
   if (!formData.pin.trim()) return 'A PIN is required for results and admin access';
+  if (formData.require_participant_pin) {
+    if (!formData.participant_pin.trim()) return 'Participant PIN is required when participation is gated';
+    if (formData.participant_pin.trim() === formData.pin.trim()) {
+      return 'Participant PIN must differ from admin PIN';
+    }
+  }
   return null;
 }
 
@@ -69,6 +77,7 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [maxStepReached, setMaxStepReached] = useState(0);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const questionsPanelRef = useRef(null);
 
   const goToStep = (index) => {
@@ -227,6 +236,7 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
         description: formData.description.trim() || null,
         creator_id: userId,
         pin: formData.pin.trim(),
+        participant_pin: formData.require_participant_pin ? formData.participant_pin.trim() : null,
         results_visibility: formData.results_visibility,
         questions: formData.questions.map((q) => ({
           prompt: q.prompt.trim(),
@@ -240,6 +250,9 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
       };
       const created = await api.createSurvey(payload);
       storeVerifiedPin(created.id, formData.pin.trim());
+      if (formData.require_participant_pin) {
+        storeVerifiedParticipantPin(created.id, formData.participant_pin.trim());
+      }
       if (onCreated) onCreated(created);
     } catch (err) {
       setError(err.message);
@@ -302,7 +315,7 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
             />
           </label>
           <label className="wizard-field">
-            <span>PIN *</span>
+            <span>Admin PIN *</span>
             <input
               type="password"
               value={formData.pin}
@@ -311,6 +324,47 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
               disabled={isSubmitting}
             />
           </label>
+          <div className="wizard-advanced">
+            <button
+              type="button"
+              className="wizard-advanced-toggle"
+              aria-expanded={showAdvanced}
+              onClick={() => setShowAdvanced((v) => !v)}
+            >
+              Advanced options {showAdvanced ? '▾' : '▸'}
+            </button>
+            {showAdvanced && (
+              <div className="wizard-advanced-body">
+                <label className="wizard-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={formData.require_participant_pin}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        require_participant_pin: e.target.checked,
+                        participant_pin: e.target.checked ? formData.participant_pin : '',
+                      })
+                    }
+                    disabled={isSubmitting}
+                  />
+                  <span>Require PIN to participate</span>
+                </label>
+                {formData.require_participant_pin && (
+                  <label className="wizard-field">
+                    <span>Participant PIN *</span>
+                    <input
+                      type="password"
+                      value={formData.participant_pin}
+                      onChange={(e) => setFormData({ ...formData, participant_pin: e.target.value })}
+                      placeholder="Share with respondents; separate from admin PIN"
+                      disabled={isSubmitting}
+                    />
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
           <label className="wizard-field">
             <span>Results visibility</span>
             <select
@@ -468,6 +522,7 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
             <ul>
               <li>{questionCount} question{questionCount !== 1 ? 's' : ''}</li>
               <li>Results: {VISIBILITY_LABELS[formData.results_visibility]}</li>
+              {formData.require_participant_pin && <li>Participant PIN required to respond</li>}
             </ul>
           </div>
           <div className="wizard-preview-wrap">

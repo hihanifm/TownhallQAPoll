@@ -382,8 +382,13 @@ export const api = {
     return response.json();
   },
 
-  getSurvey: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/surveys/${id}`);
+  getSurvey: async (id, { participantPin, surveyPin, creatorId } = {}) => {
+    const params = new URLSearchParams();
+    if (participantPin) params.append('participant_pin', participantPin);
+    if (surveyPin) params.append('survey_pin', surveyPin);
+    if (creatorId) params.append('creator_id', creatorId);
+    const qs = params.toString();
+    const response = await fetch(`${API_BASE_URL}/surveys/${id}${qs ? `?${qs}` : ''}`);
     if (!response.ok) throw new Error('Failed to fetch survey');
     return response.json();
   },
@@ -414,6 +419,19 @@ export const api = {
     return response.json();
   },
 
+  verifySurveyParticipantPin: async (surveyId, pin) => {
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/verify-participant-pin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to verify participant PIN');
+    }
+    return response.json();
+  },
+
   getSurveySubmissionStatus: async (surveyId, userId) => {
     const params = new URLSearchParams({ user_id: userId });
     const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/submission-status?${params}`);
@@ -421,7 +439,7 @@ export const api = {
     return response.json();
   },
 
-  submitSurvey: async (surveyId, userId, answers, fingerprintHash) => {
+  submitSurvey: async (surveyId, userId, answers, { fingerprintHash, participantPin, creatorId } = {}) => {
     const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -429,6 +447,8 @@ export const api = {
         user_id: userId,
         fingerprint_hash: fingerprintHash || null,
         answers,
+        participant_pin: participantPin || null,
+        creator_id: creatorId || null,
       }),
     });
     if (!response.ok) {

@@ -6,15 +6,47 @@ const sseService = require('../services/sseService');
 const VALID_QUESTION_TYPES = ['single', 'multi', 'rating', 'text'];
 const VALID_VISIBILITY = ['pin_only', 'after_submit', 'public'];
 
+const SURVEY_PUBLIC_SELECT = `id, title, description, created_at, status, creator_id, results_visibility,
+  CASE WHEN pin IS NOT NULL AND pin != '' THEN 1 ELSE 0 END as has_pin,
+  CASE WHEN participant_pin IS NOT NULL AND participant_pin != '' THEN 1 ELSE 0 END as has_participant_pin`;
+
+function hasParticipantPin(survey) {
+  if (!survey) return false;
+  if (survey.has_participant_pin === 1 || survey.has_participant_pin === true) return true;
+  return survey.participant_pin != null && String(survey.participant_pin).trim() !== '';
+}
+
 function formatSurveyRow(row) {
   if (!row) return null;
+  const { pin, participant_pin, ...safe } = row;
   return {
-    ...row,
+    ...safe,
     created_at: formatDatetime(row.created_at),
     has_pin: row.has_pin === 1 || row.has_pin === true,
+    has_participant_pin: hasParticipantPin(row),
     question_count: row.question_count != null ? Number(row.question_count) : undefined,
     response_count: row.response_count != null ? Number(row.response_count) : undefined,
   };
+}
+
+async function canAccessSurveyContent(survey, { participant_pin, survey_pin, creator_id }) {
+  if (!hasParticipantPin(survey)) return true;
+  if (survey.creator_id && creator_id && survey.creator_id === creator_id) return true;
+  if (participant_pin && survey.participant_pin === participant_pin) return true;
+  const auth = await isAuthorized(survey.id, creator_id || null, survey_pin || null);
+  return auth.authorized;
+}
+
+function canSubmitSurvey(survey, { participant_pin, creator_id }) {
+  if (!hasParticipantPin(survey)) return true;
+  if (survey.creator_id && creator_id && survey.creator_id === creator_id) return true;
+  return !!(participant_pin && survey.participant_pin === participant_pin);
+}
+
+function normalizeParticipantPin(value) {
+  if (value == null || value === '') return null;
+  const trimmed = String(value).trim();
+  return trimmed || null;
 }
 
 function parseQuestionOptions(options) {
@@ -283,7 +315,8 @@ router.get('/', async (req, res, next) => {
       `SELECT s.id, s.title, s.description, s.created_at, s.status, s.creator_id, s.results_visibility,
        COUNT(DISTINCT sq.id) as question_count,
        COUNT(DISTINCT ss.id) as response_count,
-       CASE WHEN s.pin IS NOT NULL AND s.pin != '' THEN 1 ELSE 0 END as has_pin
+       CASE WHEN s.pin IS NOT NULL AND s.pin != '' THEN 1 ELSE 0 END as has_pin,
+       CASE WHEN s.participant_pin IS NOT NULL AND s.participant_pin != '' THEN 1 ELSE 0 END as has_participant_pin
        FROM surveys s
        LEFT JOIN survey_questions sq ON s.id = sq.survey_id
        LEFT JOIN survey_submissions ss ON s.id = ss.survey_id
@@ -299,7 +332,7 @@ router.get('/', async (req, res, next) => {
 // POST /api/surveys
 router.post('/', async (req, res, next) => {
   try {
-    const { title, description, creator_id, pin, results_visibility, questions } = req.body;
+    const { title, description, creator_id, pin, participant_pin, results_visibility, questions } = req.body;
 
     if (!title || !String(title).trim()) {
       return res.status(400).json({ error: 'Title is required' });
@@ -309,6 +342,11 @@ router.post('/', async (req, res, next) => {
     }
     if (!pin || !String(pin).trim()) {
       return res.status(400).json({ error: 'A PIN is required to create a survey' });
+    }
+    const adminPin = pin.trim();
+    const participantPin = normalizeParticipantPin(participant_pin);
+    if (participantPin && participantPin === adminPin) {
+      return res.status(400).json({ error: 'Participant PIN must differ from admin PIN' });
     }
     const visibility = results_visibility || 'pin_only';
     if (!VALID_VISIBILITY.includes(visibility)) {
@@ -320,16 +358,14 @@ router.post('/', async (req, res, next) => {
     }
 
     const result = await runQuery(
-      'INSERT INTO surveys (title, description, status, creator_id, pin, results_visibility) VALUES (?, ?, ?, ?, ?, ?)',
-      [title.trim(), description || null, 'active', creator_id, pin.trim(), visibility]
+      'INSERT INTO surveys (title, description, status, creator_id, pin, participant_pin, results_visibility) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [title.trim(), description || null, 'active', creator_id, adminPin, participantPin, visibility]
     );
     const surveyId = result.lastID;
     await insertQuestions(surveyId, questions);
 
     const survey = await getQuery(
-      `SELECT id, title, description, created_at, status, creator_id, results_visibility,
-       CASE WHEN pin IS NOT NULL AND pin != '' THEN 1 ELSE 0 END as has_pin
-       FROM surveys WHERE id = ?`,
+      `SELECT ${SURVEY_PUBLIC_SELECT} FROM surveys WHERE id = ?`,
       [surveyId]
     );
     const formatted = formatSurveyRow(survey);
@@ -353,11 +389,31 @@ router.get('/:id/submission-status', async (req, res, next) => {
     if (!user_id) {
       return res.status(400).json({ error: 'user_id is required' });
     }
+    const surveyId = req.params.id;
     const submission = await getQuery(
-      'SELECT id FROM survey_submissions WHERE survey_id = ? AND user_id = ?',
-      [req.params.id, user_id]
+      'SELECT id, submitted_at FROM survey_submissions WHERE survey_id = ? AND user_id = ?',
+      [surveyId, user_id]
     );
-    res.json({ submitted: !!submission });
+    if (!submission) {
+      return res.json({ submitted: false });
+    }
+    const questions = await getSurveyQuestions(surveyId);
+    const answerRows = await allQuery(
+      'SELECT question_id, value_json FROM survey_answers WHERE submission_id = ?',
+      [submission.id]
+    );
+    const byQuestion = Object.fromEntries(answerRows.map((a) => [a.question_id, a.value_json]));
+    const answers = questions.map((q) => ({
+      question_id: q.id,
+      prompt: q.prompt,
+      type: q.type,
+      display: formatAnswerForExport(byQuestion[q.id], q.type),
+    }));
+    res.json({
+      submitted: true,
+      submitted_at: formatDatetime(submission.submitted_at),
+      answers,
+    });
   } catch (error) {
     next(error);
   }
@@ -444,10 +500,33 @@ router.post('/:id/verify-pin', async (req, res, next) => {
   }
 });
 
+// POST /api/surveys/:id/verify-participant-pin
+router.post('/:id/verify-participant-pin', async (req, res, next) => {
+  try {
+    const { pin } = req.body;
+    if (!pin) {
+      return res.status(400).json({ error: 'PIN is required' });
+    }
+    const survey = await getQuery('SELECT id, participant_pin FROM surveys WHERE id = ?', [req.params.id]);
+    if (!survey) {
+      return res.status(404).json({ error: 'Survey not found' });
+    }
+    if (!hasParticipantPin(survey)) {
+      return res.status(400).json({ error: 'This survey does not require a participant PIN' });
+    }
+    if (survey.participant_pin !== pin) {
+      return res.status(403).json({ error: 'Invalid participant PIN' });
+    }
+    res.json({ success: true, message: 'Participant PIN verified successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/surveys/:id/submit
 router.post('/:id/submit', async (req, res, next) => {
   try {
-    const { user_id, fingerprint_hash, answers } = req.body;
+    const { user_id, fingerprint_hash, answers, participant_pin, creator_id } = req.body;
     const surveyId = req.params.id;
 
     if (!user_id) {
@@ -463,6 +542,10 @@ router.post('/:id/submit', async (req, res, next) => {
     }
     if (survey.status === 'closed') {
       return res.status(403).json({ error: 'Survey is closed' });
+    }
+
+    if (!canSubmitSurvey(survey, { participant_pin: participant_pin || null, creator_id: creator_id || null })) {
+      return res.status(403).json({ error: 'Valid participant PIN is required to submit this survey' });
     }
 
     const existing = await getQuery(
@@ -590,25 +673,30 @@ function normalizeAnswerValue(question, value) {
 // GET /api/surveys/:id
 router.get('/:id', async (req, res, next) => {
   try {
-    const survey = await getQuery(
-      `SELECT id, title, description, created_at, status, creator_id, results_visibility,
-       CASE WHEN pin IS NOT NULL AND pin != '' THEN 1 ELSE 0 END as has_pin
-       FROM surveys WHERE id = ?`,
-      [req.params.id]
-    );
+    const survey = await getQuery('SELECT * FROM surveys WHERE id = ?', [req.params.id]);
     if (!survey) {
       return res.status(404).json({ error: 'Survey not found' });
     }
-    const questions = await getSurveyQuestions(req.params.id);
+    const { participant_pin, survey_pin, creator_id } = req.query;
+    const canAccess = await canAccessSurveyContent(survey, {
+      participant_pin: participant_pin || null,
+      survey_pin: survey_pin || null,
+      creator_id: creator_id || null,
+    });
+    const questions = canAccess ? await getSurveyQuestions(req.params.id) : [];
     const responseCount = await getQuery(
       'SELECT COUNT(*) as count FROM survey_submissions WHERE survey_id = ?',
       [req.params.id]
     );
-    res.json({
+    const payload = {
       ...formatSurveyRow(survey),
       questions,
       response_count: responseCount.count,
-    });
+    };
+    if (hasParticipantPin(survey) && !canAccess) {
+      payload.participant_pin_required = true;
+    }
+    res.json(payload);
   } catch (error) {
     next(error);
   }
@@ -617,10 +705,18 @@ router.get('/:id', async (req, res, next) => {
 // PATCH /api/surveys/:id
 router.patch('/:id', async (req, res, next) => {
   try {
-    const { creator_id, survey_pin, title, description, status, results_visibility, questions } = req.body;
+    const { creator_id, survey_pin, title, description, status, results_visibility, participant_pin, questions } = req.body;
     const auth = await isAuthorized(req.params.id, creator_id || null, survey_pin || null);
     if (!auth.authorized) {
       return res.status(403).json({ error: auth.error || 'Not authorized' });
+    }
+
+    if (participant_pin !== undefined) {
+      const nextParticipantPin = normalizeParticipantPin(participant_pin);
+      if (nextParticipantPin && nextParticipantPin === auth.survey.pin) {
+        return res.status(400).json({ error: 'Participant PIN must differ from admin PIN' });
+      }
+      await runQuery('UPDATE surveys SET participant_pin = ? WHERE id = ?', [nextParticipantPin, req.params.id]);
     }
 
     if (title !== undefined) {
@@ -655,9 +751,7 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     const survey = await getQuery(
-      `SELECT id, title, description, created_at, status, creator_id, results_visibility,
-       CASE WHEN pin IS NOT NULL AND pin != '' THEN 1 ELSE 0 END as has_pin
-       FROM surveys WHERE id = ?`,
+      `SELECT ${SURVEY_PUBLIC_SELECT} FROM surveys WHERE id = ?`,
       [req.params.id]
     );
     const formatted = formatSurveyRow(survey);
@@ -684,9 +778,7 @@ router.patch('/:id/close', async (req, res, next) => {
     }
     await runQuery('UPDATE surveys SET status = ? WHERE id = ?', ['closed', req.params.id]);
     const survey = await getQuery(
-      `SELECT id, title, description, created_at, status, creator_id, results_visibility,
-       CASE WHEN pin IS NOT NULL AND pin != '' THEN 1 ELSE 0 END as has_pin
-       FROM surveys WHERE id = ?`,
+      `SELECT ${SURVEY_PUBLIC_SELECT} FROM surveys WHERE id = ?`,
       [req.params.id]
     );
     const formatted = formatSurveyRow(survey);

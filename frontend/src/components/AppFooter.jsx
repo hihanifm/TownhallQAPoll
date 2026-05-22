@@ -4,6 +4,7 @@ import { APP_VERSION } from '../config/version';
 import { hasVerifiedPin } from '../utils/campaignPin';
 import { hasVerifiedPin as hasSurveyPin } from '../utils/surveyPin';
 import { api } from '../services/api';
+import { getConfig, isCampaignsEnabled, isSurveysEnabled } from '../services/configService';
 import PinEntryModal from './PinEntryModal';
 import SurveyPinEntryModal from './SurveyPinEntryModal';
 import './AppFooter.css';
@@ -22,6 +23,15 @@ function AppFooter({ selectedCampaignId, selectedSurveyId }) {
   const [showSurveyPinModal, setShowSurveyPinModal] = useState(false);
   const [surveyPinVerified, setSurveyPinVerified] = useState(false);
   const [survey, setSurvey] = useState(null);
+  const [appConfig, setAppConfig] = useState({ features: { campaigns: true, surveys: true } });
+
+  const campaignsEnabled = isCampaignsEnabled(appConfig);
+  const surveysEnabled = isSurveysEnabled(appConfig);
+  const showFeatureToggle = campaignsEnabled && surveysEnabled;
+
+  useEffect(() => {
+    getConfig().then(setAppConfig);
+  }, []);
 
   // Get version from config
   const version = APP_VERSION;
@@ -304,15 +314,17 @@ function AppFooter({ selectedCampaignId, selectedSurveyId }) {
         </div>
         
         <div className="footer-section footer-feedback-section">
-          <button
-            className="footer-feedback-button"
-            onClick={() => navigate(isSurveyPage ? '/' : '/surveys')}
-            title={isSurveyPage ? 'Town hall campaigns' : 'Anonymous surveys'}
-            style={{ fontWeight: isSurveyPage ? '700' : 'normal' }}
-            aria-label={isSurveyPage ? 'Campaigns' : 'Surveys'}
-          >
-            {isSurveyPage ? 'Q&A' : 'Surveys'}
-          </button>
+          {showFeatureToggle && (
+            <button
+              className="footer-feedback-button"
+              onClick={() => navigate(isSurveyPage ? '/' : '/surveys')}
+              title={isSurveyPage ? 'Town hall campaigns' : 'Anonymous surveys'}
+              style={{ fontWeight: isSurveyPage ? '700' : 'normal' }}
+              aria-label={isSurveyPage ? 'Campaigns' : 'Surveys'}
+            >
+              {isSurveyPage ? 'Q&A' : 'Surveys'}
+            </button>
+          )}
           <button
             className="footer-feedback-button"
             onClick={() => navigate('/feedback')}

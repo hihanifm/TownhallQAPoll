@@ -1,3 +1,19 @@
+.survey-my-response {
+  margin: 1rem 0;
+}
+
+.survey-my-response-heading {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.survey-my-response-answer {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
 .survey-results-section {
   margin-top: 28px;
   padding-top: 8px;

@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { api } from '../services/api';
-import { storeVerifiedPin } from '../utils/surveyPin';
+import { storeVerifiedPin, storeVerifiedParticipantPin } from '../utils/surveyPin';
 import './PinEntryModal.css';
 
-function SurveyPinEntryModal({ surveyId, onClose, onVerified }) {
+function SurveyPinEntryModal({ surveyId, mode = 'admin', onClose, onVerified }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
+
+  const isParticipant = mode === 'participant';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,8 +20,13 @@ function SurveyPinEntryModal({ surveyId, onClose, onVerified }) {
     setError(null);
     try {
       const trimmedPin = pin.trim();
-      await api.verifySurveyPin(surveyId, trimmedPin);
-      storeVerifiedPin(surveyId, trimmedPin);
+      if (isParticipant) {
+        await api.verifySurveyParticipantPin(surveyId, trimmedPin);
+        storeVerifiedParticipantPin(surveyId, trimmedPin);
+      } else {
+        await api.verifySurveyPin(surveyId, trimmedPin);
+        storeVerifiedPin(surveyId, trimmedPin);
+      }
       if (onVerified) onVerified();
       onClose();
     } catch (err) {
@@ -37,11 +44,15 @@ function SurveyPinEntryModal({ surveyId, onClose, onVerified }) {
     <div className="pin-modal-backdrop" onClick={handleBackdropClick}>
       <div className="pin-modal-content">
         <div className="pin-modal-header">
-          <h2>Survey Access</h2>
+          <h2>{isParticipant ? 'Participant access' : 'Survey Access'}</h2>
           <button className="pin-modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="pin-modal-body">
-          <p>Enter the survey PIN to view results or manage this survey.</p>
+          <p>
+            {isParticipant
+              ? 'Enter the participant PIN to take this survey.'
+              : 'Enter the survey PIN to view results or manage this survey.'}
+          </p>
           <form onSubmit={handleSubmit}>
             <input
               type="password"

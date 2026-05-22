@@ -6,11 +6,29 @@
  */
 
 // Default configuration values (fallback)
+const defaultFeatures = { campaigns: true, surveys: true };
+
 const defaultConfig = {
   title: 'Townhall Q&A Poll',
   subtitle: 'Ask. Vote. Be heard.',
-  welcome: 'Welcome to Townhall Q&A Poll\n\nAsk questions, vote on what matters most, and have your voice heard. Questions with the most votes get priority attention.'
+  welcome: 'Welcome to Townhall Q&A Poll\n\nAsk questions, vote on what matters most, and have your voice heard. Questions with the most votes get priority attention.',
+  features: defaultFeatures
 };
+
+function mergeFeatures(features) {
+  return {
+    campaigns: features?.campaigns !== false,
+    surveys: features?.surveys !== false
+  };
+}
+
+export function isCampaignsEnabled(config) {
+  return config?.features?.campaigns !== false;
+}
+
+export function isSurveysEnabled(config) {
+  return config?.features?.surveys !== false;
+}
 
 // Cache for loaded config
 let cachedConfig = null;
@@ -44,7 +62,8 @@ async function loadConfig() {
       const mergedConfig = {
         title: config.title || defaultConfig.title,
         subtitle: config.subtitle || defaultConfig.subtitle,
-        welcome: config.welcome || defaultConfig.welcome
+        welcome: config.welcome || defaultConfig.welcome,
+        features: mergeFeatures(config.features)
       };
       
       cachedConfig = mergedConfig;

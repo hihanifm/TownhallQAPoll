@@ -8,7 +8,7 @@ import FeedbackPanel from './components/FeedbackPanel';
 import AppFooter from './components/AppFooter';
 import { getBrowserName } from './utils/browserDetection';
 import { browserConfig } from './config/browserConfig';
-import { getConfig } from './services/configService';
+import { getConfig, isCampaignsEnabled, isSurveysEnabled } from './services/configService';
 import './App.css';
 
 function AppContent() {
@@ -22,18 +22,33 @@ function AppContent() {
   const selectedSurveyId = location.pathname.startsWith('/survey/') && id ? id : null;
   const [appConfig, setAppConfig] = useState({
     title: 'Townhall Q&A Poll',
-    subtitle: 'Ask. Vote. Be heard.'
+    subtitle: 'Ask. Vote. Be heard.',
+    features: { campaigns: true, surveys: true }
   });
   const [isCreatingSurvey, setIsCreatingSurvey] = useState(false);
+
+  const campaignsEnabled = isCampaignsEnabled(appConfig);
+  const surveysEnabled = isSurveysEnabled(appConfig);
+  const showNav = campaignsEnabled && surveysEnabled;
 
   // Load configuration on mount
   useEffect(() => {
     getConfig().then(config => {
       setAppConfig(config);
-      // Update document title
       document.title = config.title;
     });
   }, []);
+
+  // Redirect away from disabled feature routes
+  useEffect(() => {
+    if (!campaignsEnabled && (location.pathname === '/' || isCampaignRoute)) {
+      navigate('/surveys', { replace: true });
+      return;
+    }
+    if (!surveysEnabled && isSurveyPage) {
+      navigate('/', { replace: true });
+    }
+  }, [campaignsEnabled, surveysEnabled, location.pathname, isCampaignRoute, isSurveyPage, navigate]);
 
   const handleCampaignSelect = (campaignId) => {
     if (campaignId) {
@@ -71,10 +86,12 @@ function AppContent() {
   };
 
   const handleHeaderClick = () => {
+    if (isFeedbackPage) {
+      navigate(surveysEnabled && !campaignsEnabled ? '/surveys' : '/');
+      return;
+    }
     if (isSurveyPage) {
       navigate('/surveys');
-    } else if (!isFeedbackPage) {
-      navigate('/');
     } else {
       navigate('/');
     }
@@ -98,27 +115,31 @@ function AppContent() {
           <h1>{appConfig.title}</h1>
           <p>{appConfig.subtitle}</p>
         </div>
-        {!isFeedbackPage && (
+        {!isFeedbackPage && showNav && (
           <nav className="app-nav" aria-label="Main sections">
-            <button
-              type="button"
-              className={`app-nav-btn ${!isSurveyPage ? 'active' : ''}`}
-              onClick={goToCampaigns}
-            >
-              Q&A Campaigns
-            </button>
-            <button
-              type="button"
-              className={`app-nav-btn ${isSurveyPage ? 'active' : ''}`}
-              onClick={goToSurveys}
-            >
-              Surveys
-            </button>
+            {campaignsEnabled && (
+              <button
+                type="button"
+                className={`app-nav-btn ${!isSurveyPage ? 'active' : ''}`}
+                onClick={goToCampaigns}
+              >
+                Q&A Campaigns
+              </button>
+            )}
+            {surveysEnabled && (
+              <button
+                type="button"
+                className={`app-nav-btn ${isSurveyPage ? 'active' : ''}`}
+                onClick={goToSurveys}
+              >
+                Surveys
+              </button>
+            )}
           </nav>
         )}
       </header>
       <div className="app-content">
-        {!isFeedbackPage && !isSurveyPage && (
+        {!isFeedbackPage && !isSurveyPage && campaignsEnabled && (
           <>
             <CampaignList
               selectedCampaignId={selectedCampaignId}
@@ -140,7 +161,7 @@ function AppContent() {
             />
           </>
         )}
-        {isSurveyPage && (
+        {isSurveyPage && surveysEnabled && (
           <>
             <SurveyList
               selectedSurveyId={isCreatingSurvey ? null : selectedSurveyId}
