@@ -194,6 +194,12 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
     return () => window.removeEventListener('keydown', handleQuestionsKeyboard);
   }, [handleQuestionsKeyboard]);
 
+  useEffect(() => {
+    if (step === 1 && questionsPanelRef.current) {
+      questionsPanelRef.current.focus();
+    }
+  }, [step]);
+
   const updateQuestion = (index, field, value) => {
     setFormData((prev) => {
       const questions = [...prev.questions];
@@ -440,7 +446,7 @@ function CreateSurveyWizard({ onCancel, onCreated }) {
       )}
 
       {step === 1 && q && (
-        <div ref={questionsPanelRef} className="wizard-panel">
+        <div ref={questionsPanelRef} className="wizard-panel" tabIndex={-1}>
           <div className="wizard-question-nav">
             <span className="wizard-question-counter">
               Question {activeQuestionIndex + 1} of {questionCount}
