@@ -89,7 +89,7 @@ function SurveyList({ selectedSurveyId, onSurveySelect, onStartCreate }) {
   if (error) {
     return (
       <div className="campaign-list">
-        <div className="error">Error: {error}</div>
+        <div className="error">{error}</div>
       </div>
     );
   }

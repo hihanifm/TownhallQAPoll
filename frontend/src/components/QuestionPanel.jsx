@@ -451,18 +451,12 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
         </div>
       )}
 
-      {questions.length === 0 && (
-        <div className="empty-state">
-          <p>No questions yet. Be the first to ask a question!</p>
-        </div>
-      )}
-
       <CreateQuestionForm 
         campaignId={campaignId} 
         onQuestionCreated={handleQuestionCreated}
       />
 
-      <WelcomeCard variant="compact" />
+      {questions.length === 0 && <WelcomeCard variant="compact" />}
 
       {campaign && (
         <div className="campaign-footer">

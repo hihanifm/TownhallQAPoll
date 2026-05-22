@@ -13,6 +13,9 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({ title: '', description: '', creator_name: '', pin: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState(null);
+
+  const CAMPAIGN_LIST_LIMIT = 25;
 
   useEffect(() => {
     loadCampaigns();
@@ -91,15 +94,16 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
     e.preventDefault();
     
     if (!formData.title.trim()) {
-      showAppNotice('Please enter a campaign title');
+      setFormError('Please enter a campaign title');
       return;
     }
 
     if (!formData.pin.trim()) {
-      showAppNotice('A PIN is required. Share it with others to grant them admin access if your session is lost.');
+      setFormError('A PIN is required. Share it with others to grant them admin access if your session is lost.');
       return;
     }
 
+    setFormError(null);
     setIsSubmitting(true);
     try {
       const userId = getUserId();
@@ -115,6 +119,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
       storeVerifiedPin(newCampaign.id, campaignData.pin);
       setCampaigns([newCampaign, ...campaigns]);
       setFormData({ title: '', description: '', creator_name: '', pin: '' });
+      setFormError(null);
       setShowCreateForm(false);
       if (onCampaignCreated) {
         onCampaignCreated(newCampaign);
@@ -142,7 +147,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
   if (error) {
     return (
       <div className="campaign-list">
-        <div className="error">Error: {error}</div>
+        <div className="error">{error}</div>
       </div>
     );
   }
@@ -153,7 +158,10 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
         <h2>Campaigns</h2>
         <button 
           className="create-campaign-btn"
-          onClick={() => setShowCreateForm(!showCreateForm)}
+          onClick={() => {
+            setShowCreateForm(!showCreateForm);
+            if (showCreateForm) setFormError(null);
+          }}
         >
           {showCreateForm ? 'Cancel' : '+ New Campaign'}
         </button>
@@ -167,7 +175,10 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
               type="text"
               placeholder="Campaign Title *"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, title: e.target.value });
+                setFormError(null);
+              }}
               required
               disabled={isSubmitting}
             />
@@ -189,10 +200,14 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
               type="password"
               placeholder="PIN * (required — share to grant admin access)"
               value={formData.pin}
-              onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, pin: e.target.value });
+                setFormError(null);
+              }}
               required
               disabled={isSubmitting}
             />
+            {formError && <div className="create-campaign-form-error">{formError}</div>}
             <button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Creating...' : 'Create Campaign'}
             </button>
@@ -206,7 +221,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
             <p>No campaigns yet. Create one to get started!</p>
           </div>
         ) : (
-          campaigns.slice(0, 25).map(campaign => (
+          campaigns.slice(0, CAMPAIGN_LIST_LIMIT).map(campaign => (
             <div
               key={campaign.id}
               className={`campaign-item ${selectedCampaignId === campaign.id ? 'selected' : ''}`}
@@ -265,6 +280,9 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
           ))
         )}
       </div>
+      {campaigns.length > CAMPAIGN_LIST_LIMIT && (
+        <p className="campaign-list-limit-hint">Showing {CAMPAIGN_LIST_LIMIT} most recent campaigns</p>
+      )}
     </div>
   );
 }
