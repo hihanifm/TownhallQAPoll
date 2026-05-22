@@ -24,6 +24,7 @@ function AppContent() {
     title: 'Townhall Q&A Poll',
     subtitle: 'Ask. Vote. Be heard.'
   });
+  const [isCreatingSurvey, setIsCreatingSurvey] = useState(false);
 
   // Load configuration on mount
   useEffect(() => {
@@ -47,6 +48,7 @@ function AppContent() {
   };
 
   const handleSurveySelect = (surveyId) => {
+    setIsCreatingSurvey(false);
     if (surveyId) {
       navigate(`/survey/${surveyId}`);
     } else {
@@ -54,7 +56,17 @@ function AppContent() {
     }
   };
 
+  const handleStartCreateSurvey = () => {
+    setIsCreatingSurvey(true);
+    navigate('/surveys');
+  };
+
+  const handleCancelCreateSurvey = () => {
+    setIsCreatingSurvey(false);
+  };
+
   const handleSurveyCreated = (newSurvey) => {
+    setIsCreatingSurvey(false);
     navigate(`/survey/${newSurvey.id}`);
   };
 
@@ -75,6 +87,7 @@ function AppContent() {
 
   const goToSurveys = (e) => {
     e.stopPropagation();
+    setIsCreatingSurvey(false);
     navigate('/surveys');
   };
 
@@ -130,12 +143,15 @@ function AppContent() {
         {isSurveyPage && (
           <>
             <SurveyList
-              selectedSurveyId={selectedSurveyId}
+              selectedSurveyId={isCreatingSurvey ? null : selectedSurveyId}
               onSurveySelect={handleSurveySelect}
-              onSurveyCreated={handleSurveyCreated}
+              onStartCreate={handleStartCreateSurvey}
             />
             <SurveyPanel
               surveyId={selectedSurveyId}
+              isCreating={isCreatingSurvey}
+              onCancelCreate={handleCancelCreateSurvey}
+              onSurveyCreated={handleSurveyCreated}
               onSurveyClosed={() => navigate('/surveys')}
               onSurveyDeleted={() => navigate('/surveys')}
             />

@@ -5,9 +5,10 @@ import { getVerifiedPin, hasVerifiedPin } from '../utils/surveyPin';
 import SurveyForm from './SurveyForm';
 import SurveyResults from './SurveyResults';
 import SurveyPinEntryModal from './SurveyPinEntryModal';
+import CreateSurveyWizard from './CreateSurveyWizard';
 import './QuestionPanel.css';
 
-function SurveyPanel({ surveyId, onSurveyClosed, onSurveyDeleted }) {
+function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, onSurveyClosed, onSurveyDeleted }) {
   const [survey, setSurvey] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [resultsData, setResultsData] = useState(null);
@@ -128,11 +129,22 @@ function SurveyPanel({ surveyId, onSurveyClosed, onSurveyDeleted }) {
     public: 'Results: public',
   };
 
+  if (isCreating) {
+    return (
+      <div className="question-panel">
+        <CreateSurveyWizard
+          onCancel={onCancelCreate}
+          onCreated={onSurveyCreated}
+        />
+      </div>
+    );
+  }
+
   if (!surveyId) {
     return (
       <div className="question-panel">
         <div className="question-panel-empty">
-          <p>Select a survey or create a new one</p>
+          <p>Select a survey from the list, or click <strong>+ New Survey</strong> to set one up.</p>
         </div>
       </div>
     );

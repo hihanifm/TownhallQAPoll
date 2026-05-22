@@ -1,0 +1,457 @@
+import { useState } from 'react';
+import { api } from '../services/api';
+import { getUserId } from '../utils/userId';
+import { storeVerifiedPin } from '../utils/surveyPin';
+import SurveyForm from './SurveyForm';
+import './CreateSurveyWizard.css';
+
+const STEPS = ['details', 'questions', 'rehearse'];
+
+const VISIBILITY_LABELS = {
+  pin_only: 'PIN only (creator)',
+  after_submit: 'After respondent submits',
+  public: 'Public (live)',
+};
+
+const EMPTY_QUESTION = () => ({
+  prompt: '',
+  type: 'single',
+  options: ['Option 1', 'Option 2'],
+  allow_other: false,
+});
+
+const INITIAL_FORM = {
+  title: '',
+  description: '',
+  pin: '',
+  results_visibility: 'pin_only',
+  questions: [EMPTY_QUESTION()],
+};
+
+function validateDetails(formData) {
+  if (!formData.title.trim()) return 'Survey title is required';
+  if (!formData.pin.trim()) return 'A PIN is required for results and admin access';
+  return null;
+}
+
+function validateQuestions(questions) {
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    if (!q.prompt.trim()) return `Question ${i + 1} needs a prompt`;
+    if ((q.type === 'single' || q.type === 'multi') && q.options.filter((o) => o.trim()).length < 2) {
+      return `Question ${i + 1} needs at least two options`;
+    }
+  }
+  return null;
+}
+
+function buildPreviewSurvey(formData) {
+  return {
+    title: formData.title.trim(),
+    description: formData.description.trim() || null,
+    questions: formData.questions.map((q, i) => ({
+      id: `preview-${i}`,
+      prompt: q.prompt.trim(),
+      type: q.type,
+      options:
+        q.type === 'single' || q.type === 'multi'
+          ? { options: q.options.map((o) => o.trim()).filter(Boolean), allow_other: !!q.allow_other }
+          : null,
+    })),
+  };
+}
+
+function CreateSurveyWizard({ onCancel, onCreated }) {
+  const [step, setStep] = useState(0);
+  const [formData, setFormData] = useState(INITIAL_FORM);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [maxStepReached, setMaxStepReached] = useState(0);
+
+  const goToStep = (index) => {
+    if (index <= maxStepReached) {
+      setError(null);
+      setStep(index);
+    }
+  };
+
+  const handleNextFromDetails = () => {
+    const err = validateDetails(formData);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError(null);
+    setStep(1);
+    setMaxStepReached((m) => Math.max(m, 1));
+  };
+
+  const handleNextFromQuestions = () => {
+    const err = validateQuestions(formData.questions);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError(null);
+    setStep(2);
+    setMaxStepReached((m) => Math.max(m, 2));
+  };
+
+  const updateQuestion = (index, field, value) => {
+    setFormData((prev) => {
+      const questions = [...prev.questions];
+      questions[index] = { ...questions[index], [field]: value };
+      if (field === 'type' && (value === 'rating' || value === 'text')) {
+        questions[index].options = ['Option 1', 'Option 2'];
+        questions[index].allow_other = false;
+      }
+      return { ...prev, questions };
+    });
+  };
+
+  const updateOption = (qIndex, oIndex, value) => {
+    setFormData((prev) => {
+      const questions = [...prev.questions];
+      const opts = [...questions[qIndex].options];
+      opts[oIndex] = value;
+      questions[qIndex] = { ...questions[qIndex], options: opts };
+      return { ...prev, questions };
+    });
+  };
+
+  const addOption = (qIndex) => {
+    setFormData((prev) => {
+      const questions = [...prev.questions];
+      const n = questions[qIndex].options.length + 1;
+      questions[qIndex] = {
+        ...questions[qIndex],
+        options: [...questions[qIndex].options, `Option ${n}`],
+      };
+      return { ...prev, questions };
+    });
+  };
+
+  const removeOption = (qIndex, oIndex) => {
+    setFormData((prev) => {
+      const questions = [...prev.questions];
+      const opts = questions[qIndex].options.filter((_, i) => i !== oIndex);
+      if (opts.length < 2) return prev;
+      questions[qIndex] = { ...questions[qIndex], options: opts };
+      return { ...prev, questions };
+    });
+  };
+
+  const addQuestion = () => {
+    setFormData((prev) => ({
+      ...prev,
+      questions: [...prev.questions, EMPTY_QUESTION()],
+    }));
+    setActiveQuestionIndex(formData.questions.length);
+  };
+
+  const removeQuestion = (index) => {
+    if (formData.questions.length <= 1) return;
+    setFormData((prev) => ({
+      ...prev,
+      questions: prev.questions.filter((_, i) => i !== index),
+    }));
+    setActiveQuestionIndex((i) => {
+      if (i > index) return i - 1;
+      if (i === index) return Math.max(0, index - 1);
+      return i;
+    });
+  };
+
+  const handlePublish = async () => {
+    const dErr = validateDetails(formData);
+    if (dErr) {
+      setError(dErr);
+      setStep(0);
+      return;
+    }
+    const qErr = validateQuestions(formData.questions);
+    if (qErr) {
+      setError(qErr);
+      setStep(1);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const userId = getUserId();
+      const payload = {
+        title: formData.title.trim(),
+        description: formData.description.trim() || null,
+        creator_id: userId,
+        pin: formData.pin.trim(),
+        results_visibility: formData.results_visibility,
+        questions: formData.questions.map((q) => ({
+          prompt: q.prompt.trim(),
+          type: q.type,
+          options:
+            q.type === 'single' || q.type === 'multi'
+              ? q.options.map((o) => o.trim()).filter(Boolean)
+              : undefined,
+          allow_other: q.allow_other || false,
+        })),
+      };
+      const created = await api.createSurvey(payload);
+      storeVerifiedPin(created.id, formData.pin.trim());
+      if (onCreated) onCreated(created);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const q = formData.questions[activeQuestionIndex];
+  const questionCount = formData.questions.length;
+
+  return (
+    <div className="create-survey-wizard">
+      <div className="create-survey-wizard-header">
+        <h2>Create survey</h2>
+        <button type="button" className="wizard-cancel-btn" onClick={onCancel} disabled={isSubmitting}>
+          Cancel
+        </button>
+      </div>
+
+      <div className="wizard-steps" role="tablist" aria-label="Setup steps">
+        {['Details', 'Questions', 'Rehearse'].map((label, i) => (
+          <button
+            key={label}
+            type="button"
+            role="tab"
+            aria-selected={step === i}
+            className={`wizard-step ${step === i ? 'active' : ''} ${i <= maxStepReached ? 'reachable' : ''}`}
+            onClick={() => goToStep(i)}
+            disabled={i > maxStepReached}
+          >
+            <span className="wizard-step-num">{i + 1}</span>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {error && <div className="wizard-error">{error}</div>}
+
+      {step === 0 && (
+        <div className="wizard-panel">
+          <p className="wizard-panel-desc">Basic info and who can see results.</p>
+          <label className="wizard-field">
+            <span>Survey title *</span>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="e.g. Team pulse check"
+              disabled={isSubmitting}
+            />
+          </label>
+          <label className="wizard-field">
+            <span>Description (optional)</span>
+            <textarea
+              rows={3}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="What is this survey for?"
+              disabled={isSubmitting}
+            />
+          </label>
+          <label className="wizard-field">
+            <span>PIN *</span>
+            <input
+              type="password"
+              value={formData.pin}
+              onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
+              placeholder="Share with co-admins; needed for results when PIN-only"
+              disabled={isSubmitting}
+            />
+          </label>
+          <label className="wizard-field">
+            <span>Results visibility</span>
+            <select
+              value={formData.results_visibility}
+              onChange={(e) => setFormData({ ...formData, results_visibility: e.target.value })}
+              disabled={isSubmitting}
+            >
+              <option value="pin_only">PIN only (creator)</option>
+              <option value="after_submit">After respondent submits</option>
+              <option value="public">Public (live)</option>
+            </select>
+          </label>
+          <div className="wizard-footer">
+            <button type="button" className="wizard-primary-btn" onClick={handleNextFromDetails}>
+              Continue to questions
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 1 && q && (
+        <div className="wizard-panel">
+          <div className="wizard-question-nav">
+            <span className="wizard-question-counter">
+              Question {activeQuestionIndex + 1} of {questionCount}
+            </span>
+            <div className="wizard-question-nav-btns">
+              <button
+                type="button"
+                disabled={activeQuestionIndex === 0}
+                onClick={() => setActiveQuestionIndex((i) => i - 1)}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={activeQuestionIndex >= questionCount - 1}
+                onClick={() => setActiveQuestionIndex((i) => i + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+
+          <div className="wizard-question-card">
+            <label className="wizard-field">
+              <span>Question prompt *</span>
+              <input
+                type="text"
+                value={q.prompt}
+                onChange={(e) => updateQuestion(activeQuestionIndex, 'prompt', e.target.value)}
+                placeholder="What do you want to ask?"
+                disabled={isSubmitting}
+              />
+            </label>
+            <label className="wizard-field">
+              <span>Answer type</span>
+              <select
+                value={q.type}
+                onChange={(e) => updateQuestion(activeQuestionIndex, 'type', e.target.value)}
+                disabled={isSubmitting}
+              >
+                <option value="single">Single choice</option>
+                <option value="multi">Multiple choice</option>
+                <option value="rating">Rating 1–5</option>
+                <option value="text">Short text</option>
+              </select>
+            </label>
+            {(q.type === 'single' || q.type === 'multi') && (
+              <div className="wizard-options">
+                <span className="wizard-field-label">Options</span>
+                {q.options.map((opt, oi) => (
+                  <div key={oi} className="wizard-option-row">
+                    <input
+                      type="text"
+                      value={opt}
+                      onChange={(e) => updateOption(activeQuestionIndex, oi, e.target.value)}
+                      disabled={isSubmitting}
+                    />
+                    {q.options.length > 2 && (
+                      <button
+                        type="button"
+                        className="wizard-icon-btn"
+                        onClick={() => removeOption(activeQuestionIndex, oi)}
+                        disabled={isSubmitting}
+                        aria-label="Remove option"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" className="wizard-secondary-btn" onClick={() => addOption(activeQuestionIndex)}>
+                  + Add option
+                </button>
+                <label className="wizard-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={q.allow_other}
+                    onChange={(e) => updateQuestion(activeQuestionIndex, 'allow_other', e.target.checked)}
+                    disabled={isSubmitting}
+                  />
+                  Allow &quot;Other&quot; with free text
+                </label>
+              </div>
+            )}
+            {questionCount > 1 && (
+              <button
+                type="button"
+                className="wizard-danger-text"
+                onClick={() => removeQuestion(activeQuestionIndex)}
+                disabled={isSubmitting}
+              >
+                Remove this question
+              </button>
+            )}
+          </div>
+
+          <div className="wizard-question-chips">
+            {formData.questions.map((_, qi) => (
+              <button
+                key={qi}
+                type="button"
+                className={`wizard-chip ${qi === activeQuestionIndex ? 'active' : ''}`}
+                onClick={() => setActiveQuestionIndex(qi)}
+                title={formData.questions[qi].prompt || `Question ${qi + 1}`}
+              >
+                {qi + 1}
+              </button>
+            ))}
+            <button type="button" className="wizard-chip add" onClick={addQuestion}>
+              +
+            </button>
+          </div>
+
+          <div className="wizard-footer">
+            <button type="button" className="wizard-secondary-btn" onClick={() => { setError(null); setStep(0); }}>
+              Back
+            </button>
+            <button type="button" className="wizard-primary-btn" onClick={handleNextFromQuestions}>
+              Preview & publish
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="wizard-panel wizard-rehearse">
+          <div className="wizard-summary">
+            <h3>{formData.title.trim() || 'Untitled survey'}</h3>
+            {formData.description.trim() && <p>{formData.description.trim()}</p>}
+            <ul>
+              <li>{questionCount} question{questionCount !== 1 ? 's' : ''}</li>
+              <li>Results: {VISIBILITY_LABELS[formData.results_visibility]}</li>
+            </ul>
+          </div>
+          <div className="wizard-preview-wrap">
+            <SurveyForm survey={buildPreviewSurvey(formData)} preview />
+          </div>
+          <div className="wizard-footer">
+            <button
+              type="button"
+              className="wizard-secondary-btn"
+              onClick={() => { setError(null); setStep(1); }}
+              disabled={isSubmitting}
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              className="wizard-primary-btn"
+              onClick={handlePublish}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Publishing...' : 'Publish survey'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default CreateSurveyWizard;

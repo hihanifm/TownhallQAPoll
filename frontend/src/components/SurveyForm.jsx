@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './SurveyForm.css';
 
-function SurveyForm({ survey, onSubmit, isSubmitting }) {
+function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
   const [answers, setAnswers] = useState({});
 
   const setAnswer = (questionId, value) => {
@@ -165,12 +165,24 @@ function SurveyForm({ survey, onSubmit, isSubmitting }) {
   };
 
   return (
-    <form className="survey-form" onSubmit={handleSubmit}>
-      {survey.questions.map(renderQuestion)}
-      <button type="submit" className="survey-submit-btn" disabled={isSubmitting}>
-        {isSubmitting ? 'Submitting...' : 'Submit Survey'}
-      </button>
-    </form>
+    <div className={`survey-form-wrap ${preview ? 'survey-form-preview' : ''}`}>
+      {preview && (
+        <p className="survey-preview-banner">
+          Rehearsal — try the survey as respondents will see it. Answers are not saved.
+        </p>
+      )}
+      <form
+        className="survey-form"
+        onSubmit={preview ? (e) => e.preventDefault() : handleSubmit}
+      >
+        {survey.questions.map(renderQuestion)}
+        {!preview && (
+          <button type="submit" className="survey-submit-btn" disabled={isSubmitting}>
+            {isSubmitting ? 'Submitting...' : 'Submit Survey'}
+          </button>
+        )}
+      </form>
+    </div>
   );
 }
 

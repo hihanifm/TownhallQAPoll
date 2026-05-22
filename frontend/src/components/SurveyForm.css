@@ -1,3 +1,19 @@
+.survey-form-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.survey-preview-banner {
+  margin: 0;
+  padding: 10px 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  color: #1e40af;
+  font-size: 14px;
+}
+
 .survey-form {
   display: flex;
   flex-direction: column;

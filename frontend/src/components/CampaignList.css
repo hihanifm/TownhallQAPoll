@@ -22,55 +22,6 @@
   box-sizing: border-box;
 }
 
-.survey-create-form .survey-visibility-label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
-  margin: 8px 0;
-}
-
-.survey-questions-builder {
-  margin: 12px 0;
-  padding: 12px;
-  background: #f8fafc;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.survey-questions-builder h4 {
-  margin: 0 0 10px;
-  font-size: 14px;
-}
-
-.survey-builder-question {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 14px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.survey-option-row {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.survey-allow-other {
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.survey-remove-q {
-  font-size: 12px;
-  color: #b91c1c;
-  align-self: flex-start;
-}
-
 .survey-description {
   color: #475569;
   margin-bottom: 8px;
