@@ -5,6 +5,8 @@ import { getFingerprint } from '../utils/browserFingerprint';
 import { isIncognito } from '../utils/incognito';
 import { getVerifiedPin } from '../utils/feedbackPin';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
+import { showAppNotice } from '../utils/appNotice';
+import ConfirmDialog from './ConfirmDialog';
 import './FeedbackCard.css';
 
 function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previousNumber, hasAdminAccess }) {
@@ -18,6 +20,7 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(feedback.feedback_text || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const [isIncognitoMode, setIsIncognitoMode] = useState(false);
   const justToggledRef = useRef(false);
   const previousVoteCountRef = useRef(feedback.vote_count || 0);
@@ -92,7 +95,7 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
     
     // Require fingerprint before voting
     if (!fingerprintHash) {
-      alert('Error: Browser fingerprint not available. Please refresh the page and try again.');
+      showAppNotice('Browser fingerprint not available. Please refresh the page and try again.');
       return;
     }
 
@@ -120,24 +123,18 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
     } catch (error) {
       console.error('Error toggling vote:', error);
       justToggledRef.current = false; // Reset on error
-      alert(`Error: ${error.message || 'Failed to toggle vote'}`);
+      showAppNotice(error.message || 'Failed to toggle vote');
     } finally {
       setIsVoting(false);
     }
   };
 
-  const handleCloseFeedback = async () => {
-    if (isClosing || isClosed) return;
-    
-    if (!window.confirm('Are you sure you want to close this feedback?')) {
-      return;
-    }
-
+  const runCloseFeedback = async () => {
     setIsClosing(true);
     try {
       const pin = getVerifiedPin();
       if (!pin) {
-        alert('Error: PIN not available. Please verify your PIN again.');
+        showAppNotice('PIN not available. Please verify your PIN again.');
         return;
       }
       await api.closeFeedback(feedback.id, pin);
@@ -149,10 +146,23 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
       }
     } catch (error) {
       console.error('Error closing feedback:', error);
-      alert(error.message || 'Failed to close feedback');
+      showAppNotice(error.message || 'Failed to close feedback');
     } finally {
       setIsClosing(false);
     }
+  };
+
+  const handleCloseFeedback = () => {
+    if (isClosing || isClosed) return;
+    setConfirmDialog({
+      title: 'Close feedback',
+      message: 'Are you sure you want to close this feedback?',
+      confirmLabel: 'Close',
+      onConfirm: () => {
+        setConfirmDialog(null);
+        runCloseFeedback();
+      },
+    });
   };
 
   const handleEdit = (e) => {
@@ -171,7 +181,7 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
     e.stopPropagation();
     
     if (!editedText.trim()) {
-      alert('Feedback text cannot be empty');
+      showAppNotice('Feedback text cannot be empty');
       return;
     }
 
@@ -192,13 +202,14 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
       }
     } catch (error) {
       console.error('Error updating feedback:', error);
-      alert(error.message || 'Failed to update feedback');
+      showAppNotice(error.message || 'Failed to update feedback');
     } finally {
       setIsUpdating(false);
     }
   };
 
   return (
+    <>
     <div className={`feedback-card-wrapper ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''} ${isClosed ? 'closed' : ''}`}>
       <div className={`feedback-card ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''} ${isClosed ? 'closed' : ''}`}>
         <span className="feedback-number">{number}</span>
@@ -287,6 +298,16 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
         )}
       </div>
     </div>
+    <ConfirmDialog
+      open={!!confirmDialog}
+      title={confirmDialog?.title ?? ''}
+      message={confirmDialog?.message ?? ''}
+      confirmLabel={confirmDialog?.confirmLabel ?? 'Confirm'}
+      danger={confirmDialog?.danger}
+      onConfirm={confirmDialog?.onConfirm}
+      onCancel={() => setConfirmDialog(null)}
+    />
+    </>
   );
 }
 

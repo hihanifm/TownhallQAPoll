@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api } from '../services/api';
 import { storeVerifiedPin } from '../utils/feedbackPin';
-import './FeedbackPinModal.css';
+import './PinEntryModal.css';
 
 function FeedbackPinModal({ onClose, onVerified }) {
   const [pin, setPin] = useState('');

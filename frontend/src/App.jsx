@@ -9,6 +9,7 @@ import AppFooter from './components/AppFooter';
 import { getBrowserName } from './utils/browserDetection';
 import { browserConfig } from './config/browserConfig';
 import { getConfig, isCampaignsEnabled, isSurveysEnabled } from './services/configService';
+import AppNotice from './components/AppNotice';
 import './App.css';
 
 function AppContent() {
@@ -270,13 +271,16 @@ function App() {
   }
 
   return (
-    <Routes>
+    <>
+      <AppNotice />
+      <Routes>
       <Route path="/campaign/:id" element={<AppContent />} />
       <Route path="/survey/:id" element={<AppContent />} />
       <Route path="/surveys" element={<AppContent />} />
       <Route path="/feedback" element={<AppContent />} />
       <Route path="/" element={<AppContent />} />
     </Routes>
+    </>
   );
 }
 

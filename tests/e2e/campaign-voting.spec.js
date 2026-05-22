@@ -386,14 +386,9 @@ test.describe('Campaign Voting E2E Test', () => {
     await page.locator('.add-comment-btn').click();
     await page.locator('.add-comment-textarea').fill('Comment attempt with stale stored campaign PIN');
 
-    let alertMessage = '';
-    page.once('dialog', async (dialog) => {
-      alertMessage = dialog.message();
-      await dialog.accept();
-    });
     await page.locator('.save-comment-btn').click();
 
-    await expect.poll(() => alertMessage).toContain('stored PIN is no longer valid');
+    await expect(page.locator('.app-notice')).toContainText('stored PIN is no longer valid', { timeout: 10000 });
 
     // Step 5: Verify access is revoked and PIN modal is shown again for re-entry.
     await expect(page.locator('.footer-admin-button')).toBeVisible({ timeout: 10000 });

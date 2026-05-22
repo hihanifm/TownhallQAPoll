@@ -163,6 +163,16 @@
   box-shadow: 0 4px 8px rgba(37, 99, 235, 0.4);
 }
 
+.pin-modal-verify--danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+}
+
+.pin-modal-verify--danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 4px 8px rgba(220, 38, 38, 0.4);
+}
+
 .pin-modal-actions button:disabled {
   opacity: 0.5;
   cursor: not-allowed;

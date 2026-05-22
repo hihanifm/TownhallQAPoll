@@ -172,12 +172,23 @@
 
 .survey-results-gated {
   margin-top: 20px;
-  padding: 14px 16px;
+  padding: 20px 16px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  color: #64748b;
+  border-radius: 10px;
+  color: #475569;
   font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.survey-results-gated p {
+  margin: 0 0 14px;
+}
+
+.survey-results-gated .survey-enter-pin-btn {
+  width: 100%;
+  max-width: 280px;
 }
 
 .campaign-list-header h2 {
@@ -457,8 +468,7 @@
   overflow-wrap: break-word;
 }
 
-.loading,
-.error {
+.loading {
   padding: 60px 20px;
   text-align: center;
   color: #64748b;
@@ -466,12 +476,40 @@
   border-radius: 12px;
   margin: 16px;
   font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.loading::before {
+  content: '';
+  width: 28px;
+  height: 28px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: app-spin 0.7s linear infinite;
+}
+
+@keyframes app-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error {
-  color: #dc2626;
-  background: linear-gradient(135deg, rgba(254, 242, 242, 0.9) 0%, rgba(239, 246, 255, 0.8) 100%);
-  border: 2px solid rgba(220, 38, 38, 0.2);
+  padding: 16px 20px;
+  text-align: center;
+  color: #991b1b;
+  font-size: 14px;
+  line-height: 1.5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  margin: 16px;
+  font-weight: 500;
 }
 
 .empty-state {

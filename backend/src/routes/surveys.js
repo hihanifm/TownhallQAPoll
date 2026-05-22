@@ -18,7 +18,8 @@ function hasParticipantPin(survey) {
 
 function formatSurveyRow(row) {
   if (!row) return null;
-  const { pin, participant_pin, ...safe } = row;
+  // creator_id is a personal localStorage UUID — never serialize it to clients.
+  const { pin, participant_pin, creator_id, ...safe } = row;
   return {
     ...safe,
     created_at: formatDatetime(row.created_at),
@@ -49,13 +50,20 @@ function normalizeParticipantPin(value) {
   return trimmed || null;
 }
 
-function isSurveyCreator(survey, creator_id) {
-  return !!(survey.creator_id && creator_id && survey.creator_id === creator_id);
+// Ownership is computed server-side from the requester's own creator_id and
+// surfaced as an `is_mine` boolean. The raw creator_id is never sent to clients.
+function isSurveyOwner(rawRow, requesterCreatorId) {
+  return !!(
+    rawRow &&
+    rawRow.creator_id &&
+    requesterCreatorId &&
+    rawRow.creator_id === requesterCreatorId
+  );
 }
 
-function redactConfidentialSurvey(row, { creator_id } = {}) {
-  if (!hasParticipantPin(row)) return row;
-  if (isSurveyCreator(row, creator_id)) return row;
+function redactConfidentialSurvey(row, isMine) {
+  if (!row.has_participant_pin) return row;
+  if (isMine) return row;
   return {
     ...row,
     title: null,
@@ -342,9 +350,11 @@ router.get('/', async (req, res, next) => {
        ORDER BY s.created_at DESC`
     );
     res.json(
-      surveys
-        .map(formatSurveyRow)
-        .map((row) => redactConfidentialSurvey(row, { creator_id: creator_id || null }))
+      surveys.map((row) => {
+        const isMine = isSurveyOwner(row, creator_id || null);
+        const formatted = redactConfidentialSurvey(formatSurveyRow(row), isMine);
+        return { ...formatted, is_mine: isMine };
+      })
     );
   } catch (error) {
     next(error);
@@ -398,7 +408,7 @@ router.post('/', async (req, res, next) => {
       survey: { ...formatted, questions: surveyQuestions },
     });
 
-    res.status(201).json({ ...formatted, questions: surveyQuestions });
+    res.status(201).json({ ...formatted, questions: surveyQuestions, is_mine: true });
   } catch (error) {
     next(error);
   }
@@ -722,14 +732,16 @@ router.get('/:id', async (req, res, next) => {
       'SELECT COUNT(*) as count FROM survey_submissions WHERE survey_id = ?',
       [req.params.id]
     );
+    const isMine = isSurveyOwner(survey, creator_id || null);
     let payload = {
       ...formatSurveyRow(survey),
       questions,
       response_count: responseCount.count,
+      is_mine: isMine,
     };
     if (hasParticipantPin(survey) && !canAccess) {
       payload.participant_pin_required = true;
-      payload = redactConfidentialSurvey(payload, { creator_id: creator_id || null });
+      payload = redactConfidentialSurvey(payload, isMine);
       payload.questions = [];
       payload.response_count = 0;
     }
@@ -792,6 +804,7 @@ router.patch('/:id', async (req, res, next) => {
       [req.params.id]
     );
     const formatted = formatSurveyRow(survey);
+    const isMine = isSurveyOwner(survey, creator_id || null);
     const surveyQuestions = await getSurveyQuestions(req.params.id);
 
     sseService.broadcast('all', {
@@ -799,7 +812,7 @@ router.patch('/:id', async (req, res, next) => {
       survey: { ...formatted, questions: surveyQuestions },
     });
 
-    res.json({ ...formatted, questions: surveyQuestions });
+    res.json({ ...formatted, questions: surveyQuestions, is_mine: isMine });
   } catch (error) {
     next(error);
   }
@@ -819,12 +832,13 @@ router.patch('/:id/close', async (req, res, next) => {
       [req.params.id]
     );
     const formatted = formatSurveyRow(survey);
+    const isMine = isSurveyOwner(survey, creator_id || null);
     const surveyQuestions = await getSurveyQuestions(req.params.id);
     sseService.broadcast('all', {
       type: 'survey_updated',
       survey: { ...formatted, questions: surveyQuestions },
     });
-    res.json({ ...formatted, questions: surveyQuestions });
+    res.json({ ...formatted, questions: surveyQuestions, is_mine: isMine });
   } catch (error) {
     next(error);
   }

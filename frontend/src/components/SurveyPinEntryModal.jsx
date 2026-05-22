@@ -64,11 +64,26 @@ function SurveyPinEntryModal({ surveyId, mode = 'admin', onClose, onVerified }) 
               }}
               disabled={isVerifying}
               autoFocus
+              className={error ? 'pin-input-error' : ''}
             />
-            {error && <div className="pin-modal-error">{error}</div>}
-            <button type="submit" disabled={isVerifying}>
-              {isVerifying ? 'Verifying...' : 'Verify'}
-            </button>
+            {error && <div className="pin-error-message">{error}</div>}
+            <div className="pin-modal-actions">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isVerifying}
+                className="pin-modal-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isVerifying || !pin.trim()}
+                className="pin-modal-verify"
+              >
+                {isVerifying ? 'Verifying...' : 'Verify'}
+              </button>
+            </div>
           </form>
         </div>
       </div>

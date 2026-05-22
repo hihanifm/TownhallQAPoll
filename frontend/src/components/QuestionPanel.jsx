@@ -6,6 +6,8 @@ import WelcomeCard from './WelcomeCard';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
 import { getUserId } from '../utils/userId';
 import { hasVerifiedPin, getVerifiedPin, clearVerifiedPin } from '../utils/campaignPin';
+import { showAppNotice } from '../utils/appNotice';
+import ConfirmDialog from './ConfirmDialog';
 import './QuestionPanel.css';
 
 function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
@@ -16,6 +18,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
   const [error, setError] = useState(null);
   const [showShareFeedback, setShowShareFeedback] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const handleCampaignPinFailure = (error) => {
     const errorMessage = error?.message || '';
@@ -33,7 +36,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
     window.dispatchEvent(new CustomEvent('townhall:campaign-pin-invalid', {
       detail: { campaignId }
     }));
-    alert('Your stored PIN is no longer valid. Please re-enter the campaign PIN.');
+    showAppNotice('Your stored PIN is no longer valid. Please re-enter the campaign PIN.');
     return true;
   };
 
@@ -228,11 +231,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
     loadQuestions(); // Reload to remove deleted question from list
   };
 
-  const handleCloseCampaign = async () => {
-    if (!window.confirm('Are you sure you want to close this campaign?')) {
-      return;
-    }
-
+  const runCloseCampaign = async () => {
     try {
       const userId = getUserId();
       const campaignPin = pinVerified ? getVerifiedPin(campaignId) : undefined;
@@ -243,16 +242,25 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
       }
     } catch (err) {
       if (!handleCampaignPinFailure(err)) {
-        alert(err.message);
+        showAppNotice(err.message);
       }
     }
   };
 
-  const handleDeleteCampaign = async () => {
-    if (!window.confirm('Are you sure you want to delete this campaign? This will delete all questions and votes. This action cannot be undone.')) {
-      return;
-    }
+  const handleCloseCampaign = () => {
+    setConfirmDialog({
+      title: 'Close campaign',
+      message: 'Are you sure you want to close this campaign?',
+      confirmLabel: 'Close',
+      danger: false,
+      onConfirm: () => {
+        setConfirmDialog(null);
+        runCloseCampaign();
+      },
+    });
+  };
 
+  const runDeleteCampaign = async () => {
     try {
       const userId = getUserId();
       const campaignPin = pinVerified ? getVerifiedPin(campaignId) : undefined;
@@ -262,9 +270,22 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
       }
     } catch (err) {
       if (!handleCampaignPinFailure(err)) {
-        alert(err.message);
+        showAppNotice(err.message);
       }
     }
+  };
+
+  const handleDeleteCampaign = () => {
+    setConfirmDialog({
+      title: 'Delete campaign',
+      message: 'Are you sure you want to delete this campaign? This will delete all questions and votes. This action cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: () => {
+        setConfirmDialog(null);
+        runDeleteCampaign();
+      },
+    });
   };
 
   const handleShare = async () => {
@@ -313,7 +334,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
           setShowShareFeedback(false);
         }, 2000);
       } catch (err) {
-        alert('Failed to copy URL. Please copy it manually: ' + url);
+        showAppNotice('Failed to copy URL. Please copy it manually: ' + url);
       }
       document.body.removeChild(textArea);
     }
@@ -349,6 +370,7 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
   }
 
   return (
+    <>
     <div className="question-panel">
       <div className="panel-header">
         <div className="panel-header-left">
@@ -480,6 +502,16 @@ function QuestionPanel({ campaignId, onCampaignClosed, onCampaignDeleted }) {
         </div>
       )}
     </div>
+    <ConfirmDialog
+      open={!!confirmDialog}
+      title={confirmDialog?.title ?? ''}
+      message={confirmDialog?.message ?? ''}
+      confirmLabel={confirmDialog?.confirmLabel ?? 'Confirm'}
+      danger={confirmDialog?.danger}
+      onConfirm={confirmDialog?.onConfirm}
+      onCancel={() => setConfirmDialog(null)}
+    />
+    </>
   );
 }
 

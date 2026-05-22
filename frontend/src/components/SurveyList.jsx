@@ -8,8 +8,8 @@ import './CampaignList.css';
 
 const CONFIDENTIAL_LABEL = '— Confidential survey';
 
-function maskSurveyForList(survey, userId) {
-  if (!survey.has_participant_pin || survey.creator_id === userId) return survey;
+function maskSurveyForList(survey) {
+  if (!survey.has_participant_pin || survey.is_mine) return survey;
   return {
     ...survey,
     title: null,
@@ -37,7 +37,7 @@ function SurveyList({ selectedSurveyId, onSurveySelect, onStartCreate }) {
     setError(null);
     try {
       const data = await api.getSurveys({ creatorId: userId });
-      setSurveys(data);
+      setSurveys(data.map(maskSurveyForList));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -53,29 +53,22 @@ function SurveyList({ selectedSurveyId, onSurveySelect, onStartCreate }) {
     const eventSource = new EventSource('/api/sse/campaigns');
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      switch (data.type) {
-        case 'survey_created':
-          setSurveys((prev) => [maskSurveyForList(data.survey, userId), ...prev]);
-          break;
-        case 'survey_updated':
-          setSurveys((prev) =>
-            prev.map((s) =>
-              s.id === data.survey.id ? maskSurveyForList({ ...s, ...data.survey }, userId) : s
-            )
-          );
-          break;
-        case 'survey_deleted':
-          setSurveys((prev) => prev.filter((s) => s.id !== data.survey_id));
-          break;
-        default:
-          break;
+      // SSE survey payloads carry no creator_id / is_mine (they broadcast to
+      // every client). Refetch the authenticated list so ownership and
+      // confidential-survey redaction are resolved server-side per user.
+      if (
+        data.type === 'survey_created' ||
+        data.type === 'survey_updated' ||
+        data.type === 'survey_deleted'
+      ) {
+        loadSurveys();
       }
     };
     return () => eventSource.close();
   }, [userId]);
 
   const handleSurveyClick = (s) => {
-    const isCreator = s.creator_id === userId;
+    const isCreator = s.is_mine;
     const needsPin =
       s.has_participant_pin && !isCreator && !hasVerifiedParticipantPin(s.id);
     if (needsPin) {
@@ -115,7 +108,9 @@ function SurveyList({ selectedSurveyId, onSurveySelect, onStartCreate }) {
 
       <div className="campaign-items">
         {surveys.length === 0 ? (
-          <p className="no-campaigns">No surveys yet. Create one to get started.</p>
+          <div className="empty-state">
+            <p>No surveys yet. Create one to get started.</p>
+          </div>
         ) : (
           surveys.map((s) => {
             const redacted = isListRedacted(s);

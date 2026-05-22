@@ -5,6 +5,8 @@ import { getFingerprint } from '../utils/browserFingerprint';
 import { isIncognito } from '../utils/incognito';
 import { getVerifiedPin, hasVerifiedPin, clearVerifiedPin } from '../utils/campaignPin';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
+import { showAppNotice } from '../utils/appNotice';
+import ConfirmDialog from './ConfirmDialog';
 import './QuestionCard.css';
 
 function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, number, previousNumber, hasAdminAccess }) {
@@ -28,6 +30,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
   const [isDeletingComment, setIsDeletingComment] = useState(false);
   const [expandedComments, setExpandedComments] = useState(new Set());
   const [isIncognitoMode, setIsIncognitoMode] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const justToggledRef = useRef(false);
   const previousVoteCountRef = useRef(question.vote_count || 0);
   const previousNumberRef = useRef(number);
@@ -47,7 +50,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     window.dispatchEvent(new CustomEvent('townhall:campaign-pin-invalid', {
       detail: { campaignId }
     }));
-    alert('Your stored PIN is no longer valid. Please re-enter the campaign PIN.');
+    showAppNotice('Your stored PIN is no longer valid. Please re-enter the campaign PIN.');
     return true;
   };
 
@@ -121,7 +124,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     
     // Require fingerprint before voting
     if (!fingerprintHash) {
-      alert('Error: Browser fingerprint not available. Please refresh the page and try again.');
+      showAppNotice('Browser fingerprint not available. Please refresh the page and try again.');
       return;
     }
 
@@ -154,19 +157,13 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
         questionId: question.id
       });
       justToggledRef.current = false; // Reset on error
-      alert(`Error: ${error.message || 'Failed to toggle vote'}`);
+      showAppNotice(error.message || 'Failed to toggle vote');
     } finally {
       setIsVoting(false);
     }
   };
 
-  const handleDelete = async (e) => {
-    e.stopPropagation(); // Prevent any parent click handlers
-    
-    if (!window.confirm('Are you sure you want to delete this question? This will also delete all votes. This action cannot be undone.')) {
-      return;
-    }
-
+  const runDeleteQuestion = async () => {
     setIsDeleting(true);
     try {
       const userId = getUserId();
@@ -178,11 +175,25 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     } catch (error) {
       console.error('Error deleting question:', error);
       if (!handleCampaignPinFailure(error)) {
-        alert(error.message || 'Failed to delete question');
+        showAppNotice(error.message || 'Failed to delete question');
       }
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    setConfirmDialog({
+      title: 'Delete question',
+      message: 'Are you sure you want to delete this question? This will also delete all votes. This action cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: () => {
+        setConfirmDialog(null);
+        runDeleteQuestion();
+      },
+    });
   };
 
   const handleEdit = (e) => {
@@ -201,7 +212,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     e.stopPropagation();
     
     if (!editedText.trim()) {
-      alert('Question text cannot be empty');
+      showAppNotice('Question text cannot be empty');
       return;
     }
 
@@ -224,7 +235,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     } catch (error) {
       console.error('Error updating question:', error);
       if (!handleCampaignPinFailure(error)) {
-        alert(error.message || 'Failed to update question');
+        showAppNotice(error.message || 'Failed to update question');
       }
     } finally {
       setIsUpdating(false);
@@ -246,7 +257,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
 
   const handleSaveComment = async () => {
     if (!newCommentText.trim()) {
-      alert('Comment text cannot be empty');
+      showAppNotice('Comment text cannot be empty');
       return;
     }
 
@@ -264,7 +275,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     } catch (error) {
       console.error('Error creating comment:', error);
       if (!handleCampaignPinFailure(error)) {
-        alert(error.message || 'Failed to create comment');
+        showAppNotice(error.message || 'Failed to create comment');
       }
     } finally {
       setIsCreatingComment(false);
@@ -283,7 +294,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
 
   const handleSaveEditComment = async (commentId) => {
     if (!editedCommentText.trim()) {
-      alert('Comment text cannot be empty');
+      showAppNotice('Comment text cannot be empty');
       return;
     }
 
@@ -301,35 +312,43 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
     } catch (error) {
       console.error('Error updating comment:', error);
       if (!handleCampaignPinFailure(error)) {
-        alert(error.message || 'Failed to update comment');
+        showAppNotice(error.message || 'Failed to update comment');
       }
     } finally {
       setIsUpdatingComment(false);
     }
   };
 
-  const handleDeleteComment = async (commentId) => {
-    if (!window.confirm('Are you sure you want to delete this comment? This action cannot be undone.')) {
-      return;
-    }
-
+  const runDeleteComment = async (commentId) => {
     setIsDeletingComment(true);
     try {
       const userId = getUserId();
       const campaignPin = hasVerifiedPin(campaignId) ? getVerifiedPin(campaignId) : undefined;
       await api.deleteComment(question.id, commentId, userId, campaignPin);
-      // Reload questions to get updated comments
       if (onVoteUpdate) {
         onVoteUpdate();
       }
     } catch (error) {
       console.error('Error deleting comment:', error);
       if (!handleCampaignPinFailure(error)) {
-        alert(error.message || 'Failed to delete comment');
+        showAppNotice(error.message || 'Failed to delete comment');
       }
     } finally {
       setIsDeletingComment(false);
     }
+  };
+
+  const handleDeleteComment = (commentId) => {
+    setConfirmDialog({
+      title: 'Delete comment',
+      message: 'Are you sure you want to delete this comment? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: () => {
+        setConfirmDialog(null);
+        runDeleteComment(commentId);
+      },
+    });
   };
 
   const toggleCommentExpand = (commentId, e) => {
@@ -349,6 +368,7 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
   };
 
   return (
+    <>
     <div className={`question-card-wrapper ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''}`}>
       <div className={`question-card ${hasVoted ? 'voted' : ''} ${isMoving ? 'moving slide-up' : ''} ${voteUpdated ? 'vote-updated' : ''}`}>
         <span className="question-number">{number}</span>
@@ -563,6 +583,16 @@ function QuestionCard({ question, campaignId, onVoteUpdate, onQuestionDeleted, n
         </div>
       )}
     </div>
+    <ConfirmDialog
+      open={!!confirmDialog}
+      title={confirmDialog?.title ?? ''}
+      message={confirmDialog?.message ?? ''}
+      confirmLabel={confirmDialog?.confirmLabel ?? 'Confirm'}
+      danger={confirmDialog?.danger}
+      onConfirm={confirmDialog?.onConfirm}
+      onCancel={() => setConfirmDialog(null)}
+    />
+    </>
   );
 }
 

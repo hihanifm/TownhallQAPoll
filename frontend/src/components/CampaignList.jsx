@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
 import { storeVerifiedPin } from '../utils/campaignPin';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
+import { showAppNotice } from '../utils/appNotice';
 import './CampaignList.css';
 
 function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated }) {
@@ -90,12 +91,12 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
     e.preventDefault();
     
     if (!formData.title.trim()) {
-      alert('Please enter a campaign title');
+      showAppNotice('Please enter a campaign title');
       return;
     }
 
     if (!formData.pin.trim()) {
-      alert('A PIN is required. Share it with others to grant them admin access if your session is lost.');
+      showAppNotice('A PIN is required. Share it with others to grant them admin access if your session is lost.');
       return;
     }
 
@@ -123,7 +124,7 @@ function CampaignList({ selectedCampaignId, onCampaignSelect, onCampaignCreated 
         onCampaignSelect(newCampaign.id);
       }
     } catch (err) {
-      alert(err.message);
+      showAppNotice(err.message);
     } finally {
       setIsSubmitting(false);
     }

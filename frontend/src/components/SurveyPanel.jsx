@@ -13,6 +13,8 @@ import SurveyPinEntryModal from './SurveyPinEntryModal';
 import CreateSurveyWizard from './CreateSurveyWizard';
 import { exportSurveySummaryCsv } from '../utils/surveyExport';
 import SurveyThanksCelebration from './SurveyThanksCelebration';
+import { showAppNotice } from '../utils/appNotice';
+import ConfirmDialog from './ConfirmDialog';
 import './QuestionPanel.css';
 import './SurveyResults.css';
 
@@ -33,6 +35,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
   const [resultsExpanded, setResultsExpanded] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const loadSurvey = useCallback(async () => {
     if (!surveyId) return;
@@ -71,7 +74,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     setResultsError(null);
     const userId = getUserId();
     const pin = getVerifiedPin(surveyId);
-    const isCreator = survey.creator_id === userId;
+    const isCreator = survey.is_mine;
     const admin = isCreator || hasVerifiedPin(surveyId);
     try {
       const data = await api.getSurveyResults(surveyId, {
@@ -110,9 +113,8 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     return () => eventSource.close();
   }, [surveyId, survey, loadSurvey, loadResults]);
 
-  const userId = getUserId();
   const hasAdminAccess = survey
-    ? survey.creator_id === userId || pinVerified
+    ? survey.is_mine || pinVerified
     : false;
   const canLoadResults = Boolean(
     survey &&
@@ -125,7 +127,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     }
   }, [canLoadResults, loadResults]);
 
-  const isCreator = survey?.creator_id === userId;
+  const isCreator = survey?.is_mine;
   const needsParticipantPin = Boolean(
     survey &&
     survey.has_participant_pin &&
@@ -146,7 +148,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     setIsSubmitting(true);
     try {
       const userId = getUserId();
-      const isCreator = survey?.creator_id === userId;
+      const isCreator = survey?.is_mine;
       await api.submitSurvey(surveyId, userId, answers, {
         participantPin: getVerifiedParticipantPin(surveyId) || undefined,
         creatorId: isCreator ? userId : undefined,
@@ -156,14 +158,13 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
       await loadSurvey();
       await loadResults();
     } catch (err) {
-      alert(err.message);
+      showAppNotice(err.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleClose = async () => {
-    if (!window.confirm('Close this survey? No new responses will be accepted.')) return;
+  const runCloseSurvey = async () => {
     try {
       const userId = getUserId();
       const pin = getVerifiedPin(surveyId);
@@ -171,8 +172,20 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
       await loadSurvey();
       if (onSurveyClosed) onSurveyClosed(surveyId);
     } catch (err) {
-      alert(err.message);
+      showAppNotice(err.message);
     }
+  };
+
+  const handleClose = () => {
+    setConfirmDialog({
+      title: 'Close survey',
+      message: 'Close this survey? No new responses will be accepted.',
+      confirmLabel: 'Close',
+      onConfirm: () => {
+        setConfirmDialog(null);
+        runCloseSurvey();
+      },
+    });
   };
 
   const handleExportSummary = async () => {
@@ -191,7 +204,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
       }
       exportSurveySummaryCsv(survey?.title || 'survey', data);
     } catch (err) {
-      alert(err.message);
+      showAppNotice(err.message);
     } finally {
       setIsExporting(false);
     }
@@ -207,22 +220,34 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
         surveyPin: pin,
       });
     } catch (err) {
-      alert(err.message);
+      showAppNotice(err.message);
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Delete this survey permanently?')) return;
+  const runDeleteSurvey = async () => {
     try {
       const userId = getUserId();
       const pin = getVerifiedPin(surveyId);
       await api.deleteSurvey(surveyId, userId, pin);
       if (onSurveyDeleted) onSurveyDeleted(surveyId);
     } catch (err) {
-      alert(err.message);
+      showAppNotice(err.message);
     }
+  };
+
+  const handleDelete = () => {
+    setConfirmDialog({
+      title: 'Delete survey',
+      message: 'Delete this survey permanently?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: () => {
+        setConfirmDialog(null);
+        runDeleteSurvey();
+      },
+    });
   };
 
   const visibilityLabels = {
@@ -529,6 +554,15 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
           }}
         />
       )}
+      <ConfirmDialog
+        open={!!confirmDialog}
+        title={confirmDialog?.title ?? ''}
+        message={confirmDialog?.message ?? ''}
+        confirmLabel={confirmDialog?.confirmLabel ?? 'Confirm'}
+        danger={confirmDialog?.danger}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }
