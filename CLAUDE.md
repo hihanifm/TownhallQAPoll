@@ -23,6 +23,7 @@ npm run start:prod       # Builds frontend then starts backend serving static fi
 npm run test:e2e
 npm run test:e2e:ui      # with Playwright UI
 npx playwright test tests/e2e/campaign-voting.spec.js  # single test file
+npx playwright test tests/e2e/survey-flow.spec.js
 
 # Agent-browser tests
 npm run test:agent-browser
@@ -44,13 +45,13 @@ These are non-negotiable constraints. Do not suggest or implement anything that 
 
 **Monorepo:** `frontend/` (React 18 + Vite SPA) and `backend/` (Express + SQLite3). Shared port config in `config/ports.json` (prod: frontend 33100, backend 33101; dev: frontend 33103, backend 33102).
 
-**Frontend** (`frontend/src/`): React Router v6 with routes `/`, `/campaign/:id`, `/feedback`. All HTTP requests go through `services/api.js`. Real-time updates via a persistent SSE connection to `/api/sse`. Anonymous user identity is a UUID in `localStorage`, used for deduplicating votes.
+**Frontend** (`frontend/src/`): React Router v6 with routes `/`, `/campaign/:id`, `/surveys`, `/survey/:id`, `/feedback`. All HTTP requests go through `services/api.js`. Real-time updates via a persistent SSE connection to `/api/sse`. Anonymous user identity is a UUID in `localStorage`, used for deduplicating votes and survey submissions.
 
-**Backend** (`backend/src/`): Express REST API with routers for campaigns, questions, votes, feedback, and SSE. SQLite database initialized from `db/schema.sql` on first run (6 tables: `campaigns`, `questions`, `votes`, `feedback`, `feedback_votes`, `comments`). `services/sseService.js` broadcasts updates to all SSE clients on mutations — any route that mutates data should call `sseService.broadcast(campaignId, event)` for campaign subscribers and `sseService.broadcastAll(event)` for the campaign list.
+**Backend** (`backend/src/`): Express REST API with routers for campaigns, questions, votes, feedback, surveys, and SSE. SQLite database initialized from `db/schema.sql` on first run. Survey tables: `surveys`, `survey_questions`, `survey_submissions`, `survey_answers`. `services/sseService.js` broadcasts updates to all SSE clients on mutations — any route that mutates data should call `sseService.broadcast(campaignId, event)` for campaign/survey subscribers and `sseService.broadcast('all', event)` for list updates.
 
 **Database helpers** (`backend/src/db/database.js`): All routes query SQLite via `getQuery(sql, params)` (single row), `allQuery(sql, params)` (array), and `runQuery(sql, params)` (insert/update/delete). `formatDatetime()` converts SQLite timestamps to ISO 8601 UTC for responses.
 
-**Authorization pattern**: Mutations check creator_id OR campaign PIN via an `isAuthorized(campaignId, creatorId, pin)` helper in each router. Comment endpoints follow campaign-level auth (campaign creator or PIN), not question-level auth.
+**Authorization pattern**: Campaign mutations (`close`, `delete`) check campaign `creator_id` OR campaign PIN. Question edits (`PATCH`) check question creator OR campaign creator OR campaign PIN — the most permissive. Question deletes only allow campaign creator or PIN (not question creator). Comment CRUD follows campaign-level auth (campaign creator or PIN). Each router inlines the auth logic directly rather than using a shared helper.
 
 **Security middleware** (`middleware/validateOrigin.js`): All API requests are validated against allowed origins. Dev mode is permissive (allows localhost and private IPs). Prod mode is strict — only browser requests from configured frontend origins are accepted. Configure allowed origins via `FRONTEND_URL` or `FRONTEND_URLS` env vars.
 
@@ -61,6 +62,12 @@ These are non-negotiable constraints. Do not suggest or implement anything that 
 **Vote identity**: `user_id` (UUID in `localStorage`) is the sole vote deduplication key — `fingerprint_hash` is stored but not enforced. Questions are sorted `vote_count DESC, created_at ASC` for deterministic ordering.
 
 **Backup service**: Auto-daily SQLite backups at midnight via node-cron, stored in `backend/data/backups/`.
+
+**SSE event types**: When adding mutations, broadcast the appropriate event. List-level events go to `sseService.broadcast('all', ...)`: `campaign_created`, `campaign_updated`, `campaign_deleted`, `survey_created`, `survey_updated`, `survey_deleted`. Campaign question events go to `sseService.broadcast(campaignId.toString(), ...)`: `question_created`, `question_updated`, `question_deleted`, `vote_updated`, `comment_created`, `comment_updated`, `comment_deleted`. Survey response events: `survey_response_submitted` on `sseService.broadcast(surveyId.toString(), ...)`. Feedback mutations currently have no SSE broadcasts.
+
+**Surveys**: Separate from town-hall campaigns. Creator defines fixed questions (`single`, `multi`, `rating`, `text`); one submission per `user_id`. `results_visibility`: `pin_only`, `after_submit`, or `public`. Mandatory survey PIN (stored in `localStorage` via `surveyPin.js`) for admin/results when visibility requires it.
+
+**Runtime UI config**: `frontend/public/appConfig.json` controls `title`, `subtitle`, and `welcome` text. Loaded by `configService.js` at runtime — edit the JSON file without rebuilding.
 
 **Optional browser restriction**: Build-time `VITE_ENABLE_BROWSER_RESTRICTION` env var restricts access to specific browsers (User-Agent based). Always off in dev.
 
@@ -75,8 +82,12 @@ These are non-negotiable constraints. Do not suggest or implement anything that 
 | `frontend/src/services/api.js` | All frontend HTTP calls |
 | `backend/src/db/database.js` | DB query helpers: `getQuery`, `allQuery`, `runQuery`, `formatDatetime` |
 | `backend/src/services/sseService.js` | SSE singleton — `broadcast(campaignId, event)`, `broadcastAll(event)` |
+| `backend/src/routes/surveys.js` | Survey CRUD, submit, results, PIN verify |
+| `frontend/src/components/SurveyList.jsx` | Survey list and create form with question builder |
+| `frontend/src/components/SurveyPanel.jsx` | Survey detail: form, results, admin actions |
 | `config/ports.json` | Port configuration shared across frontend, backend, and tests |
 | `tests/helpers/api.js` | Playwright API helpers for E2E tests; use `generateUserId()` for test users |
+| `frontend/public/appConfig.json` | Runtime-editable UI text: title, subtitle, welcome message (no rebuild needed) |
 | `.env.example` | Backend runtime env vars; `frontend/.env.example` for build-time vars |
 
 ## Deployment Alternatives

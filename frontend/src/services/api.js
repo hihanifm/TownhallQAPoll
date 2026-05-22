@@ -375,6 +375,115 @@ export const api = {
     return response.json();
   },
 
+  // Surveys
+  getSurveys: async () => {
+    const response = await fetch(`${API_BASE_URL}/surveys`);
+    if (!response.ok) throw new Error('Failed to fetch surveys');
+    return response.json();
+  },
+
+  getSurvey: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/surveys/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch survey');
+    return response.json();
+  },
+
+  createSurvey: async (surveyData) => {
+    const response = await fetch(`${API_BASE_URL}/surveys`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(surveyData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create survey');
+    }
+    return response.json();
+  },
+
+  verifySurveyPin: async (surveyId, pin) => {
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/verify-pin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to verify PIN');
+    }
+    return response.json();
+  },
+
+  getSurveySubmissionStatus: async (surveyId, userId) => {
+    const params = new URLSearchParams({ user_id: userId });
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/submission-status?${params}`);
+    if (!response.ok) throw new Error('Failed to check submission status');
+    return response.json();
+  },
+
+  submitSurvey: async (surveyId, userId, answers, fingerprintHash) => {
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        fingerprint_hash: fingerprintHash || null,
+        answers,
+      }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to submit survey');
+    }
+    return response.json();
+  },
+
+  getSurveyResults: async (surveyId, { userId, surveyPin, creatorId } = {}) => {
+    const params = new URLSearchParams();
+    if (userId) params.append('user_id', userId);
+    if (surveyPin) params.append('survey_pin', surveyPin);
+    if (creatorId) params.append('creator_id', creatorId);
+    const qs = params.toString();
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/results${qs ? `?${qs}` : ''}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch results');
+    }
+    return response.json();
+  },
+
+  closeSurvey: async (surveyId, creatorId, surveyPin) => {
+    const body = {};
+    if (creatorId) body.creator_id = creatorId;
+    if (surveyPin) body.survey_pin = surveyPin;
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/close`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to close survey');
+    }
+    return response.json();
+  },
+
+  deleteSurvey: async (surveyId, creatorId, surveyPin) => {
+    const body = {};
+    if (creatorId) body.creator_id = creatorId;
+    if (surveyPin) body.survey_pin = surveyPin;
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete survey');
+    }
+    return response.json();
+  },
+
   // System status
   getSystemStatus: async () => {
     const response = await fetch(`${API_BASE_URL}/status`);

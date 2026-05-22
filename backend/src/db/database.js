@@ -102,9 +102,8 @@ async function runMigrations(db) {
   });
 
   await dbRun(`CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY)`);
-  const alreadyRan = await dbGet(`SELECT name FROM _migrations WHERE name = 'drop_fingerprint_unique'`);
-  if (alreadyRan) return;
-
+  const alreadyRanFingerprint = await dbGet(`SELECT name FROM _migrations WHERE name = 'drop_fingerprint_unique'`);
+  if (!alreadyRanFingerprint) {
   console.log('Running migration: drop_fingerprint_unique');
 
   // Drop the old unique index on fingerprint if it exists
@@ -142,6 +141,54 @@ async function runMigrations(db) {
 
   await dbRun(`INSERT INTO _migrations VALUES ('drop_fingerprint_unique')`);
   console.log('Migration drop_fingerprint_unique completed — vote identity is now userId only');
+  }
+
+  const surveysMigration = await dbGet(`SELECT name FROM _migrations WHERE name = 'add_surveys_tables'`);
+  if (!surveysMigration) {
+    console.log('Running migration: add_surveys_tables');
+    await dbRun(`CREATE TABLE IF NOT EXISTS surveys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      status TEXT DEFAULT 'active',
+      creator_id TEXT,
+      pin TEXT NOT NULL,
+      results_visibility TEXT DEFAULT 'pin_only'
+    )`);
+    await dbRun(`CREATE TABLE IF NOT EXISTS survey_questions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      survey_id INTEGER NOT NULL,
+      prompt TEXT NOT NULL,
+      type TEXT NOT NULL,
+      options_json TEXT,
+      sort_order INTEGER DEFAULT 0,
+      FOREIGN KEY (survey_id) REFERENCES surveys(id) ON DELETE CASCADE
+    )`);
+    await dbRun(`CREATE TABLE IF NOT EXISTS survey_submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      survey_id INTEGER NOT NULL,
+      user_id TEXT NOT NULL,
+      fingerprint_hash TEXT,
+      submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (survey_id) REFERENCES surveys(id) ON DELETE CASCADE,
+      UNIQUE(survey_id, user_id)
+    )`);
+    await dbRun(`CREATE TABLE IF NOT EXISTS survey_answers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      submission_id INTEGER NOT NULL,
+      question_id INTEGER NOT NULL,
+      value_json TEXT NOT NULL,
+      FOREIGN KEY (submission_id) REFERENCES survey_submissions(id) ON DELETE CASCADE,
+      FOREIGN KEY (question_id) REFERENCES survey_questions(id) ON DELETE CASCADE
+    )`);
+    await dbRun(`CREATE INDEX IF NOT EXISTS idx_survey_questions_survey ON survey_questions(survey_id)`);
+    await dbRun(`CREATE INDEX IF NOT EXISTS idx_survey_submissions_survey ON survey_submissions(survey_id)`);
+    await dbRun(`CREATE INDEX IF NOT EXISTS idx_survey_answers_submission ON survey_answers(submission_id)`);
+    await dbRun(`CREATE INDEX IF NOT EXISTS idx_survey_answers_question ON survey_answers(question_id)`);
+    await dbRun(`INSERT INTO _migrations VALUES ('add_surveys_tables')`);
+    console.log('Migration add_surveys_tables completed');
+  }
 }
 
 // Get database instance

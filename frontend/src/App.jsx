@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
 import CampaignList from './components/CampaignList';
 import QuestionPanel from './components/QuestionPanel';
+import SurveyList from './components/SurveyList';
+import SurveyPanel from './components/SurveyPanel';
 import FeedbackPanel from './components/FeedbackPanel';
 import AppFooter from './components/AppFooter';
 import { getBrowserName } from './utils/browserDetection';
@@ -13,14 +15,15 @@ function AppContent() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [selectedCampaignId, setSelectedCampaignId] = useState(id || null);
+  const isFeedbackPage = location.pathname === '/feedback';
+  const isSurveyPage = location.pathname === '/surveys' || location.pathname.startsWith('/survey/');
+  const isCampaignRoute = location.pathname.startsWith('/campaign/');
+  const selectedCampaignId = isCampaignRoute ? id : null;
+  const selectedSurveyId = location.pathname.startsWith('/survey/') && id ? id : null;
   const [appConfig, setAppConfig] = useState({
     title: 'Townhall Q&A Poll',
     subtitle: 'Ask. Vote. Be heard.'
   });
-
-  // Check if we're on the feedback page
-  const isFeedbackPage = location.pathname === '/feedback';
 
   // Load configuration on mount
   useEffect(() => {
@@ -30,15 +33,6 @@ function AppContent() {
       document.title = config.title;
     });
   }, []);
-
-  // Sync selectedCampaignId with URL params
-  useEffect(() => {
-    if (id) {
-      setSelectedCampaignId(id);
-    } else {
-      setSelectedCampaignId(null);
-    }
-  }, [id]);
 
   const handleCampaignSelect = (campaignId) => {
     if (campaignId) {
@@ -52,14 +46,36 @@ function AppContent() {
     navigate(`/campaign/${newCampaign.id}`);
   };
 
+  const handleSurveySelect = (surveyId) => {
+    if (surveyId) {
+      navigate(`/survey/${surveyId}`);
+    } else {
+      navigate('/surveys');
+    }
+  };
+
+  const handleSurveyCreated = (newSurvey) => {
+    navigate(`/survey/${newSurvey.id}`);
+  };
+
+  const handleHeaderClick = () => {
+    if (isSurveyPage) {
+      navigate('/surveys');
+    } else if (!isFeedbackPage) {
+      navigate('/');
+    } else {
+      navigate('/');
+    }
+  };
+
   return (
     <div className="app">
-      <header className="app-header" onClick={() => navigate('/')}>
+      <header className="app-header" onClick={handleHeaderClick}>
         <h1>{appConfig.title}</h1>
         <p>{appConfig.subtitle}</p>
       </header>
       <div className="app-content">
-        {!isFeedbackPage && (
+        {!isFeedbackPage && !isSurveyPage && (
           <>
             <CampaignList
               selectedCampaignId={selectedCampaignId}
@@ -69,15 +85,29 @@ function AppContent() {
             <QuestionPanel 
               campaignId={selectedCampaignId}
               onCampaignClosed={(campaignId) => {
-                if (selectedCampaignId === campaignId) {
+                if (selectedCampaignId === String(campaignId)) {
                   navigate('/');
                 }
               }}
               onCampaignDeleted={(campaignId) => {
-                if (selectedCampaignId === campaignId) {
+                if (selectedCampaignId === String(campaignId)) {
                   navigate('/');
                 }
               }}
+            />
+          </>
+        )}
+        {isSurveyPage && (
+          <>
+            <SurveyList
+              selectedSurveyId={selectedSurveyId}
+              onSurveySelect={handleSurveySelect}
+              onSurveyCreated={handleSurveyCreated}
+            />
+            <SurveyPanel
+              surveyId={selectedSurveyId}
+              onSurveyClosed={() => navigate('/surveys')}
+              onSurveyDeleted={() => navigate('/surveys')}
             />
           </>
         )}
@@ -85,7 +115,10 @@ function AppContent() {
           <FeedbackPanel />
         )}
       </div>
-      <AppFooter selectedCampaignId={selectedCampaignId} />
+      <AppFooter
+        selectedCampaignId={selectedCampaignId}
+        selectedSurveyId={selectedSurveyId}
+      />
     </div>
   );
 }
@@ -172,6 +205,8 @@ function App() {
   return (
     <Routes>
       <Route path="/campaign/:id" element={<AppContent />} />
+      <Route path="/survey/:id" element={<AppContent />} />
+      <Route path="/surveys" element={<AppContent />} />
       <Route path="/feedback" element={<AppContent />} />
       <Route path="/" element={<AppContent />} />
     </Routes>

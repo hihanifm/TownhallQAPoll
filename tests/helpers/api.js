@@ -517,6 +517,77 @@ export async function closeFeedback(request, feedbackId, pin) {
 }
 
 /**
+ * Create a survey with questions
+ */
+export async function createSurvey(request, {
+  title,
+  description = null,
+  creatorId,
+  pin,
+  results_visibility = 'pin_only',
+  questions,
+}) {
+  const response = await request.post(`${API_BASE_URL}/surveys`, {
+    data: {
+      title,
+      description,
+      creator_id: creatorId,
+      pin,
+      results_visibility,
+      questions,
+    },
+  });
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to create survey: ${error.error || response.statusText()}`);
+  }
+  return await response.json();
+}
+
+/**
+ * Get survey by ID
+ */
+export async function getSurvey(request, surveyId) {
+  const response = await request.get(`${API_BASE_URL}/surveys/${surveyId}`);
+  if (!response.ok()) {
+    const error = await response.json();
+    throw new Error(`Failed to get survey: ${error.error || response.statusText()}`);
+  }
+  return await response.json();
+}
+
+/**
+ * Submit survey answers
+ */
+export async function submitSurvey(request, surveyId, userId, answers) {
+  const response = await request.post(`${API_BASE_URL}/surveys/${surveyId}/submit`, {
+    data: { user_id: userId, answers },
+  });
+  if (!response.ok()) {
+    const error = await response.json();
+    return { ok: false, status: response.status(), error: error.error || response.statusText() };
+  }
+  return { ok: true, data: await response.json() };
+}
+
+/**
+ * Get survey results
+ */
+export async function getSurveyResults(request, surveyId, { userId, surveyPin, creatorId } = {}) {
+  const params = new URLSearchParams();
+  if (userId) params.set('user_id', userId);
+  if (surveyPin) params.set('survey_pin', surveyPin);
+  if (creatorId) params.set('creator_id', creatorId);
+  const qs = params.toString();
+  const response = await request.get(`${API_BASE_URL}/surveys/${surveyId}/results${qs ? `?${qs}` : ''}`);
+  if (!response.ok()) {
+    const error = await response.json();
+    return { ok: false, status: response.status(), error: error.error || response.statusText() };
+  }
+  return { ok: true, data: await response.json() };
+}
+
+/**
  * Check if backend is running
  * @param {Object} request - Playwright request context
  * @returns {Promise<boolean>} True if backend is running

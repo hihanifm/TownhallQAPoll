@@ -13,6 +13,7 @@ const campaignsRouter = require('./routes/campaigns');
 const questionsRouter = require('./routes/questions');
 const votesRouter = require('./routes/votes');
 const feedbackRouter = require('./routes/feedback');
+const surveysRouter = require('./routes/surveys');
 const sseRouter = require('./routes/sse');
 const { performBackup, getBackupStatus } = require('./services/backupService');
 
@@ -153,6 +154,7 @@ app.use('/api/campaigns', campaignsRouter);
 app.use('/api', questionsRouter); // Handles /api/campaigns/:id/questions and /api/questions/:id/votes
 app.use('/api', votesRouter);
 app.use('/api', feedbackRouter); // Handles /api/feedback routes
+app.use('/api/surveys', surveysRouter);
 app.use('/api/sse', sseRouter); // SSE endpoint for real-time updates
 
 // Health check
