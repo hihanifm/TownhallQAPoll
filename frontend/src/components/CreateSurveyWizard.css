@@ -320,9 +320,10 @@
 }
 
 .wizard-preview-wrap {
-  background: #f8fafc;
+  background: #f1f5f9;
   border: 1px dashed #cbd5e1;
-  border-radius: 10px;
-  padding: 20px;
+  border-radius: 12px;
+  padding: 24px 28px;
   margin-bottom: 24px;
+  max-width: 560px;
 }

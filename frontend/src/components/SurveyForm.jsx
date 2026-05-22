@@ -1,20 +1,76 @@
 import { useState } from 'react';
 import './SurveyForm.css';
 
+function isQuestionAnswered(q, value) {
+  if (value === undefined || value === null) return false;
+  if (q.type === 'single') {
+    if (typeof value === 'object' && value.other != null) {
+      return String(value.other).trim().length > 0;
+    }
+    return typeof value === 'string' && value.length > 0;
+  }
+  if (q.type === 'multi') {
+    const selected = value?.selected ?? value;
+    if (Array.isArray(selected) && selected.length > 0) return true;
+    if (value?.other != null && String(value.other).trim()) return true;
+    return false;
+  }
+  if (q.type === 'rating') {
+    const n = Number(value);
+    return Number.isInteger(n) && n >= 1 && n <= 5;
+  }
+  if (q.type === 'text') {
+    return String(value).trim().length > 0;
+  }
+  return false;
+}
+
 function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
   const [answers, setAnswers] = useState({});
+  const [currentStep, setCurrentStep] = useState(0);
+  const [stepError, setStepError] = useState(null);
+
+  const questions = survey.questions || [];
+  const total = questions.length;
+  const currentQuestion = questions[currentStep];
+  const isLast = currentStep >= total - 1;
+  const progressPct = total > 0 ? ((currentStep + 1) / total) * 100 : 0;
 
   const setAnswer = (questionId, value) => {
+    setStepError(null);
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const payload = survey.questions.map((q) => ({
+    if (!preview) {
+      for (const q of questions) {
+        if (!isQuestionAnswered(q, answers[q.id])) {
+          setStepError(`Please answer: ${q.prompt}`);
+          setCurrentStep(questions.findIndex((x) => x.id === q.id));
+          return;
+        }
+      }
+    }
+    const payload = questions.map((q) => ({
       question_id: q.id,
       value: answers[q.id],
     }));
     onSubmit(payload);
+  };
+
+  const goNext = () => {
+    if (!preview && currentQuestion && !isQuestionAnswered(currentQuestion, answers[currentQuestion.id])) {
+      setStepError('Please answer this question before continuing.');
+      return;
+    }
+    setStepError(null);
+    setCurrentStep((s) => Math.min(s + 1, total - 1));
+  };
+
+  const goBack = () => {
+    setStepError(null);
+    setCurrentStep((s) => Math.max(s - 1, 0));
   };
 
   const renderQuestion = (q) => {
@@ -25,11 +81,14 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
       const current = answers[q.id];
       const isOther = typeof current === 'object' && current?.other != null;
       return (
-        <div key={q.id} className="survey-question">
-          <label className="survey-question-prompt">{q.prompt}</label>
-          <div className="survey-options">
+        <div className="survey-question">
+          <h3 className="survey-question-prompt">{q.prompt}</h3>
+          <div className="survey-options survey-options-cards">
             {opts.map((opt) => (
-              <label key={opt} className="survey-option">
+              <label
+                key={opt}
+                className={`survey-option-card ${current === opt ? 'selected' : ''}`}
+              >
                 <input
                   type="radio"
                   name={`q-${q.id}`}
@@ -37,11 +96,11 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
                   onChange={() => setAnswer(q.id, opt)}
                   disabled={isSubmitting}
                 />
-                {opt}
+                <span>{opt}</span>
               </label>
             ))}
             {allowOther && (
-              <label className="survey-option">
+              <label className={`survey-option-card ${isOther ? 'selected' : ''}`}>
                 <input
                   type="radio"
                   name={`q-${q.id}`}
@@ -49,7 +108,7 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
                   onChange={() => setAnswer(q.id, { other: '' })}
                   disabled={isSubmitting}
                 />
-                Other
+                <span>Other</span>
               </label>
             )}
             {allowOther && isOther && (
@@ -77,26 +136,30 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
         setAnswer(q.id, { ...current, selected: next });
       };
       return (
-        <div key={q.id} className="survey-question">
-          <label className="survey-question-prompt">{q.prompt}</label>
-          <div className="survey-options">
+        <div className="survey-question">
+          <h3 className="survey-question-prompt">{q.prompt}</h3>
+          <p className="survey-question-hint">Select all that apply</p>
+          <div className="survey-options survey-options-cards">
             {opts.map((opt) => (
-              <label key={opt} className="survey-option">
+              <label
+                key={opt}
+                className={`survey-option-card ${selected.includes(opt) ? 'selected' : ''}`}
+              >
                 <input
                   type="checkbox"
                   checked={selected.includes(opt)}
                   onChange={() => toggle(opt)}
                   disabled={isSubmitting}
                 />
-                {opt}
+                <span>{opt}</span>
               </label>
             ))}
             {allowOther && (
               <>
-                <label className="survey-option">
+                <label className={`survey-option-card ${current.other != null ? 'selected' : ''}`}>
                   <input
                     type="checkbox"
-                    checked={!!current.other}
+                    checked={current.other != null}
                     onChange={(e) =>
                       setAnswer(q.id, {
                         selected,
@@ -105,7 +168,7 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
                     }
                     disabled={isSubmitting}
                   />
-                  Other
+                  <span>Other</span>
                 </label>
                 {current.other != null && (
                   <input
@@ -126,11 +189,15 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
 
     if (q.type === 'rating') {
       return (
-        <div key={q.id} className="survey-question">
-          <label className="survey-question-prompt">{q.prompt}</label>
+        <div className="survey-question">
+          <h3 className="survey-question-prompt">{q.prompt}</h3>
+          <p className="survey-question-hint">1 = lowest, 5 = highest</p>
           <div className="survey-rating">
             {[1, 2, 3, 4, 5].map((n) => (
-              <label key={n} className="survey-rating-btn">
+              <label
+                key={n}
+                className={`survey-rating-btn ${answers[q.id] === n ? 'selected' : ''}`}
+              >
                 <input
                   type="radio"
                   name={`q-${q.id}`}
@@ -148,14 +215,15 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
 
     if (q.type === 'text') {
       return (
-        <div key={q.id} className="survey-question">
-          <label className="survey-question-prompt">{q.prompt}</label>
+        <div className="survey-question">
+          <h3 className="survey-question-prompt">{q.prompt}</h3>
           <textarea
-            rows={3}
+            rows={4}
             value={answers[q.id] || ''}
             onChange={(e) => setAnswer(q.id, e.target.value)}
             disabled={isSubmitting}
             placeholder="Your answer"
+            className="survey-text-input"
           />
         </div>
       );
@@ -164,6 +232,10 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
     return null;
   };
 
+  if (total === 0) {
+    return <p className="survey-empty">No questions in this survey.</p>;
+  }
+
   return (
     <div className={`survey-form-wrap ${preview ? 'survey-form-preview' : ''}`}>
       {preview && (
@@ -171,16 +243,68 @@ function SurveyForm({ survey, onSubmit, isSubmitting, preview = false }) {
           Rehearsal — try the survey as respondents will see it. Answers are not saved.
         </p>
       )}
+
+      <div className="survey-progress">
+        <div className="survey-progress-track">
+          <div className="survey-progress-fill" style={{ width: `${progressPct}%` }} />
+        </div>
+        <span className="survey-progress-label">
+          Question {currentStep + 1} of {total}
+        </span>
+      </div>
+
+      <div className="survey-step-dots">
+        {questions.map((q, i) => (
+          <button
+            key={q.id}
+            type="button"
+            className={`survey-step-dot ${i === currentStep ? 'active' : ''} ${isQuestionAnswered(q, answers[q.id]) ? 'done' : ''}`}
+            onClick={() => {
+              setStepError(null);
+              setCurrentStep(i);
+            }}
+            title={q.prompt}
+            aria-label={`Question ${i + 1}`}
+          />
+        ))}
+      </div>
+
+      {stepError && <div className="survey-step-error">{stepError}</div>}
+
       <form
-        className="survey-form"
+        className="survey-form survey-form-stepped"
         onSubmit={preview ? (e) => e.preventDefault() : handleSubmit}
       >
-        {survey.questions.map(renderQuestion)}
-        {!preview && (
-          <button type="submit" className="survey-submit-btn" disabled={isSubmitting}>
-            {isSubmitting ? 'Submitting...' : 'Submit Survey'}
+        <div className="survey-question-slide">{currentQuestion && renderQuestion(currentQuestion)}</div>
+
+        <div className="survey-step-nav">
+          <button
+            type="button"
+            className="survey-nav-btn secondary"
+            onClick={goBack}
+            disabled={currentStep === 0 || isSubmitting}
+          >
+            Back
           </button>
-        )}
+          {!isLast && (
+            <button
+              type="button"
+              className="survey-nav-btn primary"
+              onClick={goNext}
+              disabled={isSubmitting}
+            >
+              Next
+            </button>
+          )}
+          {isLast && !preview && (
+            <button type="submit" className="survey-nav-btn primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Submitting...' : 'Submit survey'}
+            </button>
+          )}
+          {isLast && preview && (
+            <span className="survey-rehearse-end">End of rehearsal</span>
+          )}
+        </div>
       </form>
     </div>
   );
