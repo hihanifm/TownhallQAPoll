@@ -2,14 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { APP_VERSION } from '../config/version';
 import { hasVerifiedPin } from '../utils/campaignPin';
-import { hasVerifiedPin as hasSurveyPin } from '../utils/surveyPin';
 import { api } from '../services/api';
 import { getConfig, isCampaignsEnabled, isSurveysEnabled } from '../services/configService';
 import PinEntryModal from './PinEntryModal';
-import SurveyPinEntryModal from './SurveyPinEntryModal';
 import './AppFooter.css';
 
-function AppFooter({ selectedCampaignId, selectedSurveyId }) {
+function AppFooter({ selectedCampaignId }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [apiStatus, setApiStatus] = useState('checking');
@@ -20,9 +18,6 @@ function AppFooter({ selectedCampaignId, selectedSurveyId }) {
   
   const isFeedbackPage = location.pathname === '/feedback';
   const isSurveyPage = location.pathname === '/surveys' || location.pathname.startsWith('/survey/');
-  const [showSurveyPinModal, setShowSurveyPinModal] = useState(false);
-  const [surveyPinVerified, setSurveyPinVerified] = useState(false);
-  const [survey, setSurvey] = useState(null);
   const [appConfig, setAppConfig] = useState({ features: { campaigns: true, surveys: true } });
 
   const campaignsEnabled = isCampaignsEnabled(appConfig);
@@ -98,18 +93,6 @@ function AppFooter({ selectedCampaignId, selectedSurveyId }) {
       setCampaign(null);
     }
   }, [selectedCampaignId]);
-
-  useEffect(() => {
-    if (selectedSurveyId) {
-      setSurveyPinVerified(hasSurveyPin(selectedSurveyId));
-      api.getSurvey(selectedSurveyId)
-        .then(setSurvey)
-        .catch(() => setSurvey(null));
-    } else {
-      setSurveyPinVerified(false);
-      setSurvey(null);
-    }
-  }, [selectedSurveyId]);
 
   useEffect(() => {
     const handlePinInvalid = (event) => {
@@ -294,23 +277,6 @@ function AppFooter({ selectedCampaignId, selectedSurveyId }) {
               )}
             </div>
           )}
-          {selectedSurveyId && survey?.has_pin && isSurveyPage && (
-            <div className="footer-section">
-              {surveyPinVerified ? (
-                <div className="footer-admin-indicator">
-                  <span className="admin-badge">✓ Access</span>
-                </div>
-              ) : (
-                <button
-                  className="footer-admin-button"
-                  onClick={() => setShowSurveyPinModal(true)}
-                  title="Enter survey PIN"
-                >
-                  Request PIN
-                </button>
-              )}
-            </div>
-          )}
         </div>
         
         <div className="footer-section footer-feedback-section">
@@ -361,13 +327,6 @@ function AppFooter({ selectedCampaignId, selectedSurveyId }) {
           campaignId={selectedCampaignId}
           onClose={() => setShowPinModal(false)}
           onVerified={handlePinVerified}
-        />
-      )}
-      {showSurveyPinModal && selectedSurveyId && (
-        <SurveyPinEntryModal
-          surveyId={selectedSurveyId}
-          onClose={() => setShowSurveyPinModal(false)}
-          onVerified={() => setSurveyPinVerified(true)}
         />
       )}
     </footer>

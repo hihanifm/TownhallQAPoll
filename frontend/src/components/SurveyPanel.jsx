@@ -20,9 +20,19 @@ import './QuestionPanel.css';
 import './SurveyResults.css';
 
 const CONFIDENTIAL_LABEL = '— Confidential survey';
+const SURVEY_LOAD_TIMEOUT_MS = 10000;
+
+function withTimeout(promise, ms, message) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+}
 
 function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, onSurveyClosed, onSurveyDeleted }) {
   const [survey, setSurvey] = useState(null);
+  const [loadError, setLoadError] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [myAnswers, setMyAnswers] = useState(null);
   const [resultsData, setResultsData] = useState(null);
@@ -42,19 +52,28 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
   const loadSurvey = useCallback(async () => {
     if (!surveyId) return;
     setIsLoading(true);
+    setLoadError(null);
     try {
       const userId = getUserId();
-      const data = await api.getSurvey(surveyId, {
-        participantPin: getVerifiedParticipantPin(surveyId) || undefined,
-        surveyPin: getVerifiedPin(surveyId) || undefined,
-        creatorId: userId,
-      });
+      const data = await withTimeout(
+        api.getSurvey(surveyId, {
+          participantPin: getVerifiedParticipantPin(surveyId) || undefined,
+          surveyPin: getVerifiedPin(surveyId) || undefined,
+          creatorId: userId,
+        }),
+        SURVEY_LOAD_TIMEOUT_MS,
+        'Survey request timed out. Please refresh and try again.',
+      );
       setSurvey(data);
-      const status = await api.getSurveySubmissionStatus(surveyId, userId, {
-        participantPin: getVerifiedParticipantPin(surveyId) || undefined,
-        surveyPin: getVerifiedPin(surveyId) || undefined,
-        creatorId: userId,
-      });
+      const status = await withTimeout(
+        api.getSurveySubmissionStatus(surveyId, userId, {
+          participantPin: getVerifiedParticipantPin(surveyId) || undefined,
+          surveyPin: getVerifiedPin(surveyId) || undefined,
+          creatorId: userId,
+        }),
+        SURVEY_LOAD_TIMEOUT_MS,
+        'Survey request timed out. Please refresh and try again.',
+      );
       setSubmitted(status.submitted);
       setMyAnswers(status.submitted && status.answers ? status.answers : null);
       setPinVerified(hasVerifiedPin(surveyId));
@@ -62,6 +81,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     } catch (err) {
       console.error(err);
       setSurvey(null);
+      setLoadError(err.message || 'Failed to load survey');
     } finally {
       setIsLoading(false);
     }
@@ -100,6 +120,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     setAdminDetailsExpanded(false);
     setResultsData(null);
     setResultsError(null);
+    setLoadError(null);
     setMyAnswers(null);
   }, [surveyId]);
 
@@ -295,7 +316,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
   if (!survey) {
     return (
       <div className="question-panel">
-        <div className="error">Survey not found</div>
+        <div className="error">{loadError || 'Survey not found'}</div>
       </div>
     );
   }
@@ -314,6 +335,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     !submitted &&
     !isClosed &&
     survey.results_visibility !== 'pin_only';
+  const showAdminPanel = !needsParticipantPin;
 
   return (
     <div className="question-panel survey-question-panel">
@@ -464,14 +486,11 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
         survey.results_visibility === 'pin_only' &&
         !hasAdminAccess && (
           <div className="survey-results-gated">
-            <p>Aggregated results require the survey PIN.</p>
-            <button type="button" className="survey-enter-pin-btn" onClick={() => setShowPinModal(true)}>
-              Enter PIN
-            </button>
+            <p>Aggregated results are only available to organizers for this survey.</p>
           </div>
         )}
 
-      {!needsParticipantPin && (
+      {showAdminPanel && (
         <section className="survey-admin-panel">
           <button
             type="button"
@@ -521,7 +540,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
                   </span>
                 ) : (
                   <span className="survey-access survey-access-none">
-                    Respondent view — enter PIN for admin (close, delete, PIN-only results)
+                    Respondent view — unlock admin tools only if you need to manage this survey.
                   </span>
                 )}
                 {survey.has_pin && !hasAdminAccess && (
@@ -530,7 +549,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
                     className="survey-enter-pin-btn"
                     onClick={() => setShowPinModal(true)}
                   >
-                    Enter PIN
+                    Enter admin PIN
                   </button>
                 )}
               </div>

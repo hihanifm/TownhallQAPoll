@@ -31,6 +31,10 @@ npm run test:agent-browser
 
 No unit tests or linting configured — testing is exclusively E2E via Playwright.
 
+## Deployment Context
+
+This app runs **inside a private lab network** and is not exposed to the public internet. The network perimeter is the first line of defense. The threat model that matters is **peer-level** (one lab member vs another, or operator vs participant), not random internet attackers. Anonymity-by-design is therefore enforced *from peers and from the operator* — not from external attackers. Keep this in mind when weighing fixes: peer-anonymity issues stay high priority; pure anti-internet hardening (e.g. tightening `validateOrigin` further, CSP, rate limits) is lower priority.
+
 ## Security Principles
 
 These are non-negotiable constraints. Do not suggest or implement anything that violates them.
@@ -52,6 +56,8 @@ These are non-negotiable constraints. Do not suggest or implement anything that 
 **Database helpers** (`backend/src/db/database.js`): All routes query SQLite via `getQuery(sql, params)` (single row), `allQuery(sql, params)` (array), and `runQuery(sql, params)` (insert/update/delete). `formatDatetime()` converts SQLite timestamps to ISO 8601 UTC for responses.
 
 **Authorization pattern**: Campaign mutations (`close`, `delete`) check campaign `creator_id` OR campaign PIN. Question edits (`PATCH`) check question creator OR campaign creator OR campaign PIN — the most permissive. Question deletes only allow campaign creator or PIN (not question creator). Comment CRUD follows campaign-level auth (campaign creator or PIN). Each router inlines the auth logic directly rather than using a shared helper.
+
+**`creator_id` is an auth token, not a display field.** `creator_id` is the requester's `localStorage` UUID — the same UUID that proves identity to `isAuthorized`. Surveys (`routes/surveys.js`) **never serialize raw `creator_id` to clients**; `formatSurveyRow` strips it and every survey payload carries a server-computed `is_mine` boolean (`row.creator_id === req.query.creator_id`) instead. SSE `survey_created`/`survey_updated` payloads broadcast to `'all'` carry no `creator_id` and no `is_mine` (per-recipient); the client refetches via `loadSurveys()` on those events. Campaigns/questions/comments routes still expose `creator_id` — this is a known inconsistency; treat any new survey-style route the same way (strip + `is_mine`).
 
 **Security middleware** (`middleware/validateOrigin.js`): All API requests are validated against allowed origins. Dev mode is permissive (allows localhost and private IPs). Prod mode is strict — only browser requests from configured frontend origins are accepted. Configure allowed origins via `FRONTEND_URL` or `FRONTEND_URLS` env vars.
 

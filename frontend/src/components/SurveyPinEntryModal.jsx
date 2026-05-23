@@ -44,19 +44,19 @@ function SurveyPinEntryModal({ surveyId, mode = 'admin', onClose, onVerified }) 
     <div className="pin-modal-backdrop" onClick={handleBackdropClick}>
       <div className="pin-modal-content">
         <div className="pin-modal-header">
-          <h2>{isParticipant ? 'Participant access' : 'Survey Access'}</h2>
+          <h2>{isParticipant ? 'Participant PIN' : 'Admin PIN'}</h2>
           <button className="pin-modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="pin-modal-body">
           <p>
             {isParticipant
               ? 'Enter the participant PIN to take this survey.'
-              : 'Enter the survey PIN to view results or manage this survey.'}
+              : 'Enter the admin PIN to manage this survey.'}
           </p>
           <form onSubmit={handleSubmit}>
             <input
               type="password"
-              placeholder="Enter PIN"
+              placeholder={isParticipant ? 'Enter participant PIN' : 'Enter admin PIN'}
               value={pin}
               onChange={(e) => {
                 setPin(e.target.value);
