@@ -144,8 +144,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
     survey &&
     (
       hasAdminAccess ||
-      survey.results_visibility === 'public' ||
-      (submitted && survey.results_visibility === 'after_submit')
+      (submitted && survey.results_visibility !== 'pin_only')
     )
   );
 
