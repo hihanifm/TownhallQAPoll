@@ -116,7 +116,7 @@ test.describe('Survey E2E', () => {
     expect(results.data.results[0].counts.Yes).toBe(1);
   });
 
-  test('submission-status returns own answers after submit', async ({ request }) => {
+  test('submission-status reports submitted state but never returns answers (anonymity)', async ({ request }) => {
     const creatorId = generateUserId();
     const userA = generateUserId();
     const userB = generateUserId();
@@ -143,9 +143,14 @@ test.describe('Survey E2E', () => {
     expect(after.ok).toBe(true);
     expect(after.data.submitted).toBe(true);
     expect(after.data.submitted_at).toBeDefined();
-    expect(after.data.answers).toHaveLength(1);
-    expect(after.data.answers[0].display).toBe('Red');
-    expect(after.data.answers[0].prompt).toBe('Color?');
+    // Anonymity-by-design: server must NOT echo the user's own answers back,
+    // since user_id is not a secret. Client renders from a local cache.
+    expect(after.data.answers).toBeUndefined();
+
+    // Peer with another user_id sees no leakage either.
+    const peerView = await getSurveySubmissionStatus(request, survey.id, userB);
+    expect(peerView.data.submitted).toBe(false);
+    expect(peerView.data.answers).toBeUndefined();
   });
 
   test('participant PIN gates questions and submit; admin PIN does not unlock submit', async ({ request }) => {

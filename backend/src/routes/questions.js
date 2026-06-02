@@ -285,7 +285,7 @@ router.patch('/questions/:id', async (req, res, next) => {
 router.get('/questions/:id/votes', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { user_id, fingerprint_hash } = req.query;
+    const { user_id } = req.query;
     
     if (!user_id) {
       return res.status(400).json({ error: 'user_id is required' });

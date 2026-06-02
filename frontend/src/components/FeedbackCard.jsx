@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
 import { getUserId } from '../utils/userId';
-import { getFingerprint } from '../utils/browserFingerprint';
 import { isIncognito } from '../utils/incognito';
 import { getVerifiedPin } from '../utils/feedbackPin';
 import { formatRelativeTime, formatDateTime } from '../utils/dateFormat';
@@ -15,7 +14,6 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
   const [isVoting, setIsVoting] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const [voteUpdated, setVoteUpdated] = useState(false);
-  const [fingerprintHash, setFingerprintHash] = useState(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(feedback.feedback_text || '');
@@ -31,15 +29,6 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
   // Determine if user can edit this feedback (only creator, not admin)
   const canEdit = feedback.creator_id === getUserId();
 
-  // Get browser fingerprint on component mount
-  useEffect(() => {
-    getFingerprint().then(hash => {
-      setFingerprintHash(hash);
-    }).catch(error => {
-      console.error('Error getting fingerprint:', error);
-    });
-  }, []);
-
   useEffect(() => {
     isIncognito().then(result => setIsIncognitoMode(result)).catch(() => {});
   }, []);
@@ -50,18 +39,14 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
       justToggledRef.current = false;
       return;
     }
-    // Wait for fingerprint if not yet loaded
-    if (!fingerprintHash) {
-      return;
-    }
     try {
       const userId = getUserId();
-      const result = await api.checkFeedbackVote(feedback.id, userId, fingerprintHash);
+      const result = await api.checkFeedbackVote(feedback.id, userId);
       setHasVoted(result.hasVoted);
     } catch (error) {
       console.error('Error checking vote status:', error);
     }
-  }, [feedback.id, fingerprintHash]);
+  }, [feedback.id]);
 
   useEffect(() => {
     const newVoteCount = feedback.vote_count || 0;
@@ -92,12 +77,6 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
 
   const handleUpvote = async () => {
     if (isVoting || isClosed) return;
-    
-    // Require fingerprint before voting
-    if (!fingerprintHash) {
-      showAppNotice('Browser fingerprint not available. Please refresh the page and try again.');
-      return;
-    }
 
     setIsVoting(true);
     justToggledRef.current = true; // Mark that we just toggled
@@ -109,7 +88,7 @@ function FeedbackCard({ feedback, onVoteUpdate, onFeedbackClosed, number, previo
     try {
       const userId = getUserId();
       console.log('Toggling vote for feedback:', feedback.id, 'user:', userId, 'current hasVoted:', hasVoted);
-      const result = await api.upvoteFeedback(feedback.id, userId, fingerprintHash);
+      const result = await api.upvoteFeedback(feedback.id, userId);
       console.log('Toggle result:', result);
       // Update state immediately from API response
       setHasVoted(result.hasVoted);

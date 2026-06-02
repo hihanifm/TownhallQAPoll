@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS votes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     question_id INTEGER NOT NULL,
     user_id TEXT NOT NULL,
-    fingerprint_hash TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (question_id) REFERENCES questions(id),
     UNIQUE(question_id, user_id)
@@ -50,7 +49,6 @@ CREATE TABLE IF NOT EXISTS feedback_votes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     feedback_id INTEGER NOT NULL,
     user_id TEXT NOT NULL,
-    fingerprint_hash TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (feedback_id) REFERENCES feedback(id),
     UNIQUE(feedback_id, user_id)
@@ -82,7 +80,6 @@ CREATE TABLE IF NOT EXISTS survey_submissions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     survey_id INTEGER NOT NULL,
     user_id TEXT NOT NULL,
-    fingerprint_hash TEXT,
     submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (survey_id) REFERENCES surveys(id) ON DELETE CASCADE,
     UNIQUE(survey_id, user_id)

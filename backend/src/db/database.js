@@ -49,23 +49,9 @@ function initDatabase() {
         }
       });
       
-      // Add fingerprint_hash column to existing votes table if it doesn't exist
-      db.run('ALTER TABLE votes ADD COLUMN fingerprint_hash TEXT', (alterErr) => {
-        // Ignore error if column already exists
-        if (alterErr && !alterErr.message.includes('duplicate column')) {
-          console.warn('Note: fingerprint_hash column may already exist:', alterErr.message);
-        } else {
-          // If column was just added, set a default value for existing rows
-          if (!alterErr) {
-            db.run('UPDATE votes SET fingerprint_hash = user_id WHERE fingerprint_hash IS NULL', (updateErr) => {
-              if (updateErr) {
-                console.warn('Note: Could not set default fingerprint_hash:', updateErr.message);
-              }
-            });
-          }
-        }
-      });
-      
+      // (fingerprint_hash column is no longer used — anonymity-by-design;
+      //  legacy DBs may retain the column unused.)
+
       // Add status column to existing feedback table if it doesn't exist
       db.run('ALTER TABLE feedback ADD COLUMN status TEXT DEFAULT \'open\'', (alterErr) => {
         // Ignore error if column already exists
@@ -109,33 +95,35 @@ async function runMigrations(db) {
   // Drop the old unique index on fingerprint if it exists
   await dbRun(`DROP INDEX IF EXISTS idx_votes_question_fingerprint`);
 
-  // Recreate votes table without UNIQUE(question_id, fingerprint_hash)
+  // Recreate votes table without UNIQUE(question_id, fingerprint_hash) AND
+  // without the fingerprint_hash column (anonymity-by-design; pre-launch drop).
   await dbRun(`ALTER TABLE votes RENAME TO votes_old`);
   await dbRun(`CREATE TABLE votes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     question_id INTEGER NOT NULL,
     user_id TEXT NOT NULL,
-    fingerprint_hash TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (question_id) REFERENCES questions(id),
     UNIQUE(question_id, user_id)
   )`);
-  await dbRun(`INSERT INTO votes SELECT * FROM votes_old`);
+  await dbRun(`INSERT INTO votes (id, question_id, user_id, created_at)
+               SELECT id, question_id, user_id, created_at FROM votes_old`);
   await dbRun(`DROP TABLE votes_old`);
   await dbRun(`CREATE INDEX IF NOT EXISTS idx_votes_question ON votes(question_id)`);
 
   // Recreate feedback_votes table without UNIQUE(feedback_id, fingerprint_hash)
+  // and without the fingerprint_hash column.
   await dbRun(`ALTER TABLE feedback_votes RENAME TO feedback_votes_old`);
   await dbRun(`CREATE TABLE feedback_votes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     feedback_id INTEGER NOT NULL,
     user_id TEXT NOT NULL,
-    fingerprint_hash TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (feedback_id) REFERENCES feedback(id),
     UNIQUE(feedback_id, user_id)
   )`);
-  await dbRun(`INSERT INTO feedback_votes SELECT * FROM feedback_votes_old`);
+  await dbRun(`INSERT INTO feedback_votes (id, feedback_id, user_id, created_at)
+               SELECT id, feedback_id, user_id, created_at FROM feedback_votes_old`);
   await dbRun(`DROP TABLE feedback_votes_old`);
   await dbRun(`CREATE INDEX IF NOT EXISTS idx_feedback_votes_feedback ON feedback_votes(feedback_id)`);
 
@@ -169,7 +157,6 @@ async function runMigrations(db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       survey_id INTEGER NOT NULL,
       user_id TEXT NOT NULL,
-      fingerprint_hash TEXT,
       submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (survey_id) REFERENCES surveys(id) ON DELETE CASCADE,
       UNIQUE(survey_id, user_id)

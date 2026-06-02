@@ -7,7 +7,7 @@ const sseService = require('../services/sseService');
 router.post('/questions/:id/upvote', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { user_id, fingerprint_hash } = req.body;
+    const { user_id } = req.body;
     
     if (!user_id) {
       return res.status(400).json({ error: 'user_id is required' });
@@ -39,10 +39,10 @@ router.post('/questions/:id/upvote', async (req, res, next) => {
       );
       hasVoted = false;
     } else {
-      // Toggle on — add vote (store fingerprint as metadata only)
+      // Toggle on — add vote (user_id is the sole identity)
       await runQuery(
-        'INSERT INTO votes (question_id, user_id, fingerprint_hash) VALUES (?, ?, ?)',
-        [id, user_id, fingerprint_hash || null]
+        'INSERT INTO votes (question_id, user_id) VALUES (?, ?)',
+        [id, user_id]
       );
       hasVoted = true;
     }

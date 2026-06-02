@@ -126,12 +126,12 @@ router.post('/feedback/verify-pin', async (req, res, next) => {
 router.post('/feedback/:id/upvote', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { user_id, fingerprint_hash } = req.body;
-    
+    const { user_id } = req.body;
+
     if (!user_id) {
       return res.status(400).json({ error: 'user_id is required' });
     }
-    
+
     // Check if feedback exists
     const feedback = await getQuery(
       'SELECT * FROM feedback WHERE id = ?',
@@ -163,10 +163,10 @@ router.post('/feedback/:id/upvote', async (req, res, next) => {
       );
       hasVoted = false;
     } else {
-      // Toggle on — add vote (store fingerprint as metadata only)
+      // Toggle on — add vote (user_id is the sole identity)
       await runQuery(
-        'INSERT INTO feedback_votes (feedback_id, user_id, fingerprint_hash) VALUES (?, ?, ?)',
-        [id, user_id, fingerprint_hash || null]
+        'INSERT INTO feedback_votes (feedback_id, user_id) VALUES (?, ?)',
+        [id, user_id]
       );
       hasVoted = true;
     }
@@ -192,12 +192,12 @@ router.post('/feedback/:id/upvote', async (req, res, next) => {
 router.get('/feedback/:id/votes', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { user_id, fingerprint_hash } = req.query;
-    
+    const { user_id } = req.query;
+
     if (!user_id) {
       return res.status(400).json({ error: 'user_id is required' });
     }
-    
+
     const vote = await getQuery(
       'SELECT * FROM feedback_votes WHERE feedback_id = ? AND user_id = ?',
       [id, user_id]

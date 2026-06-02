@@ -441,22 +441,12 @@ router.get('/:id/submission-status', async (req, res, next) => {
     if (!submission) {
       return res.json({ submitted: false });
     }
-    const questions = await getSurveyQuestions(surveyId);
-    const answerRows = await allQuery(
-      'SELECT question_id, value_json FROM survey_answers WHERE submission_id = ?',
-      [submission.id]
-    );
-    const byQuestion = Object.fromEntries(answerRows.map((a) => [a.question_id, a.value_json]));
-    const answers = questions.map((q) => ({
-      question_id: q.id,
-      prompt: q.prompt,
-      type: q.type,
-      display: formatAnswerForExport(byQuestion[q.id], q.type),
-    }));
+    // Do NOT return the user's answers here — possession of a user_id (a
+    // localStorage UUID, not a secret) must not yield a peer's responses.
+    // Clients render their own submission from a local cache instead.
     res.json({
       submitted: true,
       submitted_at: formatDatetime(submission.submitted_at),
-      answers,
     });
   } catch (error) {
     next(error);
@@ -570,7 +560,7 @@ router.post('/:id/verify-participant-pin', async (req, res, next) => {
 // POST /api/surveys/:id/submit
 router.post('/:id/submit', async (req, res, next) => {
   try {
-    const { user_id, fingerprint_hash, answers, participant_pin, creator_id } = req.body;
+    const { user_id, answers, participant_pin, creator_id } = req.body;
     const surveyId = req.params.id;
 
     if (!user_id) {
@@ -619,8 +609,8 @@ router.post('/:id/submit', async (req, res, next) => {
     }
 
     const subResult = await runQuery(
-      'INSERT INTO survey_submissions (survey_id, user_id, fingerprint_hash) VALUES (?, ?, ?)',
-      [surveyId, user_id, fingerprint_hash || null]
+      'INSERT INTO survey_submissions (survey_id, user_id) VALUES (?, ?)',
+      [surveyId, user_id]
     );
     const submissionId = subResult.lastID;
 

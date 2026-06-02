@@ -12,6 +12,11 @@ import SurveyResults from './SurveyResults';
 import SurveyPinEntryModal from './SurveyPinEntryModal';
 import CreateSurveyWizard from './CreateSurveyWizard';
 import { exportSurveySummaryCsv } from '../utils/surveyExport';
+import {
+  storeSubmittedAnswers,
+  getSubmittedAnswers,
+  clearSubmittedAnswers,
+} from '../utils/surveyAnswerStore';
 import SurveyThanksCelebration from './SurveyThanksCelebration';
 import { showAppNotice } from '../utils/appNotice';
 import ConfirmDialog from './ConfirmDialog';
@@ -75,7 +80,9 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
         'Survey request timed out. Please refresh and try again.',
       );
       setSubmitted(status.submitted);
-      setMyAnswers(status.submitted && status.answers ? status.answers : null);
+      // Server no longer returns the user's own answers (anonymity).
+      // We read them from the local per-survey cache populated at submit time.
+      setMyAnswers(status.submitted ? getSubmittedAnswers(surveyId) : null);
       setPinVerified(hasVerifiedPin(surveyId));
       setParticipantPinVerified(hasVerifiedParticipantPin(surveyId));
     } catch (err) {
@@ -180,6 +187,8 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
         participantPin: getVerifiedParticipantPin(surveyId) || undefined,
         creatorId: isCreator ? userId : undefined,
       });
+      // Cache the user's own answers locally — server does not return them.
+      storeSubmittedAnswers(surveyId, survey?.questions || [], answers);
       setSubmitted(true);
       setShowCelebration(true);
       await loadSurvey();
@@ -260,6 +269,7 @@ function SurveyPanel({ surveyId, isCreating, onCancelCreate, onSurveyCreated, on
       const userId = getUserId();
       const pin = getVerifiedPin(surveyId);
       await api.deleteSurvey(surveyId, userId, pin);
+      clearSubmittedAnswers(surveyId);
       if (onSurveyDeleted) onSurveyDeleted(surveyId);
     } catch (err) {
       showAppNotice(err.message);

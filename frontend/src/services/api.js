@@ -135,11 +135,8 @@ export const api = {
     return response.json();
   },
 
-  checkVote: async (questionId, userId, fingerprintHash) => {
+  checkVote: async (questionId, userId) => {
     const params = new URLSearchParams({ user_id: userId });
-    if (fingerprintHash) {
-      params.append('fingerprint_hash', fingerprintHash);
-    }
     const response = await fetch(`${API_BASE_URL}/questions/${questionId}/votes?${params}`);
     if (!response.ok) throw new Error('Failed to check vote');
     return response.json();
@@ -169,19 +166,13 @@ export const api = {
   },
 
   // Votes
-  upvoteQuestion: async (questionId, userId, fingerprintHash) => {
-    if (!fingerprintHash) {
-      throw new Error('fingerprint_hash is required');
-    }
+  upvoteQuestion: async (questionId, userId) => {
     const response = await fetch(`${API_BASE_URL}/questions/${questionId}/upvote`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
-        user_id: userId,
-        fingerprint_hash: fingerprintHash 
-      }),
+      body: JSON.stringify({ user_id: userId }),
     });
     if (!response.ok) {
       let errorMessage = 'Failed to upvote';
@@ -293,29 +284,20 @@ export const api = {
     return response.json();
   },
 
-  checkFeedbackVote: async (feedbackId, userId, fingerprintHash) => {
+  checkFeedbackVote: async (feedbackId, userId) => {
     const params = new URLSearchParams({ user_id: userId });
-    if (fingerprintHash) {
-      params.append('fingerprint_hash', fingerprintHash);
-    }
     const response = await fetch(`${API_BASE_URL}/feedback/${feedbackId}/votes?${params}`);
     if (!response.ok) throw new Error('Failed to check vote');
     return response.json();
   },
 
-  upvoteFeedback: async (feedbackId, userId, fingerprintHash) => {
-    if (!fingerprintHash) {
-      throw new Error('fingerprint_hash is required');
-    }
+  upvoteFeedback: async (feedbackId, userId) => {
     const response = await fetch(`${API_BASE_URL}/feedback/${feedbackId}/upvote`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
-        user_id: userId,
-        fingerprint_hash: fingerprintHash 
-      }),
+      body: JSON.stringify({ user_id: userId }),
     });
     if (!response.ok) {
       let errorMessage = 'Failed to upvote';
@@ -445,13 +427,12 @@ export const api = {
     return response.json();
   },
 
-  submitSurvey: async (surveyId, userId, answers, { fingerprintHash, participantPin, creatorId } = {}) => {
+  submitSurvey: async (surveyId, userId, answers, { participantPin, creatorId } = {}) => {
     const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         user_id: userId,
-        fingerprint_hash: fingerprintHash || null,
         answers,
         participant_pin: participantPin || null,
         creator_id: creatorId || null,

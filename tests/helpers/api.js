@@ -94,36 +94,16 @@ export async function updateQuestion(request, questionId, questionText, creatorI
 }
 
 /**
- * Generate a test fingerprint hash for a user ID
- * In a real browser, this would be generated from browser characteristics,
- * but for tests we generate a consistent hash from the user ID
- * @param {string} userId - User ID
- * @returns {string} Fingerprint hash
- */
-function generateTestFingerprint(userId) {
-  // Simple hash function for test purposes
-  let hash = 0;
-  const str = `test-fingerprint-${userId}`;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return `test-${Math.abs(hash).toString(36)}`;
-}
-
-/**
  * Upvote a question (toggles vote on/off)
  * @param {Object} request - Playwright request context
  * @param {number} questionId - Question ID
  * @param {string} userId - User ID
  * @returns {Promise<Object>} Vote response with vote_count and hasVoted
  */
-export async function upvoteQuestion(request, questionId, userId, fingerprintHash = null) {
+export async function upvoteQuestion(request, questionId, userId) {
   const response = await request.post(`${API_BASE_URL}/questions/${questionId}/upvote`, {
     data: {
       user_id: userId,
-      fingerprint_hash: fingerprintHash || generateTestFingerprint(userId),
     },
   });
   
@@ -360,9 +340,8 @@ export async function deleteComment(request, questionId, commentId, creatorId = 
 /**
  * Check if a user has voted on a question
  */
-export async function checkVote(request, questionId, userId, fingerprintHash = null) {
+export async function checkVote(request, questionId, userId) {
   const params = new URLSearchParams({ user_id: userId });
-  if (fingerprintHash) params.set('fingerprint_hash', fingerprintHash);
   const response = await request.get(`${API_BASE_URL}/questions/${questionId}/votes?${params}`);
   if (!response.ok()) {
     const error = await response.json();
@@ -374,9 +353,8 @@ export async function checkVote(request, questionId, userId, fingerprintHash = n
 /**
  * Check if a user has voted on feedback
  */
-export async function checkFeedbackVote(request, feedbackId, userId, fingerprintHash = null) {
+export async function checkFeedbackVote(request, feedbackId, userId) {
   const params = new URLSearchParams({ user_id: userId });
-  if (fingerprintHash) params.set('fingerprint_hash', fingerprintHash);
   const response = await request.get(`${API_BASE_URL}/feedback/${feedbackId}/votes?${params}`);
   if (!response.ok()) {
     const error = await response.json();
@@ -433,11 +411,10 @@ export async function createFeedback(request, feedbackText, creatorId) {
  * @param {string} userId - User ID
  * @returns {Promise<Object>} Vote response with vote_count and hasVoted
  */
-export async function upvoteFeedback(request, feedbackId, userId, fingerprintHash = null) {
+export async function upvoteFeedback(request, feedbackId, userId) {
   const response = await request.post(`${API_BASE_URL}/feedback/${feedbackId}/upvote`, {
     data: {
       user_id: userId,
-      fingerprint_hash: fingerprintHash || generateTestFingerprint(userId),
     },
   });
   
